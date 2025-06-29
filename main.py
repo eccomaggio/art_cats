@@ -150,7 +150,7 @@ def build_008(record):
     return (
         8,
         [
-            f"{str(t.year)[2:]}{str(t.month).zfill(2)}{str(t.day).zfill(2)}s{record.pub_year}||||{record.place}||||||||||||||\||eng||"
+            f"{str(t.year)[2:]}{str(t.month).zfill(2)}{str(t.day).zfill(2)}s{record.pub_year}||||{record.place}||||||||||||||\\||eng||"
         ],
     )
 
@@ -172,13 +172,13 @@ def build_245(record):
 def build_264(record):
     """publisher & copyright"""
     result = []
-    place = f"\0$a {record.place}"
+    place = f"$a {record.place}"
     publisher = f":$b {record.publisher}"
     pub_year = f",$c {record.pub_year}"
     result.append(f"\\0{place}{publisher}{pub_year}")
 
     if record.copyright:
-        result.append(f"$a© {record.copyright}")
+        result.append(f"$a\u00a9 {record.copyright}")
     return (264, result)
 
 def build_300(record):
@@ -244,6 +244,9 @@ def finesse_string(field):
     field_contents = [f"{field_designator}=  {line}" for line in field[1]]
     return (field_int, field_contents)
 
+def mark_nonfiling_words_in_titles(title):
+    pass
+
 def build_mark_records(records):
     mark_records = []
     for record in records:
@@ -291,11 +294,16 @@ def main():
     mark_records = build_mark_records(records)
 
     # pprint(records)
-    for record in mark_records:
-        for field in record:
-            for line in field[1]:
-                print(line)
-        print("")
+    with open('test.mrk', 'w') as f:
+        # f.write('readme')
+        for record in mark_records:
+            for field in record:
+                for line in field[1]:
+                    # print(line)
+                    f.write(line)
+                    f.write("\n")
+            # print("")
+            f.write("\n")
     # pprint(mark_records)
 
 
