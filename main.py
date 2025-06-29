@@ -33,34 +33,19 @@ class Record:
     hol_note: str
     donation: str
     barcode: str
-    pub_date_is_approx: bool
+    pub_year_is_approx: bool
     extent_is_approx: bool
     timestamp: datetime
-
-class Record_type(Enum):
-    unknown = auto()
-    english_only = auto()
-    chinese_only = auto()
-    english_primary = auto()
-    chinese_primary = auto()
 
 
 def norm_langs(raw):
     lang_list = { "english": "eng", "chinese": "chi", }
     result = [lang_list[lang.strip().lower()] for lang in raw.split("/")]
-    # print(f"**{raw} -> {result}")
     return result
 
 def norm_dates(raw):
     result = [date.strip() for date in raw.split(",")  ]
-    # print(f"**{raw} -> {result}")
     return result
-
-# def norm_pub_date(raw):
-#     return check_for_approx(raw)
-
-# def norm_extent(raw):
-# return check_for_approx(raw)
 
 def check_for_approx(raw):
     raw = raw.strip()
@@ -70,27 +55,12 @@ def check_for_approx(raw):
         raw = raw[:-1]
     return (raw, is_approx)
 
-def devine_record_type(langs, has_title_t, has_ptitle_t):
-    language_count = len(langs)
-    if (language_count == 1):
-        record_type = Record_type.chinese_only if (has_title_t) else Record_type.english_only
-    elif (language_count == 2):
-        record_type = Record_type.chinese_primary if (has_title_t) else Record_type.english_primary
-    else:
-        record_type = Record_type.unknown
-    return record_type
-
-
 def get_records(excel_file):
     workbook = load_workbook(filename=excel_file)
     sheet = workbook.active
     print(f"\n{sheet.title} in {excel_file}")
     current_time = datetime.now()
-    # standard_time = datetime.utcnow()
-    # timestamp = str(standard_time).translate(str.maketrans("", "", " -:"))[:16]
-
     records = []
-
     # for value in sheet.iter_rows(min_row=2, max_row=2, values_only=True):
     for value in sheet.iter_rows(min_row=2, values_only=True):
         if (not value[0]):
@@ -98,8 +68,8 @@ def get_records(excel_file):
         langs = norm_langs(value[1])
         pub_date, pub_date_is_approx = check_for_approx(value[14])
         extent, extent_is_approx = check_for_approx(value[16])
-        title_t = value[4]
-        p_title_t = value[8]
+        # title_t = value[4]
+        # p_title_t = value[8]
 
         record = Record(
             value[0],
@@ -111,22 +81,15 @@ def get_records(excel_file):
             normalize(value[17]),
             normalize(value[18]),
             normalize(value[19]),
-            # *value[17:20],
             norm_dates(value[20]),
             normalize(value[21]),
             normalize(value[22]),
             normalize(value[23]),
-            # *value[21:24],
             pub_date_is_approx,
             extent_is_approx,
             current_time,
-            # timestamp,
         )
-        # print(len(tmp))
-        # records.append(Record(*tmp))
         records.append(record)
-        record_type = devine_record_type(langs, bool(title_t), bool(p_title_t))
-        print(f"**** {record_type}")
     return records
 
 def normalize(entry):
@@ -165,8 +128,18 @@ def build_040():
     return (40, ["\\\\$aUkOxU$beng$erda$cUkOxU"])
 
 def build_245(record):
-    """title"""
-    return (245, ["TBA"])
+    """
+    Title
+    """
+    has_chinese_title = bool(record.title_t)
+    if has_chinese_title:
+        title, subtitle = record.title_t, record.subtitle_t
+        nonfiling = 0
+    else:
+        title, subtitle = record.title, record.subtitle
+        nonfiling, title = mark_nonfiling_words(title)
+    title = combine(title, subtitle)
+    return (245, [f"0{nonfiling}$a{title}"])
 
 
 def build_264(record):
@@ -174,7 +147,10 @@ def build_264(record):
     result = []
     place = f"$a {record.place}"
     publisher = f":$b {record.publisher}"
-    pub_year = f",$c {record.pub_year}"
+    pub_year = record.pub_year
+    if record.pub_year_is_approx:
+        pub_year = f"[{pub_year}?]"
+    pub_year = f",$c {pub_year}"
     result.append(f"\\0{place}{publisher}{pub_year}")
 
     if record.copyright:
@@ -226,8 +202,46 @@ def build_041(record):	##optional
     return (41, [lang_string])
 
 def build_246(record):	##optional
-    """Varying Form of Title"""
-    result = "TBA" if record.p_title else ""
+    """
+    Varying Form of Title
+    Holds parallel Western title AND/OR original Chinese character title
+    """
+    result = ""
+    has_parallel_title = bool(record.p_title)
+    has_chinese_main_title = bool(record.title_t)
+    has_chinese_parallel_title = bool(record.p_title_t)
+
+    ## Deal with original Chinese character titles
+    if has_chinese_main_title:
+        chinese_character_title = combine(record.title, record.subtitle)
+    else:
+        chinese_character_title = ""
+
+    ## Deal with parallel titles (Parallel titles are only for dual-language catalogues)
+    nonfiling = 0
+    if has_chinese_parallel_title:
+        parallel_title = combine(record.p_title_t, record.p_title)
+        parallel_subtitle = combine(record.p_subtitle_t, record.p_subtitle)
+        nonfiling = 0
+    elif has_parallel_title:    ## (i.e. Western script)
+        parallel_title, parallel_subtitle = record.p_title, record.p_subtitle
+        nonfiling, parallel_title = mark_nonfiling_words(parallel_title)
+    else:
+        parallel_title = ""
+    if parallel_title:
+        parallel_title = combine(parallel_title,parallel_subtitle)
+
+    ## Combine Chinese character main title with Western parallel title (if either exists)
+    ## (not sure how to handle Chinese original title + parallel titles)
+    if has_chinese_main_title:
+        # chinese_character_title = "$b" + chinese_character_title
+        result = combine(chinese_character_title, parallel_title)
+    else:
+        result = parallel_title
+
+    if result:
+        result = f"0{nonfiling}$a{result}"
+
     return (246, [result])
 
 def build_500(record):	##optional
@@ -244,8 +258,19 @@ def finesse_string(field):
     field_contents = [f"{field_designator}=  {line}" for line in field[1]]
     return (field_int, field_contents)
 
-def mark_nonfiling_words_in_titles(title):
-    pass
+def mark_nonfiling_words(title):
+    nonfiling = 0
+    if title:
+        test = title.split("@@")
+        if len(test) > 1:
+            nonfiling = len(test[0])
+            title = test[0] + test[1]
+    return (nonfiling, title)
+
+def combine(title, subtitle, sep="$b"):
+    if subtitle:
+        title += sep + subtitle
+    return title
 
 def build_mark_records(records):
     mark_records = []
@@ -294,7 +319,7 @@ def main():
     mark_records = build_mark_records(records)
 
     # pprint(records)
-    with open('test.mrk', 'w') as f:
+    with open('output.mrk', 'w') as f:
         # f.write('readme')
         for record in mark_records:
             for field in record:
@@ -305,6 +330,7 @@ def main():
             # print("")
             f.write("\n")
     # pprint(mark_records)
+    pprint(records)
 
 
 if __name__ == "__main__":
