@@ -293,11 +293,7 @@ def build_field(numeric_tag, data):
 
 def expand_indicators(indicator):
     expansions = {-2: "", -1: "\\"}
-    try:
-        result = expansions[indicator]
-    except:
-        result = indicator
-    return result
+    return expansions.get(indicator, indicator)
 
 
 def mark_nonfiling_words(title):
