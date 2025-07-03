@@ -6,6 +6,7 @@ from enum import Enum, auto
 from pprint import pprint
 from datetime import datetime, timezone
 import re
+from pathlib import Path
 
 @dataclass
 class Title:
@@ -29,6 +30,8 @@ class Record:
     copyright: str
     extent: int
     size: int
+    series_title: str
+    series_enum: str
     notes: str
     sales_code: str
     sale_dates: List[str]
@@ -46,6 +49,13 @@ def norm_langs(raw):
     lang_list = {
         "english": "eng",
         "chinese": "chi",
+        "german": "ger",
+        "italian": "ita",
+        "spanish": "spa",
+        "french": "fre",
+        "swedish": "swe",
+        "danish": "dan",
+        "norwegian": "nor",
     }
     result = [lang_list[lang.strip().lower()] for lang in raw.split("/")]
     return result
@@ -86,7 +96,7 @@ def check_for_approx(raw):
     is_approx = False
     if raw[-1] == "?":
         is_approx = True
-        raw = raw[:-1]
+        raw = raw[:-1].rstrip()
     return (raw, is_approx)
 
 def trim_mistaken_decimals(string):
@@ -120,12 +130,14 @@ def get_records(excel_file):
         copyright_ = trim_mistaken_decimals(normalize(value[15]))
         extent, extent_is_approx = check_for_approx(value[16])
         size = int(value[17])
-        note = normalize(value[18])
-        sale_code = trim_mistaken_decimals(normalize(value[19]))
-        date_of_sale = normalize(value[20]).replace(r"\s","").replace(".0", "").split(",")
-        hol_notes = normalize(value[21])
-        donation = normalize(value[22])
-        barcode = trim_mistaken_decimals(normalize(value[23]))
+        series_title = normalize(value[18])
+        series_enum = trim_mistaken_decimals(normalize(value[19]))
+        note = normalize(value[20])
+        sale_code = trim_mistaken_decimals(normalize(value[21]))
+        date_of_sale = normalize(value[22]).replace(r"\s","").replace(".0", "").split(",")
+        hol_notes = normalize(value[23])
+        donation = normalize(value[24])
+        barcode = trim_mistaken_decimals(normalize(value[25]))
         sequence_number = 1
         links = [880, []]
 
@@ -144,6 +156,8 @@ def get_records(excel_file):
             copyright_,
             int(extent),
             size,
+            series_title,
+            series_enum,
             note,
             sale_code,
             date_of_sale,
@@ -221,6 +235,8 @@ def build_245(record):
         nonfiling, title = mark_nonfiling_words(title)
         linkage = ""
     title = combine(title, subtitle)
+    if title[-1] not in "?!.":
+        title = title + "."
     i1, i2 = 0, nonfiling
     if has_chinese_title:
         build_880(record, chinese_title, i1, i2, "245", sequence_number)
@@ -241,7 +257,7 @@ def build_264(record):
     result.append([i1, i2, f"{place}{publisher}{pub_year}"])
 
     if record.copyright:
-        result.append([-2,-2,f"$a\u00a9 {record.copyright}"])
+        result.append([i1, i2, f"$a\u00a9 {record.copyright}"])
     return build_field(264, result)
 
 
@@ -350,6 +366,17 @@ def build_246(record):  ##optional
     result = build_field(246, [[i1, i2, f"{linkage}$a{parallel_title}"]]) if parallel_title else ""
     return result
 
+def build_490(record):  ## optional
+    """Series Statement"""
+    i1 = 0  ## Series not traced: No series added entry is desired for the series.
+    i2 = -1
+    series_title = f"$a{record.series_title}" if record.series_title else ""
+    series_enum = f"$v{record.series_enum}" if record.series_enum else ""
+    sep = " ;" if series_title and series_enum else ""
+    content = series_title + sep + series_enum
+    result = build_field(490, [[i1, i2, content ]]) if content else ""
+    return result
+
 
 def build_500(record):  ##optional
     """general notes"""
@@ -400,7 +427,7 @@ def expand_indicators(indicator):
     return expansions.get(indicator, indicator)
 
 
-def combine(title, subtitle, sep="$b"):
+def combine(title, subtitle, sep=" :$b"):
     if subtitle:
         title += sep + subtitle
     return title
@@ -466,6 +493,7 @@ def build_mark_records(records):
             build_245,
             build_264,
             build_300,
+            build_490,
             build_876,
             build_024,
             build_041,
@@ -482,25 +510,44 @@ def build_mark_records(records):
 
     return mark_records
 
+def write_mrk_file(data, file_name="output.mrk"):
+    mrk_file_dir = Path("mrk_files")
+    if not mrk_file_dir.is_dir():
+        mrk_file_dir.mkdir()
+        try:
+            mrk_file_dir.mkdir()
+            print(f"Directory '{mrk_file_dir}' created successfully.")
+        except FileExistsError:
+            print(f"Directory '{mrk_file_dir}' already exists.")
+        except PermissionError:
+            print(f"Permission denied: Unable to create '{mrk_file_dir}'.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
-def main():
-    # excel_file = "reviews-sample.xlsx"ChineseArtCatalogues.3examples.corrected
-    # excel_file = "sample.xlsx"
-    excel_file = "ChineseArtCatalogues.3examples.updated.xlsx"
-    records = get_records(excel_file)
-    # pprint(records)
-    mark_records = build_mark_records(records)
-
-    with open("output.mrk", "w") as f:
-        for record in mark_records:
+    out_file = mrk_file_dir / file_name
+    with open(out_file, "w") as f:
+        for record in data:
             for field in record:
                 for line in field[1]:
                     # print(line)
                     f.write(line)
                     f.write("\n")
             f.write("\n")
-    pprint(records)
 
+
+def main():
+    # excel_file = "reviews-sample.xlsx"ChineseArtCatalogues.3examples.corrected
+    # excel_file = "sample.xlsx"
+    # excel_file = "excel_files/ChineseArtCatalogues.3examples.updated.xlsx"
+    # excel_file = "ChineseArtCatalogues.3examples.updated.xlsx"
+    excel_file = "artCats.ernstHauswedell.xlsx"
+    excel_file_address = Path("excel_files") / excel_file
+    records = get_records(str(excel_file_address.resolve()))
+    # pprint(records)
+    mark_records = build_mark_records(records)
+    write_mrk_file(mark_records)
+
+    pprint(records)
 
 if __name__ == "__main__":
     main()
