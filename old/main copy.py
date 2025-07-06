@@ -18,7 +18,7 @@ class Title:
 @dataclass
 class Record:
     sublib: str
-    langs: List[str]
+    lang: List[str]
     isbn: str
     title: Title
     subtitle: Title
@@ -29,14 +29,14 @@ class Record:
     publisher: str
     pub_year: str
     copyright: str
-    extent: str
+    extent: int
     size: int
     series_title: str
     series_enum: str
     notes: str
     sales_code: str
     sale_dates: List[str]
-    hol_notes: str
+    hol_note: str
     donation: str
     barcode: str
     pub_year_is_approx: bool
@@ -69,7 +69,6 @@ def norm_langs(raw):
     # result = [lang_list[lang.strip().lower()] for lang in raw.split("/")]
     return result
 
-
 def norm_country(country):
     countries = {
         "china": "cc",
@@ -88,125 +87,75 @@ def norm_country(country):
         "uk": "xxk",
         "us": "xxu",
         "usa": "xxu",
-        "austria": "au",
-        "switzerland": "sz",
-        "san marino": "sm",
+        "austria": "au"
     }
     try:
-        result = countries[country.lower()]
+        result = countries[country.strip().lower()]
     except KeyError as e:
-        if len({e}) < 4:
-            print(f"Advisory: assuming country name ({e}) has already been processed.")
-        else:
-            print(f"Warning: {e} is not a recognised country name; it has been passed on unchanged.")
+        print(f"Warning: {e} is not a recognised country name; it has been passed on unchanged.")
         result = country
     return result
-
 
 def norm_dates(raw):
     result = [date.strip() for date in raw.split(",")]
     return result
 
 
-def norm_size(raw):
-    raw = strip_unwanted(r"cm",raw)
-    return int(raw)
-
-
-def norm_pages(raw):
-    raw = strip_unwanted(r"pages|\[|\]", raw)
-    if "approximately" in raw:
-        raw = re.sub(r"\s?approximately\s?", "", raw)
-        raw = raw + "?"
-    return raw
-
-
-def norm_year(raw):
-    raw = strip_unwanted(r"[\[\]]", raw)
-    return raw
-
-
-def strip_unwanted(pattern, raw):
-  raw = re.sub(pattern, "", raw)
-#   raw = norm_string(raw)
-  return raw
+def normalize(entry):
+    return str(entry).strip() if entry else None
 
 
 def check_for_approx(raw):
-    raw = str(raw).strip()
+    raw = trim_mistaken_decimals(str(raw).strip())
+    # if raw.endswith(".0"):
+    #     raw = raw[:-2]
+    is_approx = False
     if raw[-1] == "?":
         is_approx = True
-        # raw = trim_mistaken_decimals(raw[:-1].rstrip())
         raw = raw[:-1].rstrip()
-    else:
-        is_approx = False
-    raw = trim_mistaken_decimals(raw)
     return (raw, is_approx)
 
-
 def trim_mistaken_decimals(string):
+    if not string:
+        return
     if string.endswith(".0"):
         string = string[:-2]
     return string
 
 
-def create_date_list(dates):
-    dates = re.sub(r"\s", "", dates)
-    dates = dates.replace(".0", "")
-    dates = dates.split(",")
-    return dates
-
-
-def norm_excel_data(sheet):
-    """
-    excel seems pretty random in how it assigns string/int/float, so...
-    this routine coerces everything into a string,
-    strips ".0" from misrecognised floats
-    & removes trailing spaces
-    """
-    tmp = []
-    for row in sheet.iter_rows(min_row=2, values_only=True):
-        tmp_row = []
-        if not row[0]:
-            break
-        for col in row:
-            if col:
-                data = str(col).strip()
-                data = trim_mistaken_decimals(data)
-            else:
-                data = ""
-            tmp_row.append(data)
-        tmp.append(tmp_row)
-    return tmp
-
-
-def parse_spreadsheet_data(sheet):
+def get_records(excel_file):
+    workbook = load_workbook(filename=excel_file)
+    sheet = workbook.active
+    print(f"\n{sheet.title} in {excel_file}")
     current_time = datetime.now()
     records = []
-    for row in norm_excel_data(sheet):
-        cols = iter(row)
-        sublibrary = next(cols)
-        langs = norm_langs(next(cols))
-        isbn = next(cols)
-        title = Title(next(cols), next(cols))
-        subtitle = Title(next(cols), next(cols))
-        parallel_title = Title(next(cols), next(cols))
-        parallel_subtitle = Title(next(cols), next(cols))
-        country = norm_country(next(cols))
-        place = next(cols)
-        publisher = next(cols)
-        pub_date, pub_date_is_approx = check_for_approx(norm_year(next(cols)))
-        copyright_ = next(cols).replace("©","").strip()
-        extent, extent_is_approx = check_for_approx(norm_pages(next(cols)))
-        size = norm_size(next(cols))
-        series_title = next(cols)
-        series_enum = next(cols)
-        note = next(cols)
-        sale_code = next(cols)
-        date_of_sale = create_date_list(next(cols))
-        hol_notes = next(cols)
-        donation = next(cols)
-        barcode = next(cols)
+    for value in sheet.iter_rows(min_row=2, values_only=True):
+        if not value[0]:
+            break
+        sublibrary = normalize(value[0])
+        langs = norm_langs(value[1])
+        isbn = trim_mistaken_decimals(normalize(value[2]))
+        title = Title(normalize(value[3]), normalize(value[4]))
+        subtitle = Title(normalize(value[5]), normalize(value[6]))
+        parallel_title = Title(normalize(value[7]), normalize(value[8]))
+        parallel_subtitle = Title(normalize(value[9]), normalize(value[10]))
+        country = norm_country(value[11])
+        place = normalize(value[12])
+        publisher = normalize(value[13])
+        pub_date, pub_date_is_approx = check_for_approx(str(value[14]))
+        copyright_ = trim_mistaken_decimals(normalize(value[15]))
+        extent, extent_is_approx = check_for_approx(value[16])
+        size = int(value[17])
+        series_title = normalize(value[18])
+        series_enum = trim_mistaken_decimals(normalize(value[19]))
+        note = normalize(value[20])
+        sale_code = trim_mistaken_decimals(normalize(value[21]))
+        date_of_sale = normalize(value[22]).replace(r"\s","").replace(".0", "").split(",")
+        hol_notes = normalize(value[23])
+        donation = normalize(value[24])
+        barcode = trim_mistaken_decimals(normalize(value[25]))
+        sequence_number = 1
+        links = [880, []]
 
         record = Record(
             sublibrary,
@@ -221,7 +170,7 @@ def parse_spreadsheet_data(sheet):
             publisher,
             pub_date,
             copyright_,
-            extent,
+            int(extent),
             size,
             series_title,
             series_enum,
@@ -235,12 +184,11 @@ def parse_spreadsheet_data(sheet):
             pub_date_is_approx,
             extent_is_approx,
             current_time,
-
-            sequence_number = 1,
-            links = [880, []],
+            sequence_number,
+            links
         )
         records.append(record)
-        # pprint(record)
+        pprint(record)
     return records
 
 
@@ -270,9 +218,10 @@ def build_008(record):
     date_2 = 4 * "|"
     place_of_pub = record.country.ljust(3, "\\")
     books_configuration = (14*"|") + "\\" + (2*"|")
-    lang = record.langs[0].ljust(3, "\\")
+    lang = record.lang[0].ljust(3, "\\")
     modified_and_cataloging = 2*"|"
-    return build_field(8, [[i1, i2, f"{date_entered_on_file}{pub_status}{date_1}{date_2}{place_of_pub}{books_configuration}{lang}{modified_and_cataloging}" ]])
+    # return build_field( 8, [[-2,-2, f"{str(t.year)[2:]}{str(t.month).zfill(2)}{str(t.day).zfill(2)}s{record.pub_year}{4*"|"}{record.country}{14*"|"}\\||eng||" ]])
+    return build_field( 8, [[i1, i2, f"{date_entered_on_file}{pub_status}{date_1}{date_2}{place_of_pub}{books_configuration}{lang}{modified_and_cataloging}" ]])
 
 
 def build_033(record):
@@ -294,7 +243,6 @@ def build_245(record):
     if has_chinese_title:
         title, subtitle = record.title.transliteration, record.subtitle.transliteration
         chinese_title = combine(record.title.original, record.subtitle.original)
-        chinese_title = end_field_with_period(chinese_title)
         nonfiling = 0
         sequence_number = seq_num(record.sequence_number)
         linkage = f"$6880-{sequence_number}"
@@ -303,7 +251,9 @@ def build_245(record):
         nonfiling, title = mark_nonfiling_words(title)
         linkage = ""
     title = combine(title, subtitle)
-    title = end_field_with_period(title)
+    title = end_title_with_period(title)
+    # if title[-1] not in "?!.":
+    #     title = title + "."
     i1, i2 = 0, nonfiling
     if has_chinese_title:
         build_880(record, chinese_title, i1, i2, "245", sequence_number)
@@ -355,9 +305,7 @@ def build_338():
 
 def build_876(record):
     """notes / donations / barcode"""
-    notes = record.hol_notes
-    # notes = record.notes
-    notes = f"$z{notes}" if notes else ""
+    notes = f"$z{record.notes}" if record.notes else ""
     donation = f"$z{record.donation}" if record.donation else ""
     barcode = f"$p{record.barcode}"
     return build_field(876, [[-1, -1, f"{barcode}{donation}{notes}"]])
@@ -384,17 +332,15 @@ def build_041(record):  ##optional
         -1
     )  ## "No information is provided as to whether the item is or includes a translation."
     i2 = -1  ## "(followed by) MARC language code"
-    is_multi_lingual = len(record.langs) > 1
+    is_multi_lingual = len(record.lang) > 1
     if is_multi_lingual:
-        # if record.title.transliteration:
-        #     main_lang = record.langs[0]
-        #     others = record.langs[1:]
-        #     lang_list = f"$a{"$a".join(others)}$h{main_lang}"
-        # else:
-        #     lang_list = f"$a{"$a".join(record.lang)}"
-        main_lang = record.langs[0]
-        others = record.langs[1:]
-        lang_list = f"$a{"$a".join(others)}$h{main_lang}"
+        if record.title.transliteration:
+            main_lang = record.lang[0]
+            others = record.lang[1:]
+            lang_list = f"$a{"$a".join(others)}$h{main_lang}"
+        else:
+            lang_list = f"$a{"$a".join(record.lang)}"
+        # result = (build_field(41, [[i1,i2, f"$a{"$a".join(others)}$h{main_lang}"]]))
         result = (build_field(41, [[i1,i2, lang_list]]))
     else:
         result = ""
@@ -411,6 +357,7 @@ def build_246(record):  ##optional
     i2 = 1  ## parallel title
     result = ""
     has_parallel_title = bool(record.parallel_title.original)
+    # has_chinese_main_title = bool(record.title.transliteration)
     has_chinese_parallel_title = bool(record.parallel_title.transliteration)
     linkage = "$6880-01" if has_chinese_parallel_title else ""
     if has_chinese_parallel_title:
@@ -420,16 +367,26 @@ def build_246(record):  ##optional
         sequence_number = seq_num(record.sequence_number)
         linkage = f"$6880-{sequence_number}"
         build_880(record, chinese_parallel_title,i1, i2, "246", sequence_number)
+
     elif has_parallel_title:  ## (i.e. Western script)
         parallel_title, parallel_subtitle = record.parallel_title.original, record.parallel_subtitle.original
         # nonfiling, parallel_title = mark_nonfiling_words(parallel_title)
+
     else:
         parallel_title, parallel_subtitle = "", ""
     if parallel_title:
         parallel_title = combine(parallel_title, parallel_subtitle)
+
+    # ## Combine Chinese character main title with Western parallel title (if either exists)
+    # ## (not sure how to handle Chinese original title + parallel titles)
+    # if has_chinese_main_title:
+    #     result = combine(chinese_character_title, parallel_title)
+    # else:
+    #     result = parallel_title
+
+    # result = build_field(246, [[0, nonfiling, f"$a{result}"]]) if result else ""
     result = build_field(246, [[i1, i2, f"{linkage}$a{parallel_title}"]]) if parallel_title else ""
     return result
-
 
 def build_490(record):  ## optional
     """Series Statement"""
@@ -444,49 +401,44 @@ def build_490(record):  ## optional
 
 
 def build_500(record):  ##optional
-    """general notes
-    Punctuation - Field 500 ends with a period unless another mark of punctuation is present. If the final subfield is subfield $5, the mark of punctuation precedes that subfield.
-    """
-    # notes = record.hol_notes
-    notes = end_field_with_period(record.notes)
+    """general notes"""
     result = (
-        build_field(500, [[-1, -1, f"$a{notes}"]]) if notes else ""
+        build_field(500, [[-1, -1, f"$a{record.hol_note}"]]) if record.hol_note else ""
     )
     return result
-
 
 def build_880(record, title, i1, i2, caller, sequence_number):  ##optional
     """Alternate Graphic Representation"""
     record.sequence_number += 1
+    # record.links[1].append(build_field(880, [[i1, i2, f"$6{caller}-{sequence_number}$a{title}"]]))
     record.links[1].append(build_line(line_prefix("880"), i1, i2, f"$6{caller}-{sequence_number}$a{title}"))
 
 
 def build_field(numeric_tag, data):
     if data:
         lines = []
+        display_tag = "LDR" if numeric_tag == 0 else seq_num(numeric_tag)
+        # line_start = f"{display_tag}=  "
         for line in data:
             i1 = expand_indicators(line[0])
             i2 = expand_indicators(line[1])
             content = line[2]
+            # lines.append(f"{line_start}{i1}{i2}{content}")
             lines.append(build_line(line_prefix(numeric_tag), i1, i2, content))
         result = (numeric_tag, lines)
     else:
         result = ""
     return result
 
-
 def build_line(line_start, i1, i2, content):
     return (f"{line_start}{i1}{i2}{content}")
-
 
 def line_prefix(numeric_tag):
     display_tag = "LDR" if numeric_tag == 0 else seq_num(numeric_tag)
     return f"={field_prefix(display_tag)}  "
 
-
 def field_prefix(field_number):
     return str(field_number).zfill(3)
-
 
 def seq_num(sequence_number):
     return str(sequence_number).zfill(2)
@@ -502,11 +454,10 @@ def combine(title, subtitle, sep=" :$b"):
         title += sep + subtitle
     return title
 
-
-def end_field_with_period(text):
-    if text and text[-1] not in "?!.":
-        text = text + "."
-    return text
+def end_title_with_period(title):
+    if title[-1] not in "?!.":
+        title = title + "."
+    return title
 
 
 def mark_nonfiling_words(title):
@@ -583,8 +534,8 @@ def build_mark_records(records):
             mark_record.append(record.links)
         mark_record.sort(key=lambda field: field[0])
         mark_records.append(mark_record)
-    return mark_records
 
+    return mark_records
 
 def write_mrk_file(data, file_name="output.mrk"):
     mrk_file_dir = Path("mrk_files")
@@ -599,6 +550,7 @@ def write_mrk_file(data, file_name="output.mrk"):
             print(f"Permission denied: Unable to create '{mrk_file_dir}'.")
         except Exception as e:
             print(f"An error occurred: {e}")
+
     out_file = mrk_file_dir / file_name
     with open(out_file, "w") as f:
         for record in data:
@@ -610,31 +562,20 @@ def write_mrk_file(data, file_name="output.mrk"):
             f.write("\n")
 
 
-def get_records(excel_file_address):
-    excel_file = str(excel_file_address.resolve())
-    workbook = load_workbook(filename=excel_file)
-    sheet = workbook.active
-    print(f"\n{sheet.title} in {excel_file}")
-    records = parse_spreadsheet_data(sheet)
-    return records
-
-
-def process_excel_file(excel_file_address):
-    records = get_records(excel_file_address)
-    mark_record_set = build_mark_records(records)
-    write_mrk_file(mark_record_set, f"{excel_file_address.stem}.paul.mrk")
-    # pprint(records)
-    # for count, record in enumerate(records):
-    #     print(f">> {count}")
-    #     pprint(record)
-
-
 def main():
-    # process_excel_file(sys.argv[1])
-    for file in Path("excel_files").glob("*.xlsx"):
-        print(f">>>>> processing: {file.name}")
-        process_excel_file(file)
+    # excel_file = "reviews-sample.xlsx"ChineseArtCatalogues.3examples.corrected
+    # excel_file = "sample.xlsx"
+    # excel_file = "excel_files/ChineseArtCatalogues.3examples.updated.xlsx"
+    excel_file = "ChineseArtCatalogues.3examples.updated.xlsx"
+    # excel_file = "artCats.ernstHauswedell.xlsx"
+    # excel_file = "auction_catalogues.PTW17_01_2025.xlsx"
+    excel_file_address = Path("excel_files") / excel_file
+    records = get_records(str(excel_file_address.resolve()))
+    # pprint(records)
+    mark_records = build_mark_records(records)
+    write_mrk_file(mark_records)
 
+    pprint(records)
 
 if __name__ == "__main__":
     main()
