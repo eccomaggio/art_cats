@@ -83,17 +83,18 @@ def norm_country(country):
         "denmark": "dk",
         "norway": "no",
         "canada": "xxc",
-        "new york": "nyu",
+        "newyork": "nyu",
         "england": "enk",
         "uk": "xxk",
         "us": "xxu",
         "usa": "xxu",
         "austria": "au",
         "switzerland": "sz",
-        "san marino": "sm",
+        "sanmarino": "sm",
     }
+    normed_country = country.replace(" ", "").lower()
     try:
-        result = countries[country.lower()]
+        result = countries[normed_country]
     except KeyError as e:
         if len({e}) < 4:
             print(f"Advisory: assuming country name ({e}) has already been processed.")
@@ -313,7 +314,8 @@ def build_245(record):
 def build_264(record):
     """publisher & copyright"""
     i1 = -1
-    i2 = 1  ## "Publication: Field contains a statement relating to the publication, release, or issuing of a resource."
+    # i2 = 1  ## "Publication: Field contains a statement relating to the publication, release, or issuing of a resource."
+    i2 = 0
     result = []
     place = f"$a{record.place} "
     publisher = f":$b{record.publisher}"
@@ -324,7 +326,8 @@ def build_264(record):
     result.append([i1, i2, f"{place}{publisher}{pub_year}"])
 
     if record.copyright:
-        result.append([i1, i2, f"$a\u00a9 {record.copyright}"])
+        # result.append([i1, i2, f"$a\u00a9 {record.copyright}"])
+        result.append([i1, -1, f"$a\u00a9 {record.copyright}"])
     return build_field(264, result)
 
 
@@ -380,9 +383,8 @@ def build_024(record):  ##optional
 
 def build_041(record):  ##optional
     """language codes if not monolingual"""
-    i1 = (
-        -1
-    )  ## "No information is provided as to whether the item is or includes a translation."
+    # i1 = -1  ## "No information...as to whether the item is or includes a translation."
+    i1 = 0  ## "No information...as to whether the item is or includes a translation."
     i2 = -1  ## "(followed by) MARC language code"
     is_multi_lingual = len(record.langs) > 1
     if is_multi_lingual:
