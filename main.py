@@ -57,6 +57,7 @@ def norm_langs(raw):
         "swedish": "swe",
         "danish": "dan",
         "norwegian": "nor",
+        "dutch": "dut",
     }
     result = []
     langs = raw.replace(" ", "").lower().split("/")
@@ -91,6 +92,7 @@ def norm_country(country):
         "austria": "au",
         "switzerland": "sz",
         "sanmarino": "sm",
+        "montecarlo": "mc"
     }
     normed_country = country.replace(" ", "").lower()
     try:
@@ -247,7 +249,8 @@ def parse_spreadsheet_data(sheet):
 
 def build_000():
     """leader (0 is only for sorting purposes; should read 'LDR')"""
-    return build_field(0, [[-2,-2,"00000nam a22000003i 4500"]])
+    content = "00000nam a22000003i 4500"
+    return build_field(0, [[-2,-2, content]])
 
 
 def build_005(record):
@@ -258,7 +261,7 @@ def build_005(record):
     standard_time = record.timestamp.now(timezone.utc)
     ## NB: python produces this format: YYYY-MM-DD HH:MM:SS.ffffff, e.g. 2020-09-30 12:37:55.713351
     timestamp = str(standard_time).translate(str.maketrans("", "", " -:"))[:16]
-    return build_field(5, [[i1, i2, f"{timestamp}"]])
+    return build_field(5, [[i1, i2, timestamp]])
 
 
 def build_008(record):
@@ -273,20 +276,22 @@ def build_008(record):
     books_configuration = (14*"|") + "\\" + (2*"|")
     lang = record.langs[0].ljust(3, "\\")
     modified_and_cataloging = 2*"|"
-    return build_field(8, [[i1, i2, f"{date_entered_on_file}{pub_status}{date_1}{date_2}{place_of_pub}{books_configuration}{lang}{modified_and_cataloging}" ]])
+    content = f"{date_entered_on_file}{pub_status}{date_1}{date_2}{place_of_pub}{books_configuration}{lang}{modified_and_cataloging}"
+    return build_field(8, [[i1, i2, content]])
 
 
 def build_033(record):
     """sales dates"""
     i1 = 0 if len(record.sale_dates) == 1 else 1
     i2 = -1
-    date_string = f"$a{"$a".join(record.sale_dates)}"
-    return build_field(33, [[i1, i2, date_string]])
+    content = f"$a{"$a".join(record.sale_dates)}"
+    return build_field(33, [[i1, i2, content]])
 
 
 def build_040():
     """catalogued in Oxford"""
-    return build_field(40, [[-1,-1,"$aUkOxU$beng$erda$cUkOxU"]])
+    content = "$aUkOxU$beng$erda$cUkOxU"
+    return build_field(40, [[-1,-1,content]])
 
 
 def build_245(record):
@@ -301,14 +306,15 @@ def build_245(record):
         linkage = f"$6880-{sequence_number}"
     else:
         title, subtitle = record.title.original, record.subtitle.original
-        nonfiling, title = mark_nonfiling_words(title)
+        nonfiling, title = check_for_nonfiling(title)
         linkage = ""
     title = combine(title, subtitle)
     title = end_field_with_period(title)
     i1, i2 = 0, nonfiling
     if has_chinese_title:
         build_880(record, chinese_title, i1, i2, "245", sequence_number)
-    return build_field(245, [[i1, i2, f"{linkage}$a{title}"]])
+    content = f"{linkage}$a{title}"
+    return build_field(245, [[i1, i2, content]])
 
 
 def build_264(record):
@@ -338,7 +344,8 @@ def build_300(record):
     if record.extent_is_approx:
         pages = f"approximately {pages}"
     size = f"{record.size} cm"
-    return build_field(300, [[i1, i2, f"$a{pages} ;$c{size}"]])
+    content = f"$a{pages} ;$c{size}"
+    return build_field(300, [[i1, i2, content]])
 
 
 def build_336():
@@ -363,7 +370,8 @@ def build_876(record):
     notes = f"$z{notes}" if notes else ""
     donation = f"$z{record.donation}" if record.donation else ""
     barcode = f"$p{record.barcode}"
-    return build_field(876, [[-1, -1, f"{barcode}{donation}{notes}"]])
+    content = f"{barcode}{donation}{notes}"
+    return build_field(876, [[-1, -1, content]])
 
 
 def build_904():
@@ -373,12 +381,10 @@ def build_904():
 
 def build_024(record):  ##optional
     """sales code (if exists)"""
-    result = (
-        build_field(24, [[8, -1, f"$a{record.sales_code.strip()}"]])
-        if record.sales_code
-        else ""
-    )
-    return result
+    content = ""
+    if record.sales_code:
+        content = build_field(24, [[8, -1, f"$a{record.sales_code.strip()}"]])
+    return content
 
 
 def build_041(record):  ##optional
@@ -388,16 +394,21 @@ def build_041(record):  ##optional
     i2 = -1  ## "(followed by) MARC language code"
     is_multi_lingual = len(record.langs) > 1
     if is_multi_lingual:
+        ## OPTION 1
         # if record.title.transliteration:
         #     main_lang = record.langs[0]
         #     others = record.langs[1:]
         #     lang_list = f"$a{"$a".join(others)}$h{main_lang}"
         # else:
         #     lang_list = f"$a{"$a".join(record.lang)}"
-        main_lang = record.langs[0]
-        others = record.langs[1:]
-        lang_list = f"$a{"$a".join(others)}$h{main_lang}"
-        result = (build_field(41, [[i1,i2, lang_list]]))
+        ## OPTION 2
+        # main_lang = record.langs[0]
+        # others = record.langs[1:]
+        # lang_list = f"$a{"$a".join(others)}$h{main_lang}"
+        # result = (build_field(41, [[i1,i2, lang_list]]))
+        ## OPTION 3
+        content = f"$a{"$a".join(record.langs)}"
+        result = (build_field(41, [[i1,i2, content]]))
     else:
         result = ""
     return result
@@ -428,8 +439,9 @@ def build_246(record):  ##optional
     else:
         parallel_title, parallel_subtitle = "", ""
     if parallel_title:
-        parallel_title = combine(parallel_title, parallel_subtitle)
-    result = build_field(246, [[i1, i2, f"{linkage}$a{parallel_title}"]]) if parallel_title else ""
+        parallel_title = "$a" + combine(parallel_title, parallel_subtitle)
+    content = f"{linkage}{parallel_title}"
+    result = build_field(246, [[i1, i2, content]]) if content else ""
     return result
 
 
@@ -506,6 +518,7 @@ def combine(title, subtitle, sep=" :$b"):
 
 
 def end_field_with_period(text):
+    text = text.strip()
     if text and text[-1] not in "?!.":
         text = text + "."
     return text
@@ -602,7 +615,7 @@ def write_mrk_file(data, file_name="output.mrk"):
         except Exception as e:
             print(f"An error occurred: {e}")
     out_file = mrk_file_dir / file_name
-    with open(out_file, "w") as f:
+    with open(out_file, "w", encoding="utf-8") as f:
         for record in data:
             for field in record:
                 for line in field[1]:
