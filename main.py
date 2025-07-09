@@ -3,11 +3,23 @@ from dataclasses import dataclass
 from collections import namedtuple
 from typing import List
 from enum import Enum, auto
-from pprint import pprint
+# from pprint import pprint
 from datetime import datetime, timezone
 import re
 from pathlib import Path
-import sys
+# import sys
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    filename="output.log",
+    filemode="w",
+    encoding="utf-8",
+    format="%(levelname)s:%(message)s",
+    level=logging.DEBUG
+    )
+# logging.basicConfig(format="%(levelname)s:%(message)s", level=logging.DEBUG)
+
 
 @dataclass
 class Title:
@@ -46,6 +58,20 @@ class Record:
     links: List
 
 
+class MissingFieldError(Exception):
+    pass
+
+
+optional_fields = [
+    24,     ## sales code
+    41,     ## language if not monolingual
+    246,    ## parallel title
+    490,    ## series statement
+    500,    ## general notes
+    880,    ## transliteration
+    ]
+
+
 def norm_langs(raw):
     lang_list = {
         "english": "eng",
@@ -65,45 +91,446 @@ def norm_langs(raw):
         try:
             result.append(lang_list[lang])
         except KeyError as e:
-            print(f"Warning: {e} is not a recognised language; it has been passed on unchanged.")
+            logger.warning(f"Warning: {e} is not a recognised language; it has been passed on unchanged.")
             result.append(lang)
     # result = [lang_list[lang.strip().lower()] for lang in raw.split("/")]
     return result
 
 
 def norm_country(country):
+    # countries = {
+    #     "china": "cc",
+    #     "australia": "at",
+    #     "newzealand": "nz",
+    #     "france": "fr",
+    #     "germany": "gw",
+    #     "italy": "it",
+    #     "portugal": "po",
+    #     "netherlands": "ne",
+    #     "spain": "sp",
+    #     "sweden": "sw",
+    #     "denmark": "dk",
+    #     "norway": "no",
+    #     "uk": "xxk",
+    #     # "newyork": "nyu",
+    #     # "england": "enk",
+    #     # "northernireland": "nik",
+    #     # "scotland": "stk",
+    #     # "wales": "wlk",
+    #     "canada": "xxc",
+    #     "us": "xxu",
+    #     "usa": "xxu",
+    #     "austria": "au",
+    #     "switzerland": "sz",
+    #     "sanmarino": "sm",
+    #     "montecarlo": "mc"
+    # }
+
     countries = {
+        "algeria": "ae",
+        "angola": "ao",
+        "benin": "dm",
+        "botswana": "bs",
+        "burkinafaso": "uv",
+        "burundi": "bd",
+        "cameroon": "cm",
+        "centralafricanrepublic": "cx",
+        "chad": "cd",
+        "congo": "cf",
+        "democraticrepublicofcongo": "cg",
+        "côtedivoire": "iv",
+        "cotedivoire": "iv",
+        "djibouti": "ft",
+        "egypt": "ua",
+        "equatorialguinea": "eg",
+        "eritrea": "ea",
+        "ethiopia": "et",
+        "gabon": "go",
+        "gambia": "gm",
+        "ghana": "gh",
+        "guinea": "gv",
+        "guineabissau": "pg",
+        "kenya": "ke",
+        "lesotho": "lo",
+        "liberia": "lb",
+        "libya": "ly",
+        "madagascar": "mg",
+        "malawi": "mw",
+        "mali": "ml",
+        "mauritania": "mu",
+        "morocco": "mr",
+        "mozambique": "mz",
+        "namibia": "sx",
+        "niger": "ng",
+        "nigeria": "nr",
+        "rwanda": "rw",
+        "saotomeandprincipe": "sf",
+        "senegal": "sg",
+        "sierraleone": "sl",
+        "somalia": "so",
+        "southafrica": "sa",
+        "southsudan": "sd",
+        "spanishnorthafrica": "sh",
+        "sudan": "sj",
+        "swaziland": "sq",
+        "tanzania": "tz",
+        "togo": "tg",
+        "tunisia": "ti",
+        "uganda": "ug",
+        "westernsahara": "ss",
+        "zambia": "za",
+        "zimbabwe": "rh",
+        "afghanistan": "af",
+        "armenia": "ai",
+        "republicofarmenia": "ar",
+        "azerbaijan": "aj",
+        "bahrain": "ba",
+        "bangladesh": "bg",
+        "bhutan": "bt",
+        "brunei": "bx",
+        "burma": "br",
+        "cambodia": "cb",
         "china": "cc",
+        "cyprus": "cy",
+        "easttimor": "em",
+        "gazastrip": "gz",
+        "georgia": "gs",
+        "georgianrepublic": "gs",
+        "republicofgeorgia": "gs",
+        "india": "ii",
+        "indonesia": "io",
+        "iran": "ir",
+        "iraq": "iq",
+        "israel": "is",
+        "japan": "ja",
+        "jordan": "jo",
+        "kazakhstan": "kz",
+        "northkorea": "kn",
+        "korea": "ko",
+        "southkorea": "ko",
+        "kuwait": "ku",
+        "kyrgyzstan": "kg",
+        "laos": "ls",
+        "lebanon": "le",
+        "malaysia": "my",
+        "mongolia": "mp",
+        "nepal": "np",
+        "oman": "mk",
+        "pakistan": "pk",
+        "papuanewguinea": "pp",
+        "paracelislands": "pf",
+        "philippines": "ph",
+        "qatar": "qa",
+        "saudiarabia": "su",
+        "singapore": "si",
+        "spratlyisland": "xp",
+        "srilanka": "ce",
+        "syria": "sy",
+        "tajikistan": "ta",
+        "thailand": "th",
+        "turkey": "tu",
+        "turkmenistan": "tk",
+        "unitedarabemirates": "ts",
+        "uae": "ts",
+        "uzbekistan": "uz",
+        "vietnam": "vm",
+        "westbankofthejordanriver": "wj",
+        "westbank": "wj",
+        "yemen": "ye",
+        "bermudaislands": "bm",
+        "bermuda": "bm",
+        "bouvetisland": "bv",
+        "caboverde": "cv",
+        "faroeislands": "fa",
+        "faroes": "fa",
+        "falklandislands": "fk",
+        "falklands": "fk",
+        "sainthelena": "xj",
+        "southgeorgiaandthesouthsandwichislands": "xs",
+        "southgeorgia": "xs",
+        "southsandwichislands": "xs",
+        "belize": "bh",
+        "costarica": "cr",
+        "elsalvador": "es",
+        "guatemala": "gt",
+        "honduras": "ho",
+        "nicaragua": "nq",
+        "panama": "pn",
+        "albania": "aa",
+        "andorra": "an",
+        "austria": "au",
+        "belarus": "bw",
+        "belgium": "be",
+        "bosniaandherzegovina": "bn",
+        "bosnia": "bn",
+        "bosniaherzegovina": "bn",
+        "herzegovina": "bn",
+        "bulgaria": "bu",
+        "croatia": "ci",
+        "czechrepublic": "xr",
+        "czechia": "xr",
+        "denmark": "dk",
+        "estonia": "er",
+        "finland": "fi",
         "france": "fr",
         "germany": "gw",
+        "gibraltar": "gi",
+        "greece": "gr",
+        "guernsey": "gg",
+        "hungary": "hu",
+        "iceland": "ic",
+        "ireland": "ie",
+        "isleofman": "im",
         "italy": "it",
-        "portugal": "po",
+        "jersey": "je",
+        "kosovo": "kv",
+        "latvia": "lv",
+        "liechtenstein": "lh",
+        "lithuania": "li",
+        "luxembourg": "lu",
+        "macedonia": "xn",
+        "malta": "mm",
+        "montenegro": "mo",
+        "moldova": "mv",
+        "monaco": "mc",
         "netherlands": "ne",
+        "norway": "no",
+        "poland": "pl",
+        "portugal": "po",
+        "serbia": "rb",
+        "romania": "rm",
+        "russia": "ru",
+        "russianfederation": "ru",
+        "sanmarino": "sm",
+        "slovakia": "xo",
+        "slovenia": "xv",
         "spain": "sp",
         "sweden": "sw",
-        "denmark": "dk",
-        "norway": "no",
-        "canada": "xxc",
-        "newyork": "nyu",
-        "england": "enk",
-        "uk": "xxk",
-        "us": "xxu",
-        "usa": "xxu",
-        "austria": "au",
         "switzerland": "sz",
-        "sanmarino": "sm",
-        "montecarlo": "mc"
+        "ukraine": "un",
+        "vaticancity": "vc",
+        "serbiaandmontenegro": "yu",
+        "serbia": "yu",
+        "montenegro": "yu",
+        "britishindianoceanterritory": "bi",
+        "christmasisland": "xa",
+        "cocosislands": "xb",
+        "keelingislands": "xb",
+        "comoros": "cq",
+        "heardandmcdonaldislands": "hm",
+        "maldives": "xc",
+        "mauritius": "mf",
+        "mayotte": "ot",
+        "réunion": "re",
+        "reunion": "re",
+        "reunion": "re",
+        "seychelles": "se",
+        "americansamoa": "as",
+        "cookislands": "cw",
+        "fiji": "fj",
+        "frenchpolynesia": "fp",
+        "guam": "gu",
+        "johnstonatoll": "ji",
+        "kiribati": "gb",
+        "marshallislands": "xe",
+        "micronesia": "fm",
+        "federatedstatesofmicronesia": "fm",
+        "midwayislands": "xf",
+        "nauru": "nu",
+        "newcaledonia": "nl",
+        "niue": "xh",
+        "northernmarianaislands": "nw",
+        "palau": "pw",
+        "pitcairnisland": "pc",
+        "samoa": "ws",
+        "solomonislands": "bp",
+        "tokelau": "tl",
+        "tonga": "to",
+        "tuvalu": "tv",
+        "vanuatu": "nn",
+        "wakeisland": "wk",
+        "wallisandfutuna": "wf",
+        "wallis": "wf",
+        "futuna": "wf",
+        "argentina": "ag",
+        "bolivia": "bo",
+        "brazil": "bl",
+        "chile": "cl",
+        "colombia": "ck",
+        "ecuador": "ec",
+        "frenchguiana": "fg",
+        "guyana": "gy",
+        "paraguay": "py",
+        "peru": "pe",
+        "surinam": "sr",
+        "uruguay": "uy",
+        "venezuela": "ve",
+        "anguilla": "am",
+        "antiguaandbarbuda": "aq",
+        "antigua": "aq",
+        "barbuda": "aq",
+        "aruba": "aw",
+        "bahamas": "bf",
+        "barbados": "bb",
+        "britishvirginislands": "vb",
+        "caribbeannetherlands": "ca",
+        "caymanislands": "cj",
+        "cuba": "cu",
+        "curaçao": "co",
+        "curacao": "co",
+        "dominica": "dq",
+        "dominicanrepublic": "dr",
+        "grenada": "gd",
+        "guadeloupe": "gp",
+        "haiti": "ht",
+        "jamaica": "jm",
+        "martinique": "mq",
+        "montserrat": "mj",
+        "puertorico": "pr",
+        "saintbarthélemy": "sc",
+        "saintbarthelemy": "sc",
+        "saintkittsnevis": "xd",
+        "saintkitts": "xd",
+        "nevis": "xd",
+        "saintlucia": "xk",
+        "saintmartin": "st",
+        "saintvincentandthegrenadines": "xm",
+        "saintvincent": "xm",
+        "thegrenadines": "xm",
+        "grenadines": "xm",
+        "sintmaarten": "sn",
+        "trinidadandtobago": "tr",
+        "trinidad": "tr",
+        "tobago": "tr",
+        "turksandcaicosislands": "tc",
+        "virginislandsoftheunitedstates": "vi",
+        "antarctica": "ay",
+        "noplace": "xx",
+        "unknown": "xx",
+        "undetermined": "xx",
+        "variousplaces": "vp",
+        "various": "vp",
     }
-    normed_country = country.replace(" ", "").lower()
+    # normed_country = country.replace(" ", "").lower()
+    normed_country = re.sub(r"[\s\-']", "", country).lower()
     try:
         result = countries[normed_country]
     except KeyError as e:
         if len({e}) < 4:
-            print(f"Advisory: assuming country name ({e}) has already been processed.")
+            logger.info(f"Advisory: assuming country name ({e}) has already been processed.")
         else:
-            print(f"Warning: {e} is not a recognised country name; it has been passed on unchanged.")
+            logger.warning(f"Warning: {e} is not a recognised country name; it has been passed on unchanged.")
         result = country
     return result
+
+
+def norm_place(place):
+    long_countries = {
+        "england": "enk",
+        "northernireland": "nik",
+        "scotland": "stk",
+        "wales": "wlk",
+
+        "alberta": "abc",
+        "britishcolumbia": "bcc",
+        "bc": "bcc",
+        "manitoba": "mbc",
+        "newbrunswick": "nkc",
+        "newfoundland": "nfc",
+        "labrador": "nfc",
+        "newfoundlandandlabrador": "nfc",
+        "northwestterritories": "ntc",
+        "novascotia": "nsc",
+        "nunavut": "nuc",
+        "ontario": "onc",
+        "princeedwardisland": "pic",
+        "québecprovince": "quc",
+        "quebéc": "quc",
+        "quebecprovince": "quc",
+        "quebec": "quc",
+        "saskatchewan": "snc",
+        "yukonterritory": "ykc",
+        "yukon": "ykc",
+
+        "alabama": "alu",
+        "alaska": "aku",
+        "arizona": "azu",
+        "arkansas": "aru",
+        "california": "cau",
+        "colorado": "cou",
+        "connecticut": "ctu",
+        "delaware": "deu",
+        "districtofcolumbia": "dcu",
+        "columbia": "dcu",
+        "florida": "flu",
+        "georgia": "gau",
+        "hawaii": "hiu",
+        "idaho": "idu",
+        "illinois": "ilu",
+        "indiana": "inu",
+        "iowa": "iau",
+        "kansas": "ksu",
+        "kentucky": "kyu",
+        "louisiana": "lau",
+        "maine": "meu",
+        "maryland": "mdu",
+        "massachusetts": "mau",
+        "michigan": "miu",
+        "minnesota": "mnu",
+        "mississippi": "msu",
+        "missouri": "mou",
+        "montana": "mtu",
+        "nebraska": "nbu",
+        "nevada": "nvu",
+        "newhampshire": "nhu",
+        "newjersey": "nju",
+        "newmexico": "nmu",
+        "newyork": "nyu",
+        "newyorkstate": "nyu",
+        "northcarolina": "ncu",
+        "northdakota": "ndu",
+        "ohio": "ohu",
+        "oklahoma": "oku",
+        "oregon": "oru",
+        "pennsylvania": "pau",
+        "rhodeisland": "riu",
+        "southcarolina": "scu",
+        "southdakota": "sdu",
+        "tennessee": "tnu",
+        "texas": "txu",
+        "utah": "utu",
+        "vermont": "vtu",
+        "virginia": "vau",
+        "washington": "wau",
+        "washingtonstate": "wau",
+        "westvirginia": "wvu",
+        "wisconsin": "wiu",
+        "wyoming": "wyu",
+
+        "australiancapitalterritory": "aca",
+        "queensland": "qea",
+        "tasmania": "tma",
+        "victoria": "vra",
+        "westernaustralia": "wea",
+        "newsouthwales": "xna",
+        "northernterritory": "xoa",
+        "southaustralia": "xra",
+    }
+    normed_place = place.replace(" ", "").lower()
+    try:
+        result = long_countries[normed_place]
+    except KeyError as e:
+        if len({e}) == 3:
+            logger.info(f"Advisory: assuming place name ({e}) has already been processed.")
+        else:
+            logger.warning(f"Warning: {e} is not a recognised place name; it has been passed on unchanged.")
+        result = place
+    return result
+
+
+def get_long_country(country, place):
+    ## USA & UK return a detailed 3-digit code based on local region
+    return place if len(place) == 3 else country
 
 
 def norm_dates(raw):
@@ -295,7 +722,9 @@ def build_040():
 
 
 def build_245(record):
-    """ Title """
+    """Title
+    Field 245 ends with a period, even when another mark of punctuation is present, unless the last word in the field is an abbreviation, initial/letter, or data that ends with final punctuation.
+    """
     has_chinese_title = bool(record.title.transliteration)
     if has_chinese_title:
         title, subtitle = record.title.transliteration, record.subtitle.transliteration
@@ -308,20 +737,20 @@ def build_245(record):
         title, subtitle = record.title.original, record.subtitle.original
         nonfiling, title = check_for_nonfiling(title)
         linkage = ""
-    title = combine(title, subtitle)
+    title = combine(title, subtitle) if title else ""
     title = end_field_with_period(title)
     i1, i2 = 0, nonfiling
     if has_chinese_title:
         build_880(record, chinese_title, i1, i2, "245", sequence_number)
-    content = f"{linkage}$a{title}"
+    content = f"{linkage}$a{title}" if title else ""
     return build_field(245, [[i1, i2, content]])
 
 
 def build_264(record):
     """publisher & copyright"""
     i1 = -1
-    # i2 = 1  ## "Publication: Field contains a statement relating to the publication, release, or issuing of a resource."
-    i2 = 0
+    i2 = 1  ## "Publication: Field contains a statement relating to the publication, release, or issuing of a resource."
+    # i2 = 0
     result = []
     place = f"$a{record.place} "
     publisher = f":$b{record.publisher}"
@@ -332,6 +761,7 @@ def build_264(record):
     result.append([i1, i2, f"{place}{publisher}{pub_year}"])
 
     if record.copyright:
+        ## WHY i2=4 ("Copyright notice date") subfield $c ("Date of production, publication, distribution, manufacture, or copyright notice (R)")??
         # result.append([i1, i2, f"$a\u00a9 {record.copyright}"])
         result.append([i1, -1, f"$a\u00a9 {record.copyright}"])
     return build_field(264, result)
@@ -369,7 +799,7 @@ def build_876(record):
     # notes = record.notes
     notes = f"$z{notes}" if notes else ""
     donation = f"$z{record.donation}" if record.donation else ""
-    barcode = f"$p{record.barcode}"
+    barcode = f"$p{record.barcode}" if record.barcode else ""
     content = f"{barcode}{donation}{notes}"
     return build_field(876, [[-1, -1, content]])
 
@@ -381,10 +811,10 @@ def build_904():
 
 def build_024(record):  ##optional
     """sales code (if exists)"""
-    content = ""
-    if record.sales_code:
-        content = build_field(24, [[8, -1, f"$a{record.sales_code.strip()}"]])
-    return content
+    i1 = 8
+    i2 = -1
+    content = f"$a{record.sales_code}" if record.sales_code else ""
+    return build_field(24, [[i1, i2, content]])
 
 
 def build_041(record):  ##optional
@@ -392,6 +822,7 @@ def build_041(record):  ##optional
     # i1 = -1  ## "No information...as to whether the item is or includes a translation."
     i1 = 0  ## "No information...as to whether the item is or includes a translation."
     i2 = -1  ## "(followed by) MARC language code"
+    content = ""
     is_multi_lingual = len(record.langs) > 1
     if is_multi_lingual:
         ## OPTION 1
@@ -408,10 +839,7 @@ def build_041(record):  ##optional
         # result = (build_field(41, [[i1,i2, lang_list]]))
         ## OPTION 3
         content = f"$a{"$a".join(record.langs)}"
-        result = (build_field(41, [[i1,i2, content]]))
-    else:
-        result = ""
-    return result
+    return build_field(41, [[i1,i2, content]])
 
 
 def build_246(record):  ##optional
@@ -441,8 +869,7 @@ def build_246(record):  ##optional
     if parallel_title:
         parallel_title = "$a" + combine(parallel_title, parallel_subtitle)
     content = f"{linkage}{parallel_title}"
-    result = build_field(246, [[i1, i2, content]]) if content else ""
-    return result
+    return build_field(246, [[i1, i2, content]])
 
 
 def build_490(record):  ## optional
@@ -453,8 +880,7 @@ def build_490(record):  ## optional
     series_enum = f"$v{record.series_enum}" if record.series_enum else ""
     sep = " ;" if series_title and series_enum else ""
     content = series_title + sep + series_enum
-    result = build_field(490, [[i1, i2, content ]]) if content else ""
-    return result
+    return build_field(490, [[i1, i2, content ]])
 
 
 def build_500(record):  ##optional
@@ -462,30 +888,40 @@ def build_500(record):  ##optional
     Punctuation - Field 500 ends with a period unless another mark of punctuation is present. If the final subfield is subfield $5, the mark of punctuation precedes that subfield.
     """
     # notes = record.hol_notes
-    notes = end_field_with_period(record.notes)
-    result = (
-        build_field(500, [[-1, -1, f"$a{notes}"]]) if notes else ""
-    )
-    return result
+    content = "$a" + end_field_with_period(record.notes) if record.notes else ""
+    return build_field(500, [[-1, -1, content]])
 
 
 def build_880(record, title, i1, i2, caller, sequence_number):  ##optional
-    """Alternate Graphic Representation"""
+    """Alternate Graphic Representation
+    NB. unlike the other fields, this isn't called directly but by the linked field"""
     record.sequence_number += 1
-    record.links[1].append(build_line(line_prefix("880"), i1, i2, f"$6{caller}-{sequence_number}$a{title}"))
+    content = f"$6{caller}-{sequence_number}$a{title}"
+    record.links[1].append(build_line(line_prefix("880"), i1, i2, content))
 
 
 def build_field(numeric_tag, data):
-    if data:
-        lines = []
-        for line in data:
-            i1 = expand_indicators(line[0])
-            i2 = expand_indicators(line[1])
-            content = line[2]
+    """
+    silently suppresses optional fields if empty;
+    stops with error if required field is empty
+    """
+    if not data:
+        return ""
+    is_optional_field = numeric_tag in optional_fields
+    lines = []
+    for line in data:
+        i1 = expand_indicators(line[0])
+        i2 = expand_indicators(line[1])
+        content = line[2]
+        if content:
             lines.append(build_line(line_prefix(numeric_tag), i1, i2, content))
-        result = (numeric_tag, lines)
-    else:
-        result = ""
+        else:
+            if not is_optional_field:
+                logger.warning(f"Data for required field {str(numeric_tag).zfill(3)} is required.")
+                raise MissingFieldError(f"Data for required field {str(numeric_tag).zfill(3)} is required.")
+                # print(f"Warning: field {str(numeric_tag).zfill(3)} is empty")
+            break
+    result = (numeric_tag, lines) if lines else ""
     return result
 
 
@@ -519,6 +955,7 @@ def combine(title, subtitle, sep=" :$b"):
 
 def end_field_with_period(text):
     text = text.strip()
+    # print(f"******************* {text[-10:]}******************")
     if text and text[-1] not in "?!.":
         text = text + "."
     return text
@@ -607,13 +1044,13 @@ def write_mrk_file(data, file_name="output.mrk"):
         mrk_file_dir.mkdir()
         try:
             mrk_file_dir.mkdir()
-            print(f"Directory '{mrk_file_dir}' created successfully.")
+            logger.info(f"Directory '{mrk_file_dir}' created successfully.")
         except FileExistsError:
-            print(f"Directory '{mrk_file_dir}' already exists.")
+            logger.info(f"Directory '{mrk_file_dir}' already exists.")
         except PermissionError:
-            print(f"Permission denied: Unable to create '{mrk_file_dir}'.")
+            logger.warning(f"Permission denied: Unable to create '{mrk_file_dir}'.")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            logger.warning(f"An error occurred: {e}")
     out_file = mrk_file_dir / file_name
     with open(out_file, "w", encoding="utf-8") as f:
         for record in data:
@@ -629,7 +1066,7 @@ def get_records(excel_file_address):
     excel_file = str(excel_file_address.resolve())
     workbook = load_workbook(filename=excel_file)
     sheet = workbook.active
-    print(f"\n{sheet.title} in {excel_file}")
+    logger.info(f"\n{sheet.title} in {excel_file}")
     records = parse_spreadsheet_data(sheet)
     return records
 
@@ -647,6 +1084,7 @@ def process_excel_file(excel_file_address):
 def main():
     # process_excel_file(sys.argv[1])
     for file in Path("excel_files").glob("*.xlsx"):
+        logger.info(f">>>>> processing: {file.name}")
         print(f">>>>> processing: {file.name}")
         process_excel_file(file)
 
