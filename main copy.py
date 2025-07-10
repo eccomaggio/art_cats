@@ -1,7 +1,7 @@
 from openpyxl import load_workbook
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from collections import namedtuple
-from typing import List, Any
+from typing import List
 from enum import Enum, auto
 # from pprint import pprint
 from datetime import datetime, timezone
@@ -58,16 +58,18 @@ class Record:
     links: List
 
 
-@dataclass
-class Result:
-    is_ok: Any
-    is_err: list ## [field number, error message]
-
-
 class MissingFieldError(Exception):
     pass
 
 
+optional_fields = [
+    24,     ## sales code
+    41,     ## language if not monolingual
+    246,    ## parallel title
+    490,    ## series statement
+    500,    ## general notes
+    880,    ## transliteration
+    ]
 
 
 def norm_langs(raw):
@@ -530,29 +532,6 @@ def get_long_country(country, place):
     ## USA & UK return a detailed 3-digit code based on local region
     return place if len(place) == 3 else country
 
-def validate(record):
-    mandatory = [
-        "sublib",
-        "langs",
-        "title",
-        "country",
-        "place",
-        "publisher",
-        "pub_year",
-        "extent",
-        "size",
-        "sale_dates",
-        "barcode",
-    ]
-    for field in fields(record):
-        name = field.name
-        is_valid = True
-        if name in mandatory and not getattr(record, name):
-            logger.warning(f"The mandatory field '{name}' is missing.")
-            is_valid = False
-    return is_valid
-    # return record
-
 
 def norm_dates(raw):
     result = [date.strip() for date in raw.split(",")]
@@ -631,12 +610,10 @@ def norm_excel_data(sheet):
     return tmp
 
 
-def parse_spreadsheet_data(sheet_raw):
-    sheet = norm_excel_data(sheet_raw)
+def parse_spreadsheet_data(sheet):
     current_time = datetime.now()
     records = []
-    # for row in norm_excel_data(sheet):
-    for row in sheet:
+    for row in norm_excel_data(sheet):
         cols = iter(row)
         sublibrary = next(cols)
         langs = norm_langs(next(cols))
@@ -692,44 +669,31 @@ def parse_spreadsheet_data(sheet_raw):
             sequence_number = 1,
             links = [880, []],
         )
-        contains_all_mandatory_fields = validate(record)
         records.append(record)
         # pprint(record)
     return records
 
 
-def build_000(record):
+def build_000():
     """leader (0 is only for sorting purposes; should read 'LDR')"""
     content = "00000nam a22000003i 4500"
-    record_num = 0
-    i1 = -2
-    i2 = -2
-    error = []
-    success = (record_num, [[i1, i2, content]])
-    # return build_field(0, [[-2,-2, content]])
-    return Result(success, error)
+    return build_field(0, [[-2,-2, content]])
 
 
 def build_005(record):
     """date & time of transaction
     "The date requires 8 numeric characters in the pattern yyyymmdd. The time requires 8 numeric characters in the pattern hhmmss.f, expressed in terms of the 24-hour (00-23) clock."
     """
-    error = []
-    record_num = 5
     i1, i2 = -2, -2  ## "This field has no indicators or subfield codes."
     standard_time = record.timestamp.now(timezone.utc)
     ## NB: python produces this format: YYYY-MM-DD HH:MM:SS.ffffff, e.g. 2020-09-30 12:37:55.713351
     timestamp = str(standard_time).translate(str.maketrans("", "", " -:"))[:16]
-    # return build_field(5, [[i1, i2, timestamp]])
-    success = (record_num, [[i1, i2, timestamp]])
-    return Result(success, error)
+    return build_field(5, [[i1, i2, timestamp]])
 
 
 def build_008(record):
     """pub year & main language?"""
-    record_num = 8
     i1, i2 = -2, -2  ## "Field has no indicators or subfield codes"
-    error = []
     t = record.timestamp
     date_entered_on_file = str(t.year)[2:] + str(t.month).zfill(2) + str(t.day).zfill(2)
     pub_status = "s"
@@ -740,38 +704,27 @@ def build_008(record):
     lang = record.langs[0].ljust(3, "\\")
     modified_and_cataloging = 2*"|"
     content = f"{date_entered_on_file}{pub_status}{date_1}{date_2}{place_of_pub}{books_configuration}{lang}{modified_and_cataloging}"
-    # return build_field(8, [[i1, i2, content]])
-    success = (record_num, [[i1, i2, content]])
-    return Result(success, error)
+    return build_field(8, [[i1, i2, content]])
 
 
 def build_033(record):
     """sales dates"""
-    record_num = 33
     i1 = 0 if len(record.sale_dates) == 1 else 1
     i2 = -1
     content = f"$a{"$a".join(record.sale_dates)}"
-    error = []
-    success = (record_num, [[i1, i2, content]])
-    # return build_field(33, [[i1, i2, content]])
-    return Result(success, error)
+    return build_field(33, [[i1, i2, content]])
 
 
-def build_040(record):
+def build_040():
     """catalogued in Oxford"""
-    record_num = 40
     content = "$aUkOxU$beng$erda$cUkOxU"
-    error = []
-    success = (record_num, [[-1,-1,content]])
-    # return build_field(40, [[-1,-1,content]])
-    return Result(success, error)
+    return build_field(40, [[-1,-1,content]])
 
 
 def build_245(record):
     """Title
     Field 245 ends with a period, even when another mark of punctuation is present, unless the last word in the field is an abbreviation, initial/letter, or data that ends with final punctuation.
     """
-    record_num = 245
     has_chinese_title = bool(record.title.transliteration)
     if has_chinese_title:
         title, subtitle = record.title.transliteration, record.subtitle.transliteration
@@ -789,124 +742,79 @@ def build_245(record):
     i1, i2 = 0, nonfiling
     if has_chinese_title:
         build_880(record, chinese_title, i1, i2, "245", sequence_number)
-    # content = f"{linkage}$a{title}" if title else ""
-    if title:
-        content = f"{linkage}$a{title}"
-        success = (record_num, [[i1, i2, content]])
-        error = []
-    else:
-        success = []
-        error = [record_num]
+    content = f"{linkage}$a{title}" if title else ""
+    return build_field(245, [[i1, i2, content]])
 
-    # return build_field(245, [[i1, i2, content]])
-    return Result(success, error)
 
 def build_264(record):
     """publisher & copyright"""
-    record_num = 264
     i1 = -1
     i2 = 1  ## "Publication: Field contains a statement relating to the publication, release, or issuing of a resource."
     # i2 = 0
-    content = []
-    error = []
+    result = []
     place = f"$a{record.place} "
     publisher = f":$b{record.publisher}"
     pub_year = record.pub_year
     if record.pub_year_is_approx:
         pub_year = f"[{pub_year}?]"
     pub_year = f",$c{pub_year}"
-    content.append([i1, i2, f"{place}{publisher}{pub_year}"])
+    result.append([i1, i2, f"{place}{publisher}{pub_year}"])
 
     if record.copyright:
         ## WHY i2=4 ("Copyright notice date") subfield $c ("Date of production, publication, distribution, manufacture, or copyright notice (R)")??
         # result.append([i1, i2, f"$a\u00a9 {record.copyright}"])
-        content.append([i1, -1, f"$a\u00a9 {record.copyright}"])
-    success = (record_num, content)
-    return Result(success, error)
+        result.append([i1, -1, f"$a\u00a9 {record.copyright}"])
+    return build_field(264, result)
 
 
 def build_300(record):
     """physical description"""
-    record_num = 300
     i1, i2 = -1, -1 ## "undefined"
-    error = []
     pages = f"{record.extent} pages"
     if record.extent_is_approx:
         pages = f"approximately {pages}"
     size = f"{record.size} cm"
     content = f"$a{pages} ;$c{size}"
-    success = (record_num, [[i1, i2, content]])
-    return Result((success), error)
+    return build_field(300, [[i1, i2, content]])
 
 
-def build_336(record):
+def build_336():
     """content type (boilerplate)"""
-    record_num = 336
-    error = []
-    content = "$atext$2rdacontent"
-    success = (record_num, [[-1, -1,content]])
-    return Result(success, error)
+    return build_field(336, [[-1, -1, "$atext$2rdacontent"]])
 
 
-def build_337(record):
+def build_337():
     """media type (boilerplate)"""
-    record_num = 337
-    i1, i2 = -1, -1
-    content = "$aunmediated$2rdamedia"
-    error = []
-    success = (record_num, [[i1, i2, content]])
-    return Result(success, error)
+    return build_field(337, [[-1, -1, "$aunmediated$2rdamedia"]])
 
 
-def build_338(record):
+def build_338():
     """carrier type (boilerplate)"""
-    record_num = 338
-    i1, i2 = -1, -1
-    content =  "$avolume$2rdacarrier"
-    error = []
-    success = (record_num, [[i1, i2, content]])
-    return Result(success, error)
+    return build_field(338, [[-1, -1, "$avolume$2rdacarrier"]])
 
 
 def build_876(record):
     """notes / donations / barcode"""
-    record_num = 876
-    i1, i2 = -1, -1
-    error = []
     notes = record.hol_notes
     # notes = record.notes
     notes = f"$z{notes}" if notes else ""
     donation = f"$z{record.donation}" if record.donation else ""
     barcode = f"$p{record.barcode}" if record.barcode else ""
     content = f"{barcode}{donation}{notes}"
-    success = (record_num, [[i1, i2, content]])
-    return Result(success, error)
+    return build_field(876, [[-1, -1, content]])
 
 
-def build_904(record):
+def build_904():
     """authority (boilerplate)"""
-    record_num = 904
-    i1, i2 = -1, -1
-    error = []
-    content =  "$aOxford Local Record"
-    success = (record_num, [[i1, i2,content]])
-    return Result(success, error)
+    return build_field(904, [[-1, -1, "$aOxford Local Record"]])
 
 
 def build_024(record):  ##optional
     """sales code (if exists)"""
-    record_num = 24
     i1 = 8
     i2 = -1
-    # content = f"$a{record.sales_code}" if record.sales_code else ""
-    if record.sales_code:
-        content = f"$a{record.sales_code}"
-        success = (record_num, [[i1, i2, content]])
-        error = []
-    else:
-        error = [record_num]
-        success = []
-    return Result(success, error)
+    content = f"$a{record.sales_code}" if record.sales_code else ""
+    return build_field(24, [[i1, i2, content]])
 
 
 def build_041(record):  ##optional
@@ -914,7 +822,6 @@ def build_041(record):  ##optional
     # i1 = -1  ## "No information...as to whether the item is or includes a translation."
     i1 = 0  ## "No information...as to whether the item is or includes a translation."
     i2 = -1  ## "(followed by) MARC language code"
-    record_num = 41
     content = ""
     is_multi_lingual = len(record.langs) > 1
     if is_multi_lingual:
@@ -932,12 +839,7 @@ def build_041(record):  ##optional
         # result = (build_field(41, [[i1,i2, lang_list]]))
         ## OPTION 3
         content = f"$a{"$a".join(record.langs)}"
-        success = (record_num, [[i1,i2, content]])
-        error = []
-    else:
-        error = [record_num]
-        success = []
-    return Result(success, error)
+    return build_field(41, [[i1,i2, content]])
 
 
 def build_246(record):  ##optional
@@ -946,9 +848,9 @@ def build_246(record):  ##optional
     Holds parallel Western title AND/OR original Chinese character title
     NB: Initial articles (e.g., The, La) are generally not recorded in field 246 unless the intent is to file on the article. [https://www.loc.gov/marc/bibliographic/bd246.html]
     """
-    record_num = 246
     i1 = 3  ## "No note, added entry"
     i2 = 1  ## parallel title
+    result = ""
     has_parallel_title = bool(record.parallel_title.original)
     has_chinese_parallel_title = bool(record.parallel_title.transliteration)
     linkage = "$6880-01" if has_chinese_parallel_title else ""
@@ -961,37 +863,24 @@ def build_246(record):  ##optional
         build_880(record, chinese_parallel_title,i1, i2, "246", sequence_number)
     elif has_parallel_title:  ## (i.e. Western script)
         parallel_title, parallel_subtitle = record.parallel_title.original, record.parallel_subtitle.original
+        # nonfiling, parallel_title = mark_nonfiling_words(parallel_title)
     else:
         parallel_title, parallel_subtitle = "", ""
     if parallel_title:
         parallel_title = "$a" + combine(parallel_title, parallel_subtitle)
     content = f"{linkage}{parallel_title}"
-    if content:
-        success = (record_num, [[i1, i2, content]])
-        error = []
-    else:
-        success = []
-        error = [record_num]
-    return Result(success, error)
+    return build_field(246, [[i1, i2, content]])
 
 
 def build_490(record):  ## optional
     """Series Statement"""
-    record_num = 490
     i1 = 0  ## Series not traced: No series added entry is desired for the series.
     i2 = -1
     series_title = f"$a{record.series_title}" if record.series_title else ""
     series_enum = f"$v{record.series_enum}" if record.series_enum else ""
     sep = " ;" if series_title and series_enum else ""
     content = series_title + sep + series_enum
-    # return build_field(490, [[i1, i2, content ]])
-    if content:
-        error = []
-        success = (record_num, [[i1, i2, content ]])
-    else:
-        success = []
-        error = [record_num]
-    return Result(success, error)
+    return build_field(490, [[i1, i2, content ]])
 
 
 def build_500(record):  ##optional
@@ -999,18 +888,8 @@ def build_500(record):  ##optional
     Punctuation - Field 500 ends with a period unless another mark of punctuation is present. If the final subfield is subfield $5, the mark of punctuation precedes that subfield.
     """
     # notes = record.hol_notes
-    record_num = 500
-    i1 = -1
-    i2 = -1
-    # content = "$a" + end_field_with_period(record.notes) if record.notes else ""
-    if record.notes:
-        content = "$a" + end_field_with_period(record.notes)
-        success = (record_num, [[i1, i2, content]])
-        error = []
-    else:
-        success = []
-        error = [record_num]
-    return Result(success, error)
+    content = "$a" + end_field_with_period(record.notes) if record.notes else ""
+    return build_field(500, [[-1, -1, content]])
 
 
 def build_880(record, title, i1, i2, caller, sequence_number):  ##optional
@@ -1021,66 +900,29 @@ def build_880(record, title, i1, i2, caller, sequence_number):  ##optional
     record.links[1].append(build_line(line_prefix("880"), i1, i2, content))
 
 
-# def build_field(numeric_tag, data):
-def build_field(result: Result):
+def build_field(numeric_tag, data):
     """
     silently suppresses optional fields if empty;
     stops with error if required field is empty
     """
-    optional_fields = [
-        24,     ## sales code
-        41,     ## language if not monolingual
-        246,    ## parallel title
-        490,    ## series statement
-        500,    ## general notes
-        880,    ## transliteration
-    ]
-    output = ()
-    if result.is_err:
-        numeric_tag = result.is_err[0]
-        if numeric_tag in optional_fields:
-            pass
+    if not data:
+        return ""
+    is_optional_field = numeric_tag in optional_fields
+    lines = []
+    for line in data:
+        i1 = expand_indicators(line[0])
+        i2 = expand_indicators(line[1])
+        content = line[2]
+        if content:
+            lines.append(build_line(line_prefix(numeric_tag), i1, i2, content))
         else:
-            logger.warning(f"Data for required field {str(numeric_tag).zfill(3)} is required.")
-            raise MissingFieldError(f"Data for required field {str(numeric_tag).zfill(3)} is required.")
-    else:
-        numeric_tag, data = result.is_ok
-        lines = []
-        for line in data:
-            i1 = expand_indicators(line[0])
-            i2 = expand_indicators(line[1])
-            content = line[2]
-            if content:
-                lines.append(build_line(line_prefix(numeric_tag), i1, i2, content))
-            else:
-                break
-        output = (numeric_tag, lines) if lines else ""
-    return output
-
-
-# def build_field(numeric_tag, data):
-#     """
-#     silently suppresses optional fields if empty;
-#     stops with error if required field is empty
-#     """
-#     if not data:
-#         return ""
-#     is_optional_field = numeric_tag in optional_fields
-#     lines = []
-#     for line in data:
-#         i1 = expand_indicators(line[0])
-#         i2 = expand_indicators(line[1])
-#         content = line[2]
-#         if content:
-#             lines.append(build_line(line_prefix(numeric_tag), i1, i2, content))
-#         else:
-#             if not is_optional_field:
-#                 logger.warning(f"Data for required field {str(numeric_tag).zfill(3)} is required.")
-#                 raise MissingFieldError(f"Data for required field {str(numeric_tag).zfill(3)} is required.")
-#                 # print(f"Warning: field {str(numeric_tag).zfill(3)} is empty")
-#             break
-#     result = (numeric_tag, lines) if lines else ""
-#     return result
+            if not is_optional_field:
+                logger.warning(f"Data for required field {str(numeric_tag).zfill(3)} is required.")
+                raise MissingFieldError(f"Data for required field {str(numeric_tag).zfill(3)} is required.")
+                # print(f"Warning: field {str(numeric_tag).zfill(3)} is empty")
+            break
+    result = (numeric_tag, lines) if lines else ""
+    return result
 
 
 def build_line(line_start, i1, i2, content):
@@ -1162,23 +1004,17 @@ def build_mark_records(records):
     mark_records = []
     for record in records:
         mark_record = []
-        # for boilerplate in (
-        #     build_000,
-        #     build_040,
-        #     build_336,
-        #     build_337,
-        #     build_338,
-        #     build_904,
-        # ):
-        #     mark_record.append(boilerplate())
-
-        for step in (
+        for boilerplate in (
             build_000,
             build_040,
             build_336,
             build_337,
             build_338,
             build_904,
+        ):
+            mark_record.append(boilerplate())
+
+        for step in (
             build_005,
             build_008,
             build_033,
@@ -1192,7 +1028,7 @@ def build_mark_records(records):
             build_246,
             build_500,
         ):
-            field = build_field(step(record))
+            field = step(record)
             if field:
                 mark_record.append(field)
         if record.links:
