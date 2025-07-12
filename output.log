@@ -1,6 +1,5 @@
-INFO:>>>>> processing: AuctionCatalogues.sothebysParkeBernet.xlsx
 INFO:
-Data input in /Users/paulwakelin/coding/python/art_cats/excel_files/AuctionCatalogues.sothebysParkeBernet.xlsx
+>>>>> processing: AuctionCatalogues.sothebysParkeBernet.xlsx
 INFO:Advisory: assuming country name ('nyu') has already been processed.
 INFO:Advisory: assuming country name ('nyu') has already been processed.
 INFO:Advisory: assuming country name ('nyu') has already been processed.
@@ -24,7 +23,7 @@ INFO:Advisory: assuming country name ('nyu') has already been processed.
 INFO:Advisory: assuming country name ('nyu') has already been processed.
 INFO:Advisory: assuming country name ('nyu') has already been processed.
 INFO:Advisory: assuming country name ('nyu') has already been processed.
-WARNING:The mandatory field 'extent' is missing.
+WARNING:Record no. 12 is missing the mandatory field 'extent'.
 INFO:Advisory: assuming country name ('nyu') has already been processed.
 INFO:Advisory: assuming country name ('nyu') has already been processed.
 INFO:Advisory: assuming country name ('nyu') has already been processed.
@@ -143,21 +142,17 @@ INFO:Advisory: assuming country name ('cc') has already been processed.
 INFO:Advisory: assuming country name ('cc') has already been processed.
 INFO:Advisory: assuming country name ('cc') has already been processed.
 INFO:Advisory: assuming country name ('cc') has already been processed.
-INFO:>>>>> processing: artCats.ernstHauswedell.xlsx
 INFO:
-Data input in /Users/paulwakelin/coding/python/art_cats/excel_files/artCats.ernstHauswedell.xlsx
-INFO:>>>>> processing: AuctionCats.jeremyWarrenDonation.xlsx
+>>>>> processing: artCats.ernstHauswedell.xlsx
 INFO:
-Data input in /Users/paulwakelin/coding/python/art_cats/excel_files/AuctionCats.jeremyWarrenDonation.xlsx
+>>>>> processing: AuctionCats.jeremyWarrenDonation.xlsx
 INFO:Advisory: assuming country name ('uk') has already been processed.
 INFO:Advisory: assuming country name ('uk') has already been processed.
 INFO:Advisory: assuming country name ('uk') has already been processed.
-INFO:>>>>> processing: ChineseArtCatalogues.3examples.updated.xlsx
 INFO:
-Data input in /Users/paulwakelin/coding/python/art_cats/excel_files/ChineseArtCatalogues.3examples.updated.xlsx
-INFO:>>>>> processing: auction_catalogues.PTW17_01_2025.xlsx
+>>>>> processing: ChineseArtCatalogues.3examples.updated.xlsx
 INFO:
-Data input in /Users/paulwakelin/coding/python/art_cats/excel_files/auction_catalogues.PTW17_01_2025.xlsx
+>>>>> processing: auction_catalogues.PTW17_01_2025.xlsx
 INFO:Advisory: assuming country name ('au') has already been processed.
 INFO:Advisory: assuming country name ('au') has already been processed.
 INFO:Advisory: assuming country name ('au') has already been processed.
