@@ -664,9 +664,7 @@ def parse_spreadsheet(sheet: list[list[str]]) -> list[Record]:
 def build_000(record: Record) -> Result:
     """leader (0 is only for sorting purposes; should read 'LDR')"""
     field_num = 0
-    i1 = -2
-    i2 = -2
-    # i1, i2 = -2, -2  ## "This field has no indicators or subfield codes."
+    i1, i2 = -2, -2  ## "This field has no indicators or subfield codes."
     content = "00000nam a22000003i 4500"
     error = None
     success = (field_num, [[i1, i2, content]])
@@ -750,9 +748,6 @@ def build_245(record: Record) -> Result:
     title = combine(title, subtitle) if title else ""
     title = end_field_with_period(title)
     i2 = nonfiling
-    # i1, i2 = 0, nonfiling
-    # if has_chinese_title:
-    #     build_880(record, chinese_title, i1, i2, "245", sequence_number)
     if title:
         content = f"{linkage}$a{title}"
         success = (field_num, [[i1, i2, content]])
@@ -911,12 +906,14 @@ def build_246(record: Record) -> Result:  ##optional
     i2 = 1  ## parallel title
     has_parallel_title = bool(record.parallel_title.original)
     has_chinese_parallel_title = bool(record.parallel_title.transliteration)
-    linkage = "$6880-01" if has_chinese_parallel_title else ""
+    sequence_number = seq_num(record.sequence_number)
+    linkage = f"$6880-{sequence_number}" if has_chinese_parallel_title else ""
+    # linkage = "$6880-01" if has_chinese_parallel_title else ""
     if has_chinese_parallel_title:
         parallel_title = record.parallel_title.transliteration
         parallel_subtitle = record.parallel_subtitle.transliteration
         chinese_parallel_title = combine(record.parallel_title.original, record.parallel_subtitle.original)
-        sequence_number = seq_num(record.sequence_number)
+        # sequence_number = seq_num(record.sequence_number)
         linkage = f"$6880-{sequence_number}"
         build_880(record, chinese_parallel_title,i1, i2, "246", sequence_number)
     elif has_parallel_title:  ## (i.e. Western script)
@@ -970,7 +967,7 @@ def build_500(record: Record) -> Result:  ##optional
         error = (field_num, "")
     return Result(success, error)
 
-
+# TODO: need an item with both a Chinese title and subtitle to test the sequence number logic.
 def build_880(record, title, i1, i2, caller, sequence_number) -> None:  ##optional
     """Alternate Graphic Representation
     NB. unlike the other fields, this isn't called directly but by the linked field"""
