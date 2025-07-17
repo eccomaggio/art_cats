@@ -908,12 +908,10 @@ def build_246(record: Record) -> Result:  ##optional
     has_chinese_parallel_title = bool(record.parallel_title.transliteration)
     sequence_number = seq_num(record.sequence_number)
     linkage = f"$6880-{sequence_number}" if has_chinese_parallel_title else ""
-    # linkage = "$6880-01" if has_chinese_parallel_title else ""
     if has_chinese_parallel_title:
         parallel_title = record.parallel_title.transliteration
         parallel_subtitle = record.parallel_subtitle.transliteration
         chinese_parallel_title = combine(record.parallel_title.original, record.parallel_subtitle.original)
-        # sequence_number = seq_num(record.sequence_number)
         linkage = f"$6880-{sequence_number}"
         build_880(record, chinese_parallel_title,i1, i2, "246", sequence_number)
     elif has_parallel_title:  ## (i.e. Western script)
@@ -939,7 +937,6 @@ def build_490(record: Record) -> Result:  ## optional
     series_enum = f"$v{record.series_enum}" if record.series_enum else ""
     sep = " ;" if series_title and series_enum else ""
     content = series_title + sep + series_enum
-    # return build_field(490, [[i1, i2, content ]])
     if content:
         error = None
         success = (field_num, [[i1, i2, content ]])
