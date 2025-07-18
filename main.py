@@ -663,11 +663,11 @@ def parse_spreadsheet(sheet: list[list[str]]) -> list[Record]:
 
 def build_000(record: Record) -> Result:
     """leader (0 is only for sorting purposes; should read 'LDR')"""
-    field_num = 0
+    tag = 0
     i1, i2 = -2, -2  ## "This field has no indicators or subfield codes."
     content = "00000nam a22000003i 4500"
     error = None
-    success = (field_num, [[i1, i2, content]])
+    success = (tag, [[i1, i2, content]])
     return Result(success, error)
 
 
@@ -675,19 +675,19 @@ def build_005(record: Record) -> Result:
     """date & time of transaction
     "The date requires 8 numeric characters in the pattern yyyymmdd. The time requires 8 numeric characters in the pattern hhmmss.f, expressed in terms of the 24-hour (00-23) clock."
     """
-    field_num = 5
+    tag = 5
     i1, i2 = -2, -2  ## "This field has no indicators or subfield codes."
     error = None
     standard_time = record.timestamp.now(timezone.utc)
     ## NB: python produces this format: YYYY-MM-DD HH:MM:SS.ffffff, e.g. 2020-09-30 12:37:55.713351
     timestamp = str(standard_time).translate(str.maketrans("", "", " -:"))[:16]
-    success = (field_num, [[i1, i2, timestamp]])
+    success = (tag, [[i1, i2, timestamp]])
     return Result(success, error)
 
 
 def build_008(record: Record) -> Result:
     """pub year & main language?"""
-    field_num = 8
+    tag = 8
     i1, i2 = -2, -2  ## "Field has no indicators or subfield codes"
     error = None
     t = record.timestamp
@@ -700,28 +700,28 @@ def build_008(record: Record) -> Result:
     lang = record.langs[0].ljust(3, "\\")
     modified_and_cataloging = 2*"|"
     content = f"{date_entered_on_file}{pub_status}{date_1}{date_2}{place_of_pub}{books_configuration}{lang}{modified_and_cataloging}"
-    success = (field_num, [[i1, i2, content]])
+    success = (tag, [[i1, i2, content]])
     return Result(success, error)
 
 
 def build_033(record: Record) -> Result:
     """sales dates"""
-    field_num = 33
+    tag = 33
     i1 = 0 if len(record.sale_dates) == 1 else 1
     i2 = -1
-    content = f"$a{"$a".join(record.sale_dates)}"
+    content = "".join([sub_field("a", date) for date in record.sale_dates])
     error = None
-    success = (field_num, [[i1, i2, content]])
+    success = (tag, [[i1, i2, content]])
     return Result(success, error)
 
 
 def build_040(record: Record) -> Result:
     """catalogued in Oxford"""
-    field_num = 40
+    tag = 40
     i1, i2 = -1, -1
-    content = "$aUkOxU$beng$erda$cUkOxU"
+    content = sub_field("a", "UkOxU") + sub_field("b", "eng") + sub_field("e", "rda") + sub_field("c", "UkOxU")
     error = None
-    success = (field_num, [[i1, i2, content]])
+    success = (tag, [[i1, i2, content]])
     return Result(success, error)
 
 
@@ -729,137 +729,141 @@ def build_245(record: Record) -> Result:
     """Title
     Field 245 ends with a period, even when another mark of punctuation is present, unless the last word in the field is an abbreviation, initial/letter, or data that ends with final punctuation.
     """
-    field_num = 245
+    tag = 245
     i1 = 0
     nonfiling = 0
     has_chinese_title = bool(record.title.transliteration)
     if has_chinese_title:
         title, subtitle = record.title.transliteration, record.subtitle.transliteration
-        chinese_title = combine(record.title.original, record.subtitle.original)
-        chinese_title = end_field_with_period(chinese_title)
-        # nonfiling = 0
-        sequence_number = seq_num(record.sequence_number)
-        linkage = f"$6880-{sequence_number}"
-        build_880(record, chinese_title, i1, nonfiling, field_num, sequence_number)
+        linkage = deal_with_chinese_titles(record, record.title.original, record.subtitle.original, i1, nonfiling, tag)
     else:
         title, subtitle = record.title.original, record.subtitle.original
         nonfiling, title = check_for_nonfiling(title)
         linkage = ""
-    title = combine(title, subtitle) if title else ""
-    title = end_field_with_period(title)
     i2 = nonfiling
     if title:
-        content = f"{linkage}$a{title}"
-        success = (field_num, [[i1, i2, content]])
+        title = f"{sub_field("a", title)}"
+        if subtitle:
+            title += f" :{sub_field("b", subtitle)}"
+        title = end_field_with_period(title)
+        content = f"{linkage}{title}"
+        success = (tag, [[i1, i2, content]])
         error = None
     else:
         success = None
-        error = (field_num, "")
+        error = (tag, "")
     return Result(success, error)
+
+
+def deal_with_chinese_titles(record: Record, title_original: str, subtitle_original: str | None, i1: int, i2: int, tag: int):
+    chinese_title = sub_field("a", title_original)
+    if subtitle_original:
+        chinese_title += " :" + sub_field("b", subtitle_original)
+    if tag == 245:
+        chinese_title = end_field_with_period(chinese_title)
+    sequence_number = seq_num(record.sequence_number)
+    linkage = sub_field("6", f"880-{sequence_number}")
+    build_880(record, chinese_title, i1, i2, tag, sequence_number)
+    return linkage
 
 
 def build_264(record: Record) -> Result:
     """publisher & copyright"""
-    field_num = 264
+    tag = 264
     i1 = -1
     i2 = 1  ## "Publication: Field contains a statement relating to the publication, release, or issuing of a resource."
     # i2 = 0
     content = []
     error = None
-    place = f"$a{record.place} "
-    publisher = f":$b{record.publisher}"
-    pub_year = record.pub_year
-    if record.pub_year_is_approx:
-        pub_year = f"[{pub_year}?]"
-    pub_year = f",$c{pub_year}"
-    content.append([i1, i2, f"{place}{publisher}{pub_year}"])
+    place = sub_field("a", record.place)
+    publisher = sub_field("b", record.publisher)
+    pub_year = sub_field("c", f"[{record.pub_year}?]" if record.pub_year_is_approx else record.pub_year)
+    content.append([i1, i2, f"{place} :{publisher},{pub_year}"])
     if record.copyright:
         ## WHY i2=4 ("Copyright notice date") subfield $c ("Date of production, publication, distribution, manufacture, or copyright notice (R)")??
-        content.append([i1, -1, f"$a\u00a9 {record.copyright}"])
-    success = (field_num, content)
+        _copyright = sub_field("a", f"\u00a9 {record.copyright}")
+        content.append([i1, -1, _copyright])
+    success = (tag, content)
     return Result(success, error)
 
 
 def build_300(record: Record) -> Result:
     """physical description"""
-    field_num = 300
+    tag = 300
     i1, i2 = -1, -1 ## "undefined"
     error = None
-    pages = f"{record.extent} pages"
-    if record.extent_is_approx:
-        pages = f"approximately {pages}"
-    size = f"{record.size} cm"
-    content = f"$a{pages} ;$c{size}"
-    success = (field_num, [[i1, i2, content]])
+    pages = sub_field("a", f"approximately {record.extent} pages" if record.extent_is_approx else f"{record.extent} pages")
+    size = sub_field("c", f"{record.size} cm")
+    content = f"{pages} ;{size}"
+    success = (tag, [[i1, i2, content]])
     return Result((success), error)
 
 
 def build_336(record: Record) -> Result:
     """content type (boilerplate)"""
-    field_num = 336
+    tag = 336
     error = None
-    content = "$atext$2rdacontent"
-    success = (field_num, [[-1, -1,content]])
+    content = sub_field("a", "text") + sub_field(2, "rdacontent")
+    success = (tag, [[-1, -1,content]])
     return Result(success, error)
 
 
 def build_337(record: Record) -> Result:
     """media type (boilerplate)"""
-    field_num = 337
+    tag = 337
     i1, i2 = -1, -1
-    content = "$aunmediated$2rdamedia"
+    content = sub_field("a", "unmediated") + sub_field(2, "rdamedia")
     error = None
-    success = (field_num, [[i1, i2, content]])
+    success = (tag, [[i1, i2, content]])
     return Result(success, error)
 
 
 def build_338(record: Record) -> Result:
     """carrier type (boilerplate)"""
-    field_num = 338
+    tag = 338
     i1, i2 = -1, -1
-    content =  "$avolume$2rdacarrier"
+    content =  sub_field("a", "volume") + sub_field(2, "rdacarrier")
     error = None
-    success = (field_num, [[i1, i2, content]])
+    success = (tag, [[i1, i2, content]])
     return Result(success, error)
 
 
 def build_876(record: Record) -> Result:
     """notes / donations / barcode"""
-    field_num = 876
+    tag = 876
     i1, i2 = -1, -1
     error = None
     notes = record.hol_notes
     # notes = record.notes
-    notes = f"$z{notes}" if notes else ""
-    donation = f"$z{record.donation}" if record.donation else ""
-    barcode = f"$p{record.barcode}" if record.barcode else ""
+    notes = sub_field("z", notes) if notes else ""
+    donation = sub_field("z", record.donation) if record.donation else ""
+    barcode = sub_field("p", record.barcode) if record.barcode else ""
     content = f"{barcode}{donation}{notes}"
-    success = (field_num, [[i1, i2, content]])
+    success = (tag, [[i1, i2, content]])
     return Result(success, error)
 
 
 def build_904(record: Record) -> Result:
     """authority (boilerplate)"""
-    field_num = 904
+    tag = 904
     i1, i2 = -1, -1
     error = None
-    content =  "$aOxford Local Record"
-    success = (field_num, [[i1, i2,content]])
+    content =  sub_field("a", "Oxford Local Record")
+    success = (tag, [[i1, i2,content]])
     return Result(success, error)
 
 
 def build_024(record: Record) -> Result:  ##optional
     """sales code (if exists)"""
-    field_num = 24
+    tag = 24
     i1 = 8
     i2 = -1
-    # content = f"$a{record.sales_code}" if record.sales_code else ""
     if record.sales_code:
-        content = f"$a{record.sales_code}"
-        success = (field_num, [[i1, i2, content]])
+        content = sub_field("a", record.sales_code)
+        success = (tag, [[i1, i2, content]])
         error = None
     else:
-        error = (field_num, "")
+        error = (tag, "")
         success = None
     return Result(success, error)
 
@@ -869,7 +873,7 @@ def build_041(record: Record) -> Result:  ##optional
     i1 = -1  ## "No information...as to whether the item is or includes a translation."
     # i1 = 0  ## "No information...as to whether the item is or includes a translation."
     i2 = -1  ## "(followed by) MARC language code"
-    field_num = 41
+    tag = 41
     content = ""
     is_multi_lingual = len(record.langs) > 1
     if is_multi_lingual:
@@ -886,11 +890,11 @@ def build_041(record: Record) -> Result:  ##optional
         # lang_list = f"$a{"$a".join(others)}$h{main_lang}"
         # result = (build_field(41, [[i1,i2, lang_list]]))
         ## OPTION 3
-        content = f"$a{"$a".join(record.langs)}"
-        success = (field_num, [[i1,i2, content]])
+        content = "".join([sub_field("a", language) for language in record.langs])
+        success = (tag, [[i1,i2, content]])
         error = None
     else:
-        error = (field_num, "")
+        error = (tag, "")
         success = None
     return Result(success, error)
 
@@ -901,48 +905,55 @@ def build_246(record: Record) -> Result:  ##optional
     Holds parallel Western title AND/OR original Chinese character title
     NB: Initial articles (e.g., The, La) are generally not recorded in field 246 unless the intent is to file on the article. [https://www.loc.gov/marc/bibliographic/bd246.html]
     """
-    field_num = 246
+    tag = 246
     i1 = 3  ## "No note, added entry"
     i2 = 1  ## parallel title
     has_parallel_title = bool(record.parallel_title.original)
     has_chinese_parallel_title = bool(record.parallel_title.transliteration)
-    sequence_number = seq_num(record.sequence_number)
-    linkage = f"$6880-{sequence_number}" if has_chinese_parallel_title else ""
+    # sequence_number = seq_num(record.sequence_number)
+    linkage = ""
     if has_chinese_parallel_title:
         parallel_title = record.parallel_title.transliteration
         parallel_subtitle = record.parallel_subtitle.transliteration
-        chinese_parallel_title = combine(record.parallel_title.original, record.parallel_subtitle.original)
-        linkage = f"$6880-{sequence_number}"
-        build_880(record, chinese_parallel_title,i1, i2, "246", sequence_number)
+        linkage = deal_with_chinese_titles(record, record.parallel_title.original, record.parallel_subtitle.original, i1, i2, tag)
+        # chinese_parallel_title = sub_field("a", record.parallel_title.original)
+        # if record.parallel_subtitle.original:
+        #     chinese_parallel_title += " :" + sub_field("b", record.parallel_subtitle.original)
+        # sequence_number = seq_num(record.sequence_number)
+        # linkage = sub_field(6, f"880-{sequence_number}")
+        # build_880(record, chinese_parallel_title,i1, i2, "246", sequence_number)
     elif has_parallel_title:  ## (i.e. Western script)
         parallel_title, parallel_subtitle = record.parallel_title.original, record.parallel_subtitle.original
     else:
         parallel_title, parallel_subtitle = "", ""
     if parallel_title:
-        content = linkage + "$a" + combine(parallel_title, parallel_subtitle)
-        success = (field_num, [[i1, i2, content]])
+        content = f"{linkage}{sub_field("a", parallel_title)}"
+        if parallel_subtitle:
+            content += f" :{sub_field("b", parallel_subtitle)}"
+        success = (tag, [[i1, i2, content]])
         error = None
     else:
         success = None
-        error = (field_num, "")
+        error = (tag, "")
     return Result(success, error)
 
 
 def build_490(record: Record) -> Result:  ## optional
     """Series Statement"""
-    field_num = 490
+    tag = 490
     i1 = 0  ## Series not traced: No series added entry is desired for the series.
     i2 = -1
-    series_title = f"$a{record.series_title}" if record.series_title else ""
-    series_enum = f"$v{record.series_enum}" if record.series_enum else ""
+    series_title = sub_field("a", record.series_title if record.series_title else "")
+    series_enum = sub_field("v", record.series_enum if record.series_enum else "")
     sep = " ;" if series_title and series_enum else ""
     content = series_title + sep + series_enum
-    if content:
+    # if content:
+    if record.series_title or record.series_enum:
         error = None
-        success = (field_num, [[i1, i2, content ]])
+        success = (tag, [[i1, i2, content ]])
     else:
         success = None
-        error = (field_num, "")
+        error = (tag, "")
     return Result(success, error)
 
 
@@ -951,17 +962,16 @@ def build_500(record: Record) -> Result:  ##optional
     Punctuation - Field 500 ends with a period unless another mark of punctuation is present. If the final subfield is subfield $5, the mark of punctuation precedes that subfield.
     """
     # notes = record.hol_notes
-    field_num = 500
+    tag = 500
     i1 = -1
     i2 = -1
-    # content = "$a" + end_field_with_period(record.notes) if record.notes else ""
     if record.notes:
-        content = "$a" + end_field_with_period(record.notes)
-        success = (field_num, [[i1, i2, content]])
+        content = sub_field("a", end_field_with_period(record.notes))
+        success = (tag, [[i1, i2, content]])
         error = None
     else:
         success = None
-        error = (field_num, "")
+        error = (tag, "")
     return Result(success, error)
 
 # TODO: need an item with both a Chinese title and subtitle to test the sequence number logic.
@@ -969,7 +979,7 @@ def build_880(record, title, i1, i2, caller, sequence_number) -> None:  ##option
     """Alternate Graphic Representation
     NB. unlike the other fields, this isn't called directly but by the linked field"""
     record.sequence_number += 1
-    content = f"$6{field_prefix(caller)}-{sequence_number}$a{title}"
+    content = sub_field(6, f"{field_prefix(caller)}-{sequence_number}") + title
     record.links[1].append(build_line(line_prefix(880), i1, i2, content))
 
 
@@ -1014,6 +1024,11 @@ def build_line(line_start, i1, i2, content) -> str:
     return (f"{line_start}{i1}{i2}{content}")
 
 
+def sub_field(code: int|str, content: str) -> str:
+    sep = "$"
+    return f"{sep}{code}{content}"
+
+
 def line_prefix(numeric_tag: int) -> str:
     display_tag = "LDR" if numeric_tag == 0 else seq_num(numeric_tag)
     return f"={field_prefix(display_tag)}  "
@@ -1033,10 +1048,10 @@ def expand_indicators(indicator: int) -> str:
     return expansion
 
 
-def combine(title: str, subtitle: str, sep: str=" :$b") -> str:
-    if subtitle:
-        title += sep + subtitle
-    return title
+# def combine(title: str, subtitle: str, sep: str=" :$b") -> str:
+#     if subtitle:
+#         title += sep + subtitle
+#     return title
 
 
 def end_field_with_period(text: str) -> str:
