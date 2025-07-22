@@ -1,0 +1,62 @@
+=LDR  00000nam a22000003i 4500
+=005  20250624094600.0
+=008  250624s1993||||cc\||||||||||||||\||chi||
+=033  0\$a19930502
+=040  \\$aUkOxU$beng$erda$cUkOxU
+=245  00$6880-01$aJin dai Zhongguo zi hua pai mai.
+=246  31$aSale of fine Chinese paintings and calligraphy
+=264  \1$aHong Kong :$bWing Sing Fine Arts Auctioneers (Int'l) Ltd. & Duo Yun Xuan Shanghai,$c[1993?]
+=300  \\$a168 pages ;$c29cm
+=336  \\$atext$2rdacontent
+=337  \\$aunmediated$2rdamedia
+=338  \\$avolume$2rdacarrier
+=876  \\$p308241104$zDonated by the Ashmolean Museum.
+=880  00$6245-01$a近代中國字畫拍賣.
+=904  \\$aOxford Local Record
+
+
+
+
+
+
+00685nam a22001933i 450000500170000000800410001703300130005804000270007124500450009824600510014326400960019430000220029033600210031233700250033333800230035887600480038188000380042990400240046720250624094600.0250624s1993||||cc |||||||||||||| ||chi||0 a19930502  aUkOxUbengerdacUkOxU006880-01aJin dai Zhongguo zi hua pai mai.31aSale of fine Chinese paintings and calligraphy 1aHong Kong :bWing Sing Fine Arts Auctioneers (Int'l) Ltd. & Duo Yun Xuan Shanghai,c[1993?]  a168 pages ;c29cm  atext2rdacontent  aunmediated2rdamedia  avolume2rdacarrier  p308241104zDonated by the Ashmolean Museum.006245-01a近代中國字畫拍賣.  aOxford Local Record
+
+
+
+RS = record separator
+
+ASCII control characters (character code 0-31)
+The first 32 characters in the ASCII-table are unprintable control codes and are used to control peripherals such as printers.
+DEC	OCT	HEX	BIN	Symbol	HTML Number	HTML Name	Description
+0	000	00	00000000	NUL	&#00;	 	Null character
+1	001	01	00000001	SOH	&#01;	 	Start of Heading
+2	002	02	00000010	STX	&#02;	 	Start of Text
+3	003	03	00000011	ETX	&#03;	 	End of Text
+4	004	04	00000100	EOT	&#04;	 	End of Transmission
+5	005	05	00000101	ENQ	&#05;	 	Enquiry
+6	006	06	00000110	ACK	&#06;	 	Acknowledge
+7	007	07	00000111	BEL	&#07;	 	Bell, Alert
+8	010	08	00001000	BS	&#08;	 	Backspace
+9	011	09	00001001	HT	&#09;	 	Horizontal Tab
+10	012	0A	00001010	LF	&#10;	 	Line Feed
+11	013	0B	00001011	VT	&#11;	 	Vertical Tabulation
+12	014	0C	00001100	FF	&#12;	 	Form Feed
+13	015	0D	00001101	CR	&#13;	 	Carriage Return
+14	016	0E	00001110	SO	&#14;	 	Shift Out
+15	017	0F	00001111	SI	&#15;	 	Shift In
+16	020	10	00010000	DLE	&#16;	 	Data Link Escape
+17	021	11	00010001	DC1	&#17;	 	Device Control One (XON)
+18	022	12	00010010	DC2	&#18;	 	Device Control Two
+19	023	13	00010011	DC3	&#19;	 	Device Control Three (XOFF)
+20	024	14	00010100	DC4	&#20;	 	Device Control Four
+21	025	15	00010101	NAK	&#21;	 	Negative Acknowledge
+22	026	16	00010110	SYN	&#22;	 	Synchronous Idle
+23	027	17	00010111	ETB	&#23;	 	End of Transmission Block
+24	030	18	00011000	CAN	&#24;	 	Cancel
+25	031	19	00011001	EM	&#25;	 	End of medium
+26	032	1A	00011010	SUB	&#26;	 	Substitute
+27	033	1B	00011011	ESC	&#27;	 	Escape
+28	034	1C	00011100	FS	&#28;	 	File Separator
+**29	035	1D	00011101	GS	&#29;	 	Group Separator
+**30	036	1E	00011110	RS	&#30;	 	Record Separator
+**31	037	1F	00011111	US	&#31;	 	Unit Separator
