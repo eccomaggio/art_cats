@@ -1,9 +1,9 @@
 =LDR  00000nam a22000003i 4500
-=005  20250720144250.5
-=008  250720s1995||||cc\||||||||||||||\||eng||
+=005  20250723171653.4
+=008  250723s1995||||cc\||||||||||||||\||eng||
 =033  0\$a19951204
 =040  \\$aUkOxU$beng$erda$cUkOxU
-=041  \\$aeng$achi
+=041  0\$aeng$achi
 =245  00$aSale of Fine Chinese Art.
 =246  31$6880-01$aZhongguo shu hua, tao ci ji yi shu pin pai mai hui
 =264  \1$aHongkong :$bRong Bao Zhai (HK) Company Ltc and Associate Fine Arts Auctioneers Limited,$c[1995?]
@@ -12,15 +12,15 @@
 =337  \\$aunmediated$2rdamedia
 =338  \\$avolume$2rdacarrier
 =876  \\$p308241295$zDonated by the Ashmolean Museum.
-=880  31$6246-01$a中國書畫、陶瓷及藝術品拍賣會
+=880  31$6246-01$a[<code='a', contents='中國書畫、陶瓷及藝術品拍賣會'>]
 =904  \\$aOxford Local Record
 
 =LDR  00000nam a22000003i 4500
-=005  20250720144250.5
-=008  250720s1995||||cc\||||||||||||||\||chi||
+=005  20250723171653.4
+=008  250723s1995||||cc\||||||||||||||\||chi||
 =033  0\$a19950618
 =040  \\$aUkOxU$beng$erda$cUkOxU
-=041  \\$achi$aeng
+=041  0\$achi$aeng
 =245  00$6880-01$aDuo Yun Xuan ‘95 chun ji jin dai zi hua pai mai.
 =246  31$a’95 spring auction of Duo Yun Xuan contemporary calligraphy and painting
 =264  \1$aShanghai :$bDuo Yun Xuan Art Auctioneers,$c[1995?]
@@ -29,12 +29,12 @@
 =337  \\$aunmediated$2rdamedia
 =338  \\$avolume$2rdacarrier
 =876  \\$p308241294$zDonated by the Ashmolean Museum.
-=880  00$6245-01$a朵雲軒‘95春季近代字畫拍賣.
+=880  00$6245-01$a[<code='a', contents='朵雲軒‘95春季近代字畫拍賣'>, <code='', contents='.'>]
 =904  \\$aOxford Local Record
 
 =LDR  00000nam a22000003i 4500
-=005  20250720144250.5
-=008  250720s1994||||cc\||||||||||||||\||chi||
+=005  20250723171653.4
+=008  250723s1994||||cc\||||||||||||||\||chi||
 =033  0\$a19941127
 =040  \\$aUkOxU$beng$erda$cUkOxU
 =245  00$6880-01$a‘94 Zhongguo yi shu pin (shu hua) pai mai hui.
@@ -44,6 +44,6 @@
 =337  \\$aunmediated$2rdamedia
 =338  \\$avolume$2rdacarrier
 =876  \\$p308241293$zDonated by the Ashmolean Museum.
-=880  00$6245-01$a‘94中國藝術品（書畫）拍賣會.
+=880  00$6245-01$a[<code='a', contents='‘94中國藝術品（書畫）拍賣會'>, <code='', contents='.'>]
 =904  \\$aOxford Local Record
 
