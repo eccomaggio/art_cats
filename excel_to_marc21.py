@@ -22,8 +22,12 @@ class Subfield:
     -1 means the content is a single string (for variable control fields)
     """
     delimiter = "$"
+    US = chr(31)
+    # US = "#"
     def __init__(self, code: str | int, contents: str):
         self.code = code
+        if isinstance(contents, Content):
+            contents = str(contents)
         self.contents = contents
 
     def to_string(self) -> str:
@@ -32,9 +36,17 @@ class Subfield:
             prefix = ""
         else:
             prefix = self.delimiter + str(self.code)
-        if isinstance(self.contents, Content):
-            self.contents = str(self.contents)
+        # if isinstance(self.contents, Content):
+        #     self.contents = str(self.contents)
             # raise Exception(f"this shouldn't be type contents! > {self.contents}, {type(str(self.contents))}")
+        return f"{prefix}{self.contents}"
+
+    def to_mrc(self) -> str:
+        if self.code == -1:
+            prefix = ""
+        else:
+            # prefix = chr(31) + str(self.code)
+            prefix = f"{self.US}{self.code}"
         return f"{prefix}{self.contents}"
 
     def __str__(self):
@@ -53,8 +65,12 @@ class Punctuation:
     def to_string(self) -> str:
         return self.contents
 
+    def to_mrc(self) -> str:
+        return self.to_string()
+
     def __str__(self):
         return f"<code='{self.code}', contents='{self.contents}'>"
+
 
 class Content:
     def __init__(self, contents: list[Subfield | Punctuation] | Subfield | Punctuation):
@@ -69,6 +85,9 @@ class Content:
 
     def to_string(self) -> str:
         return "".join([el.to_string() for el in self.contents])
+
+    def to_mrc(self) -> str:
+        return "".join([el.to_mrc() for el in self.contents])
 
     def add(self, content:Subfield|Punctuation | list[Subfield | Punctuation]):
         if isinstance(content, list):
@@ -87,7 +106,10 @@ class Content:
 class Field:
     """Variable Control/Data Field class for MARC21 variable control fields."""
     blank = "\\"
+    RS = chr(30)
+    # RS = "%"
     expansions: dict[int, str] = {-2: "", -1: blank}
+    mrc_expansions: dict[int, str] = {-2: "", -1: " "}
     def __init__(self, tag: int, i1: int, i2: int, contents: list[Subfield | Punctuation] | Content, ordering=1):
         self.tag = tag
         self.i1 = i1
@@ -104,7 +126,14 @@ class Field:
         tag = "LDR" if self.tag == 0 else str(self.tag).zfill(3)
         i1 = self.expand_indicators(self.i1)
         i2 = self.expand_indicators(self.i2)
-        return f"={tag}  {i1}{i2}{self.contents.to_string()}"
+        contents = self.contents.to_string()
+        return f"={tag}  {i1}{i2}{contents}"
+
+    def to_mrc(self) -> tuple[int, str]:
+        i1 = self.mrc_expansions.get(self.i1, str(self.i1))
+        i2 = self.mrc_expansions.get(self.i2, str(self.i2))
+        contents = self.contents.to_mrc()
+        return (self.tag, f"{i1}{i2}{contents}{self.RS}")
 
     def __repr__(self):
         return f"={self.tag}@{self.ordering} ({self.i1})({self.i2}) {self.contents.to_string()}"
@@ -1214,27 +1243,59 @@ def write_mrk_file(data: list[list[str]], file_name: str="output.mrk") -> None:
             f.write("\n")
 
 
-def write_mrc_binaries(data: list[list[str]], file_name: str="output.mrc") -> None:
-    mrk_file_dir = Path("mrk_files")
-    if not mrk_file_dir.is_dir():
-        mrk_file_dir.mkdir()
+def write_mrc_binaries(data: list[list[Field]], file_name: str="output.mrc") -> None:
+    mrc_file_dir = Path("mrc_files")
+    if not mrc_file_dir.is_dir():
+        mrc_file_dir.mkdir()
         try:
-            mrk_file_dir.mkdir()
-            logger.info(f"Directory '{mrk_file_dir}' created successfully.")
+            mrc_file_dir.mkdir()
+            logger.info(f"Directory '{mrc_file_dir}' created successfully.")
         except FileExistsError:
-            logger.info(f"Directory '{mrk_file_dir}' already exists.")
+            logger.info(f"Directory '{mrc_file_dir}' already exists.")
         except PermissionError:
-            logger.warning(f"Permission denied: Unable to create '{mrk_file_dir}'.")
+            logger.warning(f"Permission denied: Unable to create '{mrc_file_dir}'.")
         except Exception as e:
             logger.warning(f"An error occurred: {e}")
-    out_file = mrk_file_dir / file_name
-    # with open(out_file, "w", encoding="utf-8") as f:
-        # for record in data:
-        #     for field in record:
-        #         f.write(field + "\n")
-        #     f.write("\n")
+    out_file = mrc_file_dir / file_name
+    flat_records = make_binary(data)
+    # print(flat_records)
+    with open(out_file, "w", encoding="utf-8") as f:
+        for line in flat_records:
+            f.write(line)
         # f.write("TBA")
 
+
+def make_binary(data: list[list[Field]]) -> list[str]:
+    # GS = "@"
+    # RS = "%"
+    # US = "#"
+    GS = chr(29)
+    RS = chr(30)
+    output: list[str] = []
+    tmp = []
+    # fields: list[tuple[int, str]]
+    for record in data:
+        leader: Field = record[0]
+        fields = []
+        rolling = 0
+        for field in record[1:]:
+            tag, contents = field.to_mrc()
+            line_length_with_final_record_separator = len(contents.encode("utf-8"))
+            fields.append((tag, contents, line_length_with_final_record_separator, rolling))
+            rolling += line_length_with_final_record_separator
+        tmp.append((leader.to_mrc(), fields))
+
+        directory = [(f[0], f[2], f[3]) for f in fields]
+        leader_length = int(24)
+        directory_length = (12 * len(directory)) + 1
+        base_address_of_data = leader_length + directory_length
+        logical_record_length = base_address_of_data + directory[-1][2]
+        leader_mrc = f"{str(logical_record_length).zfill(5)}nam a22{str(base_address_of_data).zfill(5)} 4500"
+        directory_mrc = "".join([f"{f[0]}{str(f[1]).zfill(4)}{str(f[2]).zfill(5)}" for f in directory]) + RS
+        fields_mrc = "".join([f[1] for f in fields])
+        output.append(f"{leader_mrc}{directory_mrc}{fields_mrc}{GS}\n")
+        output.append("\n")
+    return output
 
 def get_records(excel_file_address: Path) -> list[Record]:
     excel_file_name = str(excel_file_address.resolve())
@@ -1256,7 +1317,7 @@ def process_excel_file(excel_file_address: Path) -> None:
     records_with_marc_fields = build_mark_records(raw_records)
     records_with_string_fields = flatten_fields_to_strings(records_with_marc_fields)
     write_mrk_file(records_with_string_fields, f"{excel_file_address.stem}.paul.mrk")
-    write_mrc_binaries(records_with_string_fields, f"{excel_file_address.stem}.paul.mrc")
+    write_mrc_binaries(records_with_marc_fields, f"{excel_file_address.stem}.paul.mrc")
 
 
 # def main() -> None:
