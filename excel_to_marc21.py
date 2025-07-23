@@ -1214,6 +1214,28 @@ def write_mrk_file(data: list[list[str]], file_name: str="output.mrk") -> None:
             f.write("\n")
 
 
+def write_mrc_binaries(data: list[list[str]], file_name: str="output.mrc") -> None:
+    mrk_file_dir = Path("mrk_files")
+    if not mrk_file_dir.is_dir():
+        mrk_file_dir.mkdir()
+        try:
+            mrk_file_dir.mkdir()
+            logger.info(f"Directory '{mrk_file_dir}' created successfully.")
+        except FileExistsError:
+            logger.info(f"Directory '{mrk_file_dir}' already exists.")
+        except PermissionError:
+            logger.warning(f"Permission denied: Unable to create '{mrk_file_dir}'.")
+        except Exception as e:
+            logger.warning(f"An error occurred: {e}")
+    out_file = mrk_file_dir / file_name
+    # with open(out_file, "w", encoding="utf-8") as f:
+        # for record in data:
+        #     for field in record:
+        #         f.write(field + "\n")
+        #     f.write("\n")
+        # f.write("TBA")
+
+
 def get_records(excel_file_address: Path) -> list[Record]:
     excel_file_name = str(excel_file_address.resolve())
     worksheet = load_workbook(filename=excel_file_name).active
@@ -1222,14 +1244,19 @@ def get_records(excel_file_address: Path) -> list[Record]:
     return records
 
 
-def process_excel_file(excel_file_address: Path) -> None:
-    records = get_records(excel_file_address)
-    records_with_object_fields = build_mark_records(records)
-    records_with_string_fields: list[list[str]] = []
-    for i, record in enumerate(records_with_object_fields):
+def flatten_fields_to_strings(input: list[list[Field]]) -> list[list[str]]:
+    output: list[list[str]] = []
+    for i, record in enumerate(input):
         # print(f">>>>>>>>>>{i} -> {record}")
-        records_with_string_fields.append([field.to_string() for field in record])
+        output.append([field.to_string() for field in record])
+    return output
+
+def process_excel_file(excel_file_address: Path) -> None:
+    raw_records = get_records(excel_file_address)
+    records_with_marc_fields = build_mark_records(raw_records)
+    records_with_string_fields = flatten_fields_to_strings(records_with_marc_fields)
     write_mrk_file(records_with_string_fields, f"{excel_file_address.stem}.paul.mrk")
+    write_mrc_binaries(records_with_string_fields, f"{excel_file_address.stem}.paul.mrc")
 
 
 # def main() -> None:
