@@ -1,5 +1,6 @@
 from openpyxl import load_workbook  # type: ignore
 from dataclasses import dataclass, fields
+from abc import ABC, abstractmethod
 from typing import List
 # from pprint import pprint
 from datetime import datetime, timezone
@@ -17,7 +18,17 @@ logging.basicConfig(
     )
 
 
-class Subfield:
+class Serialisable(ABC):
+    @abstractmethod
+    def to_string(self):
+        pass
+
+    @abstractmethod
+    def to_mrc(self):
+        pass
+
+
+class Subfield(Serialisable):
     """Subfield class for MARC21 subfields.
     -1 means the content is a single string (for variable control fields)
     """
@@ -53,7 +64,7 @@ class Subfield:
         return f"<code='{self.code}', contents='{self.contents}'>"
 
 # @dataclass
-class Punctuation:
+class Punctuation(Serialisable):
     """ISBD punctuation used between subfields
     https://www.itsmarc.com/crs/mergedprojects/lcri/lcri/1_0c__lcri.htm
     code is currently used just for compatibility with Subfield.code, but could be used in future?
@@ -72,7 +83,7 @@ class Punctuation:
         return f"<code='{self.code}', contents='{self.contents}'>"
 
 
-class Content:
+class Content(Serialisable):
     def __init__(self, contents: list[Subfield | Punctuation] | Subfield | Punctuation):
         self.contents: list[Subfield | Punctuation] = []
         if not isinstance(contents, list):
@@ -103,7 +114,7 @@ class Content:
         return f"[{result}]"
 
 
-class Field:
+class Field(Serialisable):
     """Variable Control/Data Field class for MARC21 variable control fields."""
     blank = "\\"
     RS = chr(30)
@@ -1223,18 +1234,7 @@ def build_mark_records(records: list[Record]) -> list[list[Field]]:
 
 
 def write_mrk_file(data: list[list[str]], file_name: str="output.mrk") -> None:
-    mrk_file_dir = Path("mrk_files")
-    if not mrk_file_dir.is_dir():
-        mrk_file_dir.mkdir()
-        try:
-            mrk_file_dir.mkdir()
-            logger.info(f"Directory '{mrk_file_dir}' created successfully.")
-        except FileExistsError:
-            logger.info(f"Directory '{mrk_file_dir}' already exists.")
-        except PermissionError:
-            logger.warning(f"Permission denied: Unable to create '{mrk_file_dir}'.")
-        except Exception as e:
-            logger.warning(f"An error occurred: {e}")
+    mrk_file_dir = make_directory("marc21_files")
     out_file = mrk_file_dir / file_name
     with open(out_file, "w", encoding="utf-8") as f:
         for record in data:
@@ -1244,18 +1244,7 @@ def write_mrk_file(data: list[list[str]], file_name: str="output.mrk") -> None:
 
 
 def write_mrc_binaries(data: list[list[Field]], file_name: str="output.mrc") -> None:
-    mrc_file_dir = Path("mrc_files")
-    if not mrc_file_dir.is_dir():
-        mrc_file_dir.mkdir()
-        try:
-            mrc_file_dir.mkdir()
-            logger.info(f"Directory '{mrc_file_dir}' created successfully.")
-        except FileExistsError:
-            logger.info(f"Directory '{mrc_file_dir}' already exists.")
-        except PermissionError:
-            logger.warning(f"Permission denied: Unable to create '{mrc_file_dir}'.")
-        except Exception as e:
-            logger.warning(f"An error occurred: {e}")
+    mrc_file_dir = make_directory("marc21_files")
     out_file = mrc_file_dir / file_name
     flat_records = make_binary(data)
     # print(flat_records)
@@ -1263,6 +1252,22 @@ def write_mrc_binaries(data: list[list[Field]], file_name: str="output.mrc") -> 
         for line in flat_records:
             f.write(line)
         # f.write("TBA")
+
+
+def make_directory(directory_path):
+    directory = Path(directory_path)
+    if not directory.is_dir():
+        directory.mkdir()
+        try:
+            directory.mkdir()
+            logger.info(f"Directory '{directory}' created successfully.")
+        except FileExistsError:
+            logger.info(f"Directory '{directory}' already exists.")
+        except PermissionError:
+            logger.warning(f"Permission denied: Unable to create '{directory}'.")
+        except Exception as e:
+            logger.warning(f"An error occurred: {e}")
+    return directory
 
 
 def make_binary(data: list[list[Field]]) -> list[str]:
@@ -1280,6 +1285,8 @@ def make_binary(data: list[list[Field]]) -> list[str]:
         rolling = 0
         for field in record[1:]:
             tag, contents = field.to_mrc()
+            if field.tag == 8:
+                contents = contents.replace("\\", " ")
             line_length_with_final_record_separator = len(contents.encode("utf-8"))
             fields.append((tag, contents, line_length_with_final_record_separator, rolling))
             rolling += line_length_with_final_record_separator
@@ -1290,11 +1297,12 @@ def make_binary(data: list[list[Field]]) -> list[str]:
         directory_length = (12 * len(directory)) + 1
         base_address_of_data = leader_length + directory_length
         logical_record_length = base_address_of_data + directory[-1][2]
-        leader_mrc = f"{str(logical_record_length).zfill(5)}nam a22{str(base_address_of_data).zfill(5)} 4500"
-        directory_mrc = "".join([f"{f[0]}{str(f[1]).zfill(4)}{str(f[2]).zfill(5)}" for f in directory]) + RS
+        leader_mrc = f"{str(logical_record_length).zfill(5)}nam a22{str(base_address_of_data).zfill(5)}3i 4500"
+        directory_mrc = "".join([f"{str(f[0]).zfill(3)}{str(f[1]).zfill(4)}{str(f[2]).zfill(5)}" for f in directory]) + RS
         fields_mrc = "".join([f[1] for f in fields])
-        output.append(f"{leader_mrc}{directory_mrc}{fields_mrc}{GS}\n")
-        output.append("\n")
+        output.append(f"{leader_mrc}{directory_mrc}{fields_mrc}{GS}")
+        # output.append(f"{leader_mrc}{directory_mrc}{fields_mrc}{GS}\n")
+        # output.append("\n")
     return output
 
 def get_records(excel_file_address: Path) -> list[Record]:
