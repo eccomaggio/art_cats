@@ -27,18 +27,43 @@ class Serialisable(ABC):
     def to_mrc(self) -> str:
         pass
 
-@dataclass
-class Blank(Serialisable):
+
+class Subfield(Serialisable):
+    """Subfield class for MARC21 subfields.
+    -1 means the content is a single string (for variable control fields)
+    """
+    delimiter = "$"
+    US = chr(31)
+    # US = "#"
+    def __init__(self, code: str | int, contents: str):
+        self.code = code
+        if isinstance(contents, Content):
+            contents = str(contents)
+        self.contents = contents
+
     def to_string(self) -> str:
-        return "\\"
+        """Returns the subfield as a string."""
+        if self.code == -1:
+            prefix = ""
+        else:
+            prefix = self.delimiter + str(self.code)
+        # if isinstance(self.contents, Content):
+        #     self.contents = str(self.contents)
+            # raise Exception(f"this shouldn't be type contents! > {self.contents}, {type(str(self.contents))}")
+        return f"{prefix}{self.contents}"
 
     def to_mrc(self) -> str:
-        return " "
+        if self.code == -1:
+            prefix = ""
+        else:
+            # prefix = chr(31) + str(self.code)
+            prefix = f"{self.US}{self.code}"
+        return f"{prefix}{self.contents}"
 
-    def render(self, blank_char = "\\") -> str:
-        return blank_char
+    def __str__(self):
+        return f"<code='{self.code}', contents='{self.contents}'>"
 
-
+# @dataclass
 class Punctuation(Serialisable):
     """ISBD punctuation used between subfields
     https://www.itsmarc.com/crs/mergedprojects/lcri/lcri/1_0c__lcri.htm
@@ -57,77 +82,17 @@ class Punctuation(Serialisable):
     def __str__(self):
         return f"<code='{self.code}', contents='{self.contents}'>"
 
-# @dataclass
-# class data_element:
-#     data: list[str | Punctuation | Blank] | str | Punctuation | Blank
-
-
-class Subfield(Serialisable):
-    """Subfield class for MARC21 subfields.
-    -1 means the content is a single string (for variable control fields)
-    """
-    def __init__(self, code: str | int, contents: list[str | Punctuation | Blank] | str | Punctuation | Blank):
-        self.code = code
-        # if isinstance(contents, Content):
-        #     contents = str(contents)
-        self.contents = contents
-
-    def to_string(self) -> str:
-        """Returns the subfield as a string."""
-        delimiter = "$"
-        if self.code == -1:
-            prefix = ""
-        else:
-            prefix = delimiter + str(self.code)
-        # if isinstance(self.contents, Content):
-        #     self.contents = str(self.contents)
-        if isinstance(self.contents, list):
-            contents = ""
-            for el in self.contents:
-                contents += el if isinstance(el, str) else el.to_string()
-        else:
-            contents = str(self.contents)
-            # raise Exception(f"this shouldn't be type contents! > {self.contents}, {type(str(self.contents))}")
-        return f"{prefix}{contents}"
-
-    def to_mrc(self) -> str:
-        US = chr(31)
-        if self.code == -1:
-            prefix = ""
-        else:
-            prefix = f"{US}{self.code}"
-        if isinstance(self.contents, list):
-            contents = ""
-            for el in self.contents:
-                contents += el if isinstance(el, str) else el.to_mrc()
-        else:
-            contents = str(self.contents)
-        return f"{prefix}{contents}"
-
-    def __repl__(self):
-        if isinstance(self.contents, list):
-            contents = ""
-            for el in self.contents:
-                contents += el if isinstance(el, str) else el.to_string()
-        else:
-            contents = str(self.contents)
-        return f"<code='{self.code}', contents='{contents}'>"
-
 
 class Content(Serialisable):
-    def __init__(self, contents: list[Subfield | Punctuation | Blank] | Subfield | Punctuation | Blank):
-        # self.contents: list[Subfield | Punctuation | ] = []
-        self.contents = []
+    def __init__(self, contents: list[Subfield | Punctuation] | Subfield | Punctuation):
+        self.contents: list[Subfield | Punctuation] = []
         if not isinstance(contents, list):
           contents = [contents]
         for el in contents:
-            if type(el) not in [Subfield, Punctuation, Blank]:
+            if type(el) not in [Subfield, Punctuation]:
                 raise TypeError("Only subfields or punctuation allowed")
             else:
                 self.contents.append(el)
-
-    def can_accept_period(self) -> bool:
-        return bool(self.to_string().rstrip()[-1] not in "?!.")
 
     def to_string(self) -> str:
         return "".join([el.to_string() for el in self.contents])
@@ -148,30 +113,24 @@ class Content(Serialisable):
         result = ", ".join([str(el) for el in self.contents])
         return f"[{result}]"
 
+
 class Field(Serialisable):
-    """Variable Control/Data Field class for MARC21 variable control fields.
-    -1 or Blank = indicator placeholder (various realizations, e.g. space or backslash)
-    -2 = no indicator"""
-    def __init__(self, tag: int, i1: int | Blank, i2: int | Blank, contents: list[Subfield | Punctuation | Blank] | Subfield | Content, ordering=1):
+    """Variable Control/Data Field class for MARC21 variable control fields."""
+    blank = "\\"
+    RS = chr(30)
+    # RS = "%"
+    expansions: dict[int, str] = {-2: "", -1: blank}
+    mrc_expansions: dict[int, str] = {-2: "", -1: " "}
+    def __init__(self, tag: int, i1: int, i2: int, contents: list[Subfield | Punctuation] | Content, ordering=1):
         self.tag = tag
-        self.i1: int | Blank  = Blank() if i1 == -1 else i1
-        self.i2: int | Blank = Blank() if i2 == -1 else i2
+        self.i1 = i1
+        self.i2 = i2
         self.contents = contents if isinstance(contents, Content) else Content(contents)
         self.ordering = ordering ## sort is used to order the fields when there are more than one of the same tag
 
-    def expand_indicators(self, indicator: int | Blank, blank_char="\\") -> str:
-        if isinstance(indicator, Blank):
-            expansion = indicator.render(blank_char)
-        elif indicator == -2:
-            expansion = ""
-        else:
-            expansion = str(indicator)
+    def expand_indicators(self, indicator: int) -> str:
+        expansion: str = self.expansions.get(indicator, str(indicator))
         return expansion
-
-    def can_accept_period(self) -> bool:
-        return self.contents.can_accept_period()
-    #     return bool(self.contents.to_string().rstrip()[-1] not in "?!.")
-
 
     def to_string(self) -> str:
         """Returns the variable control field as a string."""
@@ -181,12 +140,13 @@ class Field(Serialisable):
         contents = self.contents.to_string()
         return f"={tag}  {i1}{i2}{contents}"
 
+    # def to_mrc(self) -> tuple[int, str]:
     def to_mrc(self) -> str:
-        RS = chr(30)
-        i1 = self.expand_indicators(self.i1, " ")
-        i2 = self.expand_indicators(self.i2, " ")
+        i1 = self.mrc_expansions.get(self.i1, str(self.i1))
+        i2 = self.mrc_expansions.get(self.i2, str(self.i2))
         contents = self.contents.to_mrc()
-        return f"{i1}{i2}{contents}{RS}"
+        # return (self.tag, f"{i1}{i2}{contents}{self.RS}")
+        return f"{i1}{i2}{contents}{self.RS}"
 
     def __repr__(self):
         return f"={self.tag}@{self.ordering} ({self.i1})({self.i2}) {self.contents.to_string()}"
@@ -833,7 +793,7 @@ def parse_spreadsheet(sheet: list[list[str]]) -> list[Record]:
     return records
 
 
-def build_leader(record: Record) -> Result:
+def build_000(record: Record) -> Result:
     """leader (0 is only for sorting purposes; should read 'LDR')"""
     tag = 0
     i1, i2 = variable_control_field()
@@ -855,11 +815,7 @@ def build_leader(record: Record) -> Result:
     implementation_len_22 = "0"  # placeholder for implementation length
     undefined_23 = "0"  # placeholder for undefined length
 
-    data: str = record_len_00 + record_status_05 + record_type_06 + biblio_level_07 + type_of_ctrl_08 + char_coding_09 + indicator_count_10 + subfield_count_11 + base_address_12 + encoding_level_17 + cat_conventions_18 + multipart_indic_19 + field_len_20 + start_character_len_21 + implementation_len_22 + undefined_23
-
-
-    # success = Field(tag, i1, i2, [Subfield(-1, record_len_00 + record_status_05 + record_type_06 + biblio_level_07 + type_of_ctrl_08 + char_coding_09 + indicator_count_10 + subfield_count_11 + base_address_12 + encoding_level_17 + cat_conventions_18 + multipart_indic_19 + field_len_20 + start_character_len_21 + implementation_len_22 + undefined_23)])
-    success = Field(tag, i1, i2, [Subfield(-1, data)])
+    success = Field(tag, i1, i2, [Subfield(-1, record_len_00 + record_status_05 + record_type_06 + biblio_level_07 + type_of_ctrl_08 + char_coding_09 + indicator_count_10 + subfield_count_11 + base_address_12 + encoding_level_17 + cat_conventions_18 + multipart_indic_19 + field_len_20 + start_character_len_21 + implementation_len_22 + undefined_23)])
     return Result(success, None)
 
 
@@ -885,13 +841,14 @@ def build_008(record: Record) -> Result:
     pub_status = "s"
     date_1 = record.pub_year
     date_2 = 4 * "|"
-    place_of_pub: list[str | Punctuation | Blank] = [*[Blank() for n in range(3 - len(record.country))], record.country]
-    books_configuration: list[str | Punctuation | Blank] = [(14*"|"), Blank(), (2*"|")]
+    place_of_pub = record.country.ljust(3, "\\")
+    books_configuration = (14*"|") + "\\" + (2*"|")
     lang = record.langs[0].ljust(3, "\\")
     modified_and_cataloging = 2*"|"
-    content = [date_entered_on_file,  pub_status,  date_1,  date_2,  *place_of_pub,  *books_configuration,  lang,  modified_and_cataloging]
-    result = Result(Field(tag, i1, i2, Subfield(-1, content)), None)
+    content = date_entered_on_file + pub_status + date_1 + date_2 + place_of_pub + books_configuration + lang + modified_and_cataloging
+    result = Result(Field(tag, i1, i2, [Subfield(-1, content)]), None)
     return result
+
 
 def build_033(record: Record) -> Result:
     """sales dates"""
@@ -906,6 +863,7 @@ def build_040(record: Record) -> Result:
     """Cataloguing source (Oxford)"""
     tag = 40
     i1, i2 = -1, -1
+    # content = sub_field("a", "UkOxU") + sub_field("b", "eng") + sub_field("e", "rda") + sub_field("c", "UkOxU")
     content = Content([Subfield("a", "UkOxU"), Subfield("b", "eng"), Subfield("e", "rda"), Subfield("c", "UkOxU")])
     result = Result(Field(tag, i1, i2, content), None)
     return result
@@ -935,7 +893,7 @@ def build_245(record: Record) -> Result:
         content.add(Subfield("a", title))
         if subtitle:
            content.add([Punctuation(" :"), Subfield("b", subtitle)])
-        if content.can_accept_period():
+        if field_can_accept_period(content[-1].contents):
             content.add(Punctuation("."))
 
         result = Result(Field(tag, i1, i2, content), error)
@@ -948,7 +906,7 @@ def deal_with_chinese_titles(record: Record, title_original: str, subtitle_origi
     chinese_title = Content(Subfield("a", title_original))
     if subtitle_original:
         chinese_title.add([Punctuation(" :"), Subfield("b", subtitle_original)])
-    if tag == 245 and chinese_title.can_accept_period():
+    if tag == 245 and field_can_accept_period(chinese_title.to_string()):
         chinese_title.add(Punctuation("."))
     sequence_number = seq_num(record.sequence_number)
     linkage = Subfield(6, f"880-{sequence_number}")
@@ -962,6 +920,7 @@ def build_264(record: Record) -> Result:
     i1 = -1
     i2 = 1  ## "Publication: Field contains a statement relating to the publication, release, or issuing of a resource."
     # i2 = 0  ## "Production: Field contains a statement relating to the production of a resource."
+    # content = []
     error = None
     place = Subfield("a", record.place)
     publisher = Subfield("b", record.publisher)
@@ -1084,6 +1043,7 @@ def build_246(record: Record) -> Result:  ##optional
     i2 = 1  ## parallel title
     has_parallel_title = bool(record.parallel_title.original)
     has_chinese_parallel_title = bool(record.parallel_title.transliteration)
+    # sequence_number = seq_num(record.sequence_number)
     linkage: Subfield | None = None
     if has_chinese_parallel_title:
         parallel_title = record.parallel_title.transliteration
@@ -1137,7 +1097,7 @@ def build_500(record: Record) -> Result:  ##optional
     i2 = -1
     if record.notes:
         content = Content(Subfield("a", record.notes))
-        if content.can_accept_period():
+        if field_can_accept_period(record.notes):
             content.add(Punctuation("."))
         result = Result(Field(tag, i1, i2, content), None)
     else:
@@ -1197,6 +1157,13 @@ def seq_num(sequence_number: int) -> str:
     return str(sequence_number).zfill(2)
 
 
+def field_can_accept_period(text: str) -> bool:
+    if isinstance(text, Subfield):
+        text = text.contents
+    text = text.strip()
+    return bool(text and text[-1] not in "?!.")
+
+
 def check_for_nonfiling(title: str, lang: str="eng") -> tuple[int,str]:
     """
     Check for manual nonfiling indicator (@@) & returns its position + extracts it from title string
@@ -1237,7 +1204,7 @@ def build_mark_records(records: list[Record]) -> list[list[Field]]:
     for record in records:
         mark_record: list[Field] = []
         for builder in (
-            build_leader,
+            build_000,
             build_040,
             build_336,
             build_337,
@@ -1287,6 +1254,7 @@ def write_mrc_binaries(data: list[list[Field]], file_name: str="output.mrc") -> 
     with open(out_file, "w", encoding="utf-8") as f:
         for line in flat_records:
             f.write(line)
+        # f.write("TBA")
 
 
 def make_directory(directory_path):
@@ -1313,6 +1281,7 @@ def make_binary(data: list[list[Field]]) -> list[str]:
     RS = chr(30)
     output: list[str] = []
     tmp = []
+    # fields: list[tuple[int, str]]
     for record in data:
         leader: Field = record[0]
         fields = []
@@ -1320,6 +1289,8 @@ def make_binary(data: list[list[Field]]) -> list[str]:
         for field in record[1:]:
             tag = field.tag
             contents = field.to_mrc()
+            if field.tag == 8:
+                contents = contents.replace("\\", " ")
             line_length_with_final_record_separator = len(contents.encode("utf-8"))
             fields.append((tag, contents, line_length_with_final_record_separator, rolling))
             rolling += line_length_with_final_record_separator
@@ -1334,6 +1305,8 @@ def make_binary(data: list[list[Field]]) -> list[str]:
         directory_mrc = "".join([f"{str(f[0]).zfill(3)}{str(f[1]).zfill(4)}{str(f[2]).zfill(5)}" for f in directory]) + RS
         fields_mrc = "".join([f[1] for f in fields])
         output.append(f"{leader_mrc}{directory_mrc}{fields_mrc}{GS}")
+        # output.append(f"{leader_mrc}{directory_mrc}{fields_mrc}{GS}\n")
+        # output.append("\n")
     return output
 
 def get_records(excel_file_address: Path) -> list[Record]:
