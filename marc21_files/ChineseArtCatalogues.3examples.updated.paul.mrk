@@ -1,6 +1,6 @@
 =LDR  00000nam a22000003i 4500
-=005  20250727112653.7
-=008  250727s1995||||\cc||||||||||||||\||eng||
+=005  20250729214809.7
+=008  250729s1995||||cc\||||||||||||||\||eng||
 =033  0\$a19951204
 =040  \\$aUkOxU$beng$erda$cUkOxU
 =041  0\$aeng$achi
@@ -12,12 +12,12 @@
 =337  \\$aunmediated$2rdamedia
 =338  \\$avolume$2rdacarrier
 =876  \\$p308241295$zDonated by the Ashmolean Museum.
-=880  31$6246-01$a[<excel_to_marc21.Subfield object at 0x1118dc6b0>]
+=880  31$6246-01$a中國書畫、陶瓷及藝術品拍賣會
 =904  \\$aOxford Local Record
 
 =LDR  00000nam a22000003i 4500
-=005  20250727112653.7
-=008  250727s1995||||\cc||||||||||||||\||chi||
+=005  20250729214809.7
+=008  250729s1995||||cc\||||||||||||||\||chi||
 =033  0\$a19950618
 =040  \\$aUkOxU$beng$erda$cUkOxU
 =041  0\$achi$aeng
@@ -29,12 +29,12 @@
 =337  \\$aunmediated$2rdamedia
 =338  \\$avolume$2rdacarrier
 =876  \\$p308241294$zDonated by the Ashmolean Museum.
-=880  00$6245-01$a[<excel_to_marc21.Subfield object at 0x1118dce90>, <code='', contents='.'>]
+=880  00$6245-01$a朵雲軒‘95春季近代字畫拍賣.
 =904  \\$aOxford Local Record
 
 =LDR  00000nam a22000003i 4500
-=005  20250727112653.7
-=008  250727s1994||||\cc||||||||||||||\||chi||
+=005  20250729214809.7
+=008  250729s1994||||cc\||||||||||||||\||chi||
 =033  0\$a19941127
 =040  \\$aUkOxU$beng$erda$cUkOxU
 =245  00$6880-01$a‘94 Zhongguo yi shu pin (shu hua) pai mai hui.
@@ -44,6 +44,6 @@
 =337  \\$aunmediated$2rdamedia
 =338  \\$avolume$2rdacarrier
 =876  \\$p308241293$zDonated by the Ashmolean Museum.
-=880  00$6245-01$a[<excel_to_marc21.Subfield object at 0x1118ddc10>, <code='', contents='.'>]
+=880  00$6245-01$a‘94中國藝術品（書畫）拍賣會.
 =904  \\$aOxford Local Record
 

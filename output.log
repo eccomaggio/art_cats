@@ -1,4 +1,14 @@
 INFO:
+>>>>> processing: chinese_test.xlsx
+WARNING:Warning: 'chi' is not a recognised language; it has been passed on unchanged.
+INFO:Advisory: assuming country name ('cc') has already been processed.
+WARNING:Warning: 'chi' is not a recognised language; it has been passed on unchanged.
+INFO:Advisory: assuming country name ('cc') has already been processed.
+WARNING:Warning: 'chi' is not a recognised language; it has been passed on unchanged.
+INFO:Advisory: assuming country name ('cc') has already been processed.
+WARNING:Warning: 'chi' is not a recognised language; it has been passed on unchanged.
+INFO:Advisory: assuming country name ('cc') has already been processed.
+INFO:
 >>>>> processing: AuctionCatalogues.sothebysParkeBernet.xlsx
 INFO:Advisory: assuming country name ('nyu') has already been processed.
 INFO:Advisory: assuming country name ('nyu') has already been processed.

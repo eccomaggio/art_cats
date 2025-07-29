@@ -2,8 +2,7 @@ from openpyxl import load_workbook  # type: ignore
 from dataclasses import dataclass, fields
 from abc import ABC, abstractmethod
 from typing import List
-from pprint import pprint
-import sys
+# from pprint import pprint
 from datetime import datetime, timezone
 import re
 from pathlib import Path
@@ -136,7 +135,7 @@ class Content(Serialisable):
     def to_mrc(self) -> str:
         return "".join([el.to_mrc() for el in self.contents])
 
-    def add(self, content: list[Subfield | Punctuation | Blank] | Subfield | Punctuation | Blank):
+    def add(self, content:Subfield|Punctuation | list[Subfield | Punctuation]):
         if isinstance(content, list):
             self.contents.extend(content)
         else:
@@ -740,10 +739,6 @@ def trim_mistaken_decimals(string: str) -> str:
     return string
 
 
-def fill_with_blanks(string: str, limit: int = 3) -> list[Blank | str | Punctuation]:
-    return [Blank() for n in range(limit - len(string))]
-
-
 def create_date_list(dates_raw: str) -> list[str]:
     dates_raw = re.sub(r"\s|\.0", "", dates_raw)
     dates = dates_raw.split(",")
@@ -890,15 +885,11 @@ def build_008(record: Record) -> Result:
     pub_status = "s"
     date_1 = record.pub_year
     date_2 = 4 * "|"
-    # place_of_pub: list[str | Punctuation | Blank] = [*[Blank() for n in range(3 - len(record.country))], record.country]
-    # place_of_pub: list[str | Punctuation | Blank] = [record.country, *[Blank() for n in range(3 - len(record.country))]]
-    place_of_pub: list[str | Punctuation | Blank] = [record.country, *fill_with_blanks(record.country)]
+    place_of_pub: list[str | Punctuation | Blank] = [*[Blank() for n in range(3 - len(record.country))], record.country]
     books_configuration: list[str | Punctuation | Blank] = [(14*"|"), Blank(), (2*"|")]
-    # lang = record.langs[0].ljust(3, "\\")
-    # lang: list[str | Punctuation | Blank] = [record.langs[0], *[Blank() for n in range(3 - len(str(record.langs[0])))]]
-    lang: list[str | Punctuation | Blank] = [record.langs[0], *fill_with_blanks(record.langs[0])]
+    lang = record.langs[0].ljust(3, "\\")
     modified_and_cataloging = 2*"|"
-    content = [date_entered_on_file,  pub_status,  date_1,  date_2,  *place_of_pub,  *books_configuration,  *lang,  modified_and_cataloging]
+    content = [date_entered_on_file,  pub_status,  date_1,  date_2,  *place_of_pub,  *books_configuration,  lang,  modified_and_cataloging]
     result = Result(Field(tag, i1, i2, Subfield(-1, content)), None)
     return result
 
@@ -961,8 +952,6 @@ def deal_with_chinese_titles(record: Record, title_original: str, subtitle_origi
         chinese_title.add(Punctuation("."))
     sequence_number = seq_num(record.sequence_number)
     linkage = Subfield(6, f"880-{sequence_number}")
-    # print(chinese_title)
-    # print(chinese_title.to_string())
     build_880(record, chinese_title, i1, i2, tag, sequence_number)
     return linkage
 
@@ -1157,15 +1146,13 @@ def build_500(record: Record) -> Result:  ##optional
 
 
 # TODO: need an item with both a Chinese title and subtitle to test the sequence number logic.
-def build_880(record: Record, title: Content, i1: int, i2: int, caller: int, sequence_number: str) -> None:  ##optional
+def build_880(record, title, i1, i2, caller, sequence_number) -> None:  ##optional
     """Alternate Graphic Representation
     NB. unlike the other fields, this isn't called directly but by the linked field
     looks like: =880  31$6246-01$a中國書畫、陶瓷及藝術品拍賣會
     """
     record.sequence_number += 1
-    content = Content(Subfield(6, f"{str(caller).zfill(3)}-{sequence_number}"))
-    content.add(title.contents)
-    line = Field(880, i1, i2, content)
+    line = Field(880, i1, i2, Content([Subfield(6, f"{str(caller).zfill(3)}-{sequence_number}"), Subfield("a", title)]))
     record.links.append(line)
 
 
@@ -1297,10 +1284,8 @@ def write_mrc_binaries(data: list[list[Field]], file_name: str="output.mrc") -> 
     out_file = mrc_file_dir / file_name
     flat_records = make_binary(data)
     # print(flat_records)
-    # with open(out_file, "w", encoding="utf-8") as f:
-    with open(out_file, "wb") as f:
+    with open(out_file, "w", encoding="utf-8") as f:
         for line in flat_records:
-            # f.write(line.encode("utf-8"))
             f.write(line)
 
 
@@ -1320,26 +1305,24 @@ def make_directory(directory_path):
     return directory
 
 
-# def make_binary(data: list[list[Field]]) -> list[str]:
-def make_binary(data: list[list[Field]]) -> list[bytes]:
+def make_binary(data: list[list[Field]]) -> list[str]:
     # GS = "@"
     # RS = "%"
     # US = "#"
     GS = chr(29)
     RS = chr(30)
-    # output: list[str] = []
-    output: list[bytes] = []
+    output: list[str] = []
     tmp = []
     for record in data:
         leader: Field = record[0]
         fields = []
-        current_start_position = 0
+        rolling = 0
         for field in record[1:]:
             tag = field.tag
             contents = field.to_mrc()
             line_length_with_final_record_separator = len(contents.encode("utf-8"))
-            fields.append((tag, contents, line_length_with_final_record_separator, current_start_position))
-            current_start_position += line_length_with_final_record_separator
+            fields.append((tag, contents, line_length_with_final_record_separator, rolling))
+            rolling += line_length_with_final_record_separator
         tmp.append((leader.to_mrc(), fields))
 
         directory = [(f[0], f[2], f[3]) for f in fields]
@@ -1350,9 +1333,7 @@ def make_binary(data: list[list[Field]]) -> list[bytes]:
         leader_mrc = f"{str(logical_record_length).zfill(5)}nam a22{str(base_address_of_data).zfill(5)}3i 4500"
         directory_mrc = "".join([f"{str(f[0]).zfill(3)}{str(f[1]).zfill(4)}{str(f[2]).zfill(5)}" for f in directory]) + RS
         fields_mrc = "".join([f[1] for f in fields])
-        # output.append(f"{leader_mrc}{directory_mrc}{fields_mrc}{GS}")
-        binary_line = f"{leader_mrc}{directory_mrc}{fields_mrc}{GS}".encode("utf-8")
-        output.append(binary_line)
+        output.append(f"{leader_mrc}{directory_mrc}{fields_mrc}{GS}")
     return output
 
 def get_records(excel_file_address: Path) -> list[Record]:
@@ -1374,8 +1355,6 @@ def process_excel_file(excel_file_address: Path) -> None:
     raw_records = get_records(excel_file_address)
     records_with_marc_fields = build_mark_records(raw_records)
     records_with_string_fields = flatten_fields_to_strings(records_with_marc_fields)
-    # print(records_with_string_fields)
-    pprint(records_with_marc_fields)
     write_mrk_file(records_with_string_fields, f"{excel_file_address.stem}.paul.mrk")
     write_mrc_binaries(records_with_marc_fields, f"{excel_file_address.stem}.paul.mrc")
 
@@ -1383,17 +1362,11 @@ def process_excel_file(excel_file_address: Path) -> None:
 # def main() -> None:
 def run() -> None:
     # process_excel_file(sys.argv[1])
-    # process_excel_file(Path("excel_files") / "chinese_test.xlsx")
-    # quit()
     for file in Path("excel_files").glob("*.xlsx"):
         logger.info(f"\n>>>>> processing: {file.name}")
         print(f">>>>> processing: {file.name}")
         process_excel_file(file)
 
+logger = logging.getLogger(__name__)
 
-def main() -> None:
-    run()
-
-if __name__ == "__main__":
-    logger = logging.getLogger(__name__)
-    main()
+# run()
