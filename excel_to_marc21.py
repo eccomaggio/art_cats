@@ -1,7 +1,7 @@
 from openpyxl import load_workbook  # type: ignore
 from dataclasses import dataclass, fields
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, TypeAlias
 from pprint import pprint
 import sys
 from datetime import datetime, timezone
@@ -61,13 +61,16 @@ class Punctuation(Serialisable):
 # @dataclass
 # class data_element:
 #     data: list[str | Punctuation | Blank] | str | Punctuation | Blank
+sub_fields: TypeAlias = str | Punctuation | Blank
+data: TypeAlias = list[sub_fields] | sub_fields
 
 
 class Subfield(Serialisable):
     """Subfield class for MARC21 subfields.
     -1 means the content is a single string (for variable control fields)
     """
-    def __init__(self, code: str | int, contents: list[str | Punctuation | Blank] | str | Punctuation | Blank):
+    # def __init__(self, code: str | int, contents: list[str | Punctuation | Blank] | str | Punctuation | Blank):
+    def __init__(self, code: str | int, contents: data):
         self.code = code
         # if isinstance(contents, Content):
         #     contents = str(contents)
@@ -892,11 +895,14 @@ def build_008(record: Record) -> Result:
     date_2 = 4 * "|"
     # place_of_pub: list[str | Punctuation | Blank] = [*[Blank() for n in range(3 - len(record.country))], record.country]
     # place_of_pub: list[str | Punctuation | Blank] = [record.country, *[Blank() for n in range(3 - len(record.country))]]
-    place_of_pub: list[str | Punctuation | Blank] = [record.country, *fill_with_blanks(record.country)]
-    books_configuration: list[str | Punctuation | Blank] = [(14*"|"), Blank(), (2*"|")]
+    # place_of_pub: list[str | Punctuation | Blank] = [record.country, *fill_with_blanks(record.country)]
+    # books_configuration: list[str | Punctuation | Blank] = [(14*"|"), Blank(), (2*"|")]
+    place_of_pub: list[sub_fields] = [record.country, *fill_with_blanks(record.country)]
+    books_configuration: list[sub_fields] = [(14*"|"), Blank(), (2*"|")]
     # lang = record.langs[0].ljust(3, "\\")
     # lang: list[str | Punctuation | Blank] = [record.langs[0], *[Blank() for n in range(3 - len(str(record.langs[0])))]]
-    lang: list[str | Punctuation | Blank] = [record.langs[0], *fill_with_blanks(record.langs[0])]
+    # lang: list[str | Punctuation | Blank] = [record.langs[0], *fill_with_blanks(record.langs[0])]
+    lang: list[sub_fields] = [record.langs[0], *fill_with_blanks(record.langs[0])]
     modified_and_cataloging = 2*"|"
     content = [date_entered_on_file,  pub_status,  date_1,  date_2,  *place_of_pub,  *books_configuration,  *lang,  modified_and_cataloging]
     result = Result(Field(tag, i1, i2, Subfield(-1, content)), None)
@@ -1045,6 +1051,17 @@ def build_904(record: Record) -> Result:
     return result
 
 
+def build_020(record: Record) -> Result:  ##optional
+    """isbn (if exists)"""
+    tag = 20
+    i1, i2 = -1, -1
+    if record.isbn:
+        result = Result(Field(tag, i1, i2, Content(Subfield("a", record.isbn))), None)
+    else:
+        result = Result(None, (tag, ""))
+    return result
+
+
 def build_024(record: Record) -> Result:  ##optional
     """sales code (if exists)"""
     tag = 24
@@ -1177,6 +1194,7 @@ def check_if_mandatory(result: Result) -> list[Field] | None:
     optional_fields = [
         24,     ## sales code
         41,     ## language if not monolingual
+        20,     ## isbn
         246,    ## parallel title
         490,    ## series statement
         500,    ## general notes
@@ -1264,6 +1282,7 @@ def build_mark_records(records: list[Record]) -> list[list[Field]]:
             build_300,
             build_490,
             build_876,
+            build_020,
             build_024,
             build_041,
             build_246,
@@ -1375,7 +1394,7 @@ def process_excel_file(excel_file_address: Path) -> None:
     records_with_marc_fields = build_mark_records(raw_records)
     records_with_string_fields = flatten_fields_to_strings(records_with_marc_fields)
     # print(records_with_string_fields)
-    pprint(records_with_marc_fields)
+    # pprint(records_with_marc_fields)
     write_mrk_file(records_with_string_fields, f"{excel_file_address.stem}.paul.mrk")
     write_mrc_binaries(records_with_marc_fields, f"{excel_file_address.stem}.paul.mrc")
 
@@ -1385,6 +1404,7 @@ def run() -> None:
     # process_excel_file(sys.argv[1])
     # process_excel_file(Path("excel_files") / "chinese_test.xlsx")
     # quit()
+    # for file in Path("excel_files").glob("*.xls?"):
     for file in Path("excel_files").glob("*.xlsx"):
         logger.info(f"\n>>>>> processing: {file.name}")
         print(f">>>>> processing: {file.name}")
