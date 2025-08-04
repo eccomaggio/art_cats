@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 import re
 from pathlib import Path
 import logging
+from pyisbn import Isbn
 
 
 logging.basicConfig(
@@ -58,9 +59,6 @@ class Punctuation(Serialisable):
     def __str__(self):
         return f"<code='{self.code}', contents='{self.contents}'>"
 
-# @dataclass
-# class data_element:
-#     data: list[str | Punctuation | Blank] | str | Punctuation | Blank
 sub_fields: TypeAlias = str | Punctuation | Blank
 data: TypeAlias = list[sub_fields] | sub_fields
 
@@ -69,11 +67,8 @@ class Subfield(Serialisable):
     """Subfield class for MARC21 subfields.
     -1 means the content is a single string (for variable control fields)
     """
-    # def __init__(self, code: str | int, contents: list[str | Punctuation | Blank] | str | Punctuation | Blank):
     def __init__(self, code: str | int, contents: data):
         self.code = code
-        # if isinstance(contents, Content):
-        #     contents = str(contents)
         self.contents = contents
 
     def to_string(self) -> str:
@@ -83,8 +78,6 @@ class Subfield(Serialisable):
             prefix = ""
         else:
             prefix = delimiter + str(self.code)
-        # if isinstance(self.contents, Content):
-        #     self.contents = str(self.contents)
         if isinstance(self.contents, list):
             contents = ""
             for el in self.contents:
@@ -119,8 +112,8 @@ class Subfield(Serialisable):
 
 
 class Content(Serialisable):
-    def __init__(self, contents: list[Subfield | Punctuation | Blank] | Subfield | Punctuation | Blank):
-        # self.contents: list[Subfield | Punctuation | ] = []
+    # def __init__(self, contents: list[Subfield | Punctuation | Blank] | Subfield | Punctuation | Blank):
+    def __init__(self, contents: data):
         self.contents = []
         if not isinstance(contents, list):
           contents = [contents]
@@ -139,7 +132,8 @@ class Content(Serialisable):
     def to_mrc(self) -> str:
         return "".join([el.to_mrc() for el in self.contents])
 
-    def add(self, content: list[Subfield | Punctuation | Blank] | Subfield | Punctuation | Blank):
+    # def add(self, content: list[Subfield | Punctuation | Blank] | Subfield | Punctuation | Blank):
+    def add(self, content: data):
         if isinstance(content, list):
             self.contents.extend(content)
         else:
@@ -156,7 +150,8 @@ class Field(Serialisable):
     """Variable Control/Data Field class for MARC21 variable control fields.
     -1 or Blank = indicator placeholder (various realizations, e.g. space or backslash)
     -2 = no indicator"""
-    def __init__(self, tag: int, i1: int | Blank, i2: int | Blank, contents: list[Subfield | Punctuation | Blank] | Subfield | Content, ordering=1):
+    # def __init__(self, tag: int, i1: int | Blank, i2: int | Blank, contents: list[Subfield | Punctuation | Blank] | Subfield | Content, ordering=1):
+    def __init__(self, tag: int, i1: int | Blank, i2: int | Blank, contents: sub_fields | Subfield | Content, ordering=1):
         self.tag = tag
         self.i1: int | Blank  = Blank() if i1 == -1 else i1
         self.i2: int | Blank = Blank() if i2 == -1 else i2
@@ -174,7 +169,6 @@ class Field(Serialisable):
 
     def can_accept_period(self) -> bool:
         return self.contents.can_accept_period()
-    #     return bool(self.contents.to_string().rstrip()[-1] not in "?!.")
 
 
     def to_string(self) -> str:
@@ -263,7 +257,6 @@ def norm_langs(raw: str) -> list[str]:
         except KeyError as e:
             logger.warning(f"Warning: {e} is not a recognised language; it has been passed on unchanged.")
             list_of_languages.append(language)
-    # result = [lang_list[lang.strip().lower()] for lang in raw.split("/")]
     return list_of_languages
 
 
@@ -694,7 +687,6 @@ def validate(record: Record) -> bool:
             logger.warning(f"Record no. {i} is missing the mandatory field '{name}'.")
             is_valid = False
     return is_valid
-    # return record
 
 
 def norm_dates(raw: str) -> list[str]:
@@ -720,6 +712,25 @@ def norm_year(year_raw: str) -> str:
     return year
 
 
+def norm_isbn(isbn_raw: str) -> str:
+    if not isbn_raw:
+        return ""
+    isbn_raw = strip_unwanted("-", isbn_raw)
+    isbn = Isbn(isbn_raw)
+    output = ""
+    if isbn.validate():
+        output = isbn_raw
+    else:
+        msg = f"{isbn_raw} is not a valid ISBN"
+        logger.warning(msg)
+        raise MissingFieldError(msg)
+    return output
+
+## TODO work out check for barcodes
+def norm_barcode(code_raw: str) -> str:
+    return code_raw
+
+
 def strip_unwanted(pattern: str, raw: str) -> str:
   clean = re.sub(pattern, "", raw)
   return clean
@@ -729,7 +740,6 @@ def check_for_approx(raw_string: str) -> tuple[str, bool]:
     clean = str(raw_string).strip()
     if clean[-1] == "?":
         is_approx = True
-        # raw = trim_mistaken_decimals(raw[:-1].rstrip())
         clean = clean[:-1].rstrip()
     else:
         is_approx = False
@@ -783,7 +793,7 @@ def parse_spreadsheet(sheet: list[list[str]]) -> list[Record]:
         cols = iter(row)
         sublibrary = next(cols)
         langs = norm_langs(next(cols))
-        isbn = next(cols)
+        isbn = norm_isbn(next(cols))
         title = Title(next(cols), next(cols))
         subtitle = Title(next(cols), next(cols))
         parallel_title = Title(next(cols), next(cols))
@@ -802,7 +812,7 @@ def parse_spreadsheet(sheet: list[list[str]]) -> list[Record]:
         date_of_sale = create_date_list(next(cols))
         hol_notes = next(cols)
         donation = next(cols)
-        barcode = next(cols)
+        barcode = norm_barcode(next(cols))
 
         record = Record(
             sublibrary,
@@ -862,11 +872,7 @@ def build_leader(record: Record) -> Result:
     start_character_len_21 = "5"  # placeholder for length of starting character
     implementation_len_22 = "0"  # placeholder for implementation length
     undefined_23 = "0"  # placeholder for undefined length
-
     data: str = record_len_00 + record_status_05 + record_type_06 + biblio_level_07 + type_of_ctrl_08 + char_coding_09 + indicator_count_10 + subfield_count_11 + base_address_12 + encoding_level_17 + cat_conventions_18 + multipart_indic_19 + field_len_20 + start_character_len_21 + implementation_len_22 + undefined_23
-
-
-    # success = Field(tag, i1, i2, [Subfield(-1, record_len_00 + record_status_05 + record_type_06 + biblio_level_07 + type_of_ctrl_08 + char_coding_09 + indicator_count_10 + subfield_count_11 + base_address_12 + encoding_level_17 + cat_conventions_18 + multipart_indic_19 + field_len_20 + start_character_len_21 + implementation_len_22 + undefined_23)])
     success = Field(tag, i1, i2, [Subfield(-1, data)])
     return Result(success, None)
 
@@ -893,15 +899,8 @@ def build_008(record: Record) -> Result:
     pub_status = "s"
     date_1 = record.pub_year
     date_2 = 4 * "|"
-    # place_of_pub: list[str | Punctuation | Blank] = [*[Blank() for n in range(3 - len(record.country))], record.country]
-    # place_of_pub: list[str | Punctuation | Blank] = [record.country, *[Blank() for n in range(3 - len(record.country))]]
-    # place_of_pub: list[str | Punctuation | Blank] = [record.country, *fill_with_blanks(record.country)]
-    # books_configuration: list[str | Punctuation | Blank] = [(14*"|"), Blank(), (2*"|")]
     place_of_pub: list[sub_fields] = [record.country, *fill_with_blanks(record.country)]
     books_configuration: list[sub_fields] = [(14*"|"), Blank(), (2*"|")]
-    # lang = record.langs[0].ljust(3, "\\")
-    # lang: list[str | Punctuation | Blank] = [record.langs[0], *[Blank() for n in range(3 - len(str(record.langs[0])))]]
-    # lang: list[str | Punctuation | Blank] = [record.langs[0], *fill_with_blanks(record.langs[0])]
     lang: list[sub_fields] = [record.langs[0], *fill_with_blanks(record.langs[0])]
     modified_and_cataloging = 2*"|"
     content = [date_entered_on_file,  pub_status,  date_1,  date_2,  *place_of_pub,  *books_configuration,  *lang,  modified_and_cataloging]
@@ -1186,24 +1185,15 @@ def build_880(record: Record, title: Content, i1: int, i2: int, caller: int, seq
     record.links.append(line)
 
 
-def check_if_mandatory(result: Result) -> list[Field] | None:
+def check_if_mandatory(result: Result, is_mandatory: bool) -> list[Field] | None:
     """
     silently suppresses optional fields if empty;
     stops with error if required field is empty
     """
-    optional_fields = [
-        24,     ## sales code
-        41,     ## language if not monolingual
-        20,     ## isbn
-        246,    ## parallel title
-        490,    ## series statement
-        500,    ## general notes
-        880,    ## transliteration
-    ]
     output: list[Field] | None = None
     if result.is_err:
         numeric_tag, error_msg = result.is_err
-        if numeric_tag not in optional_fields:
+        if is_mandatory:
             msg = error_msg if error_msg else f"Data for required field {str(numeric_tag).zfill(3)} is required."
             logger.warning(msg)
             raise MissingFieldError(msg)
@@ -1267,28 +1257,28 @@ def build_mark_records(records: list[Record]) -> list[list[Field]]:
     mark_records: list[list[Field]] = []
     for record in records:
         mark_record: list[Field] = []
-        for builder in (
-            build_leader,
-            build_040,
-            build_336,
-            build_337,
-            build_338,
-            build_904,
-            build_005,
-            build_008,
-            build_033,
-            build_245,
-            build_264,
-            build_300,
-            build_490,
-            build_876,
-            build_020,
-            build_024,
-            build_041,
-            build_246,
-            build_500,
+        for builder, is_mandatory in (
+            [build_leader, True],
+            [build_040, True],
+            [build_336, True],
+            [build_337, True],
+            [build_338, True],
+            [build_904, True],
+            [build_005, True],
+            [build_008, True],
+            [build_033, True],
+            [build_245, True],
+            [build_264, True],
+            [build_300, True],
+            [build_490, False], # series statement
+            [build_876, True],
+            [build_020, False], # isbn
+            [build_024, False], # sales code
+            [build_041, False], # language if not monolingual
+            [build_246, False], # parallel title 
+            [build_500, False], # general notes
         ):
-            field = check_if_mandatory(builder(record))
+            field = check_if_mandatory(builder(record), is_mandatory)
             if field:
                 for repeat in field:
                     mark_record.append(repeat)
