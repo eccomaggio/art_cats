@@ -8,8 +8,9 @@ from datetime import datetime, timezone
 import re
 from pathlib import Path
 import logging
-from pyisbn import Isbn
-
+# from pyisbn import Isbn
+from pydantic import BaseModel, field_validator, ValidationError
+from pydantic_extra_types.isbn import ISBN
 
 logging.basicConfig(
     filename="output.log",
@@ -18,6 +19,32 @@ logging.basicConfig(
     format="%(levelname)s:%(message)s",
     level=logging.DEBUG
     )
+
+
+class Isbn_check(BaseModel):
+    isbn: ISBN | str = ""
+    @field_validator("isbn", mode="before")
+    @classmethod
+    def validate_isbn_or_empty(cls, input: str | ISBN):
+        if input == "":
+            return input
+        return ISBN(input)
+
+
+class Barcode_check(BaseModel):
+    """
+    barcode standard is probably 'code 39 modulo 43', but a simple regex is enough as we never include the final checksum character
+    """
+    barcode: str 
+    @field_validator("barcode")
+    @classmethod
+    def validate_barcode_or_empty(cls, barcode: str) -> str:
+        barcode_pattern = r'^[367][0-9]{8}$'
+        if not re.match(barcode_pattern, barcode):
+            msg = f"Barcode {barcode} must be a 9-digit string starting with 3, 6, or 7."
+            logger.critical(msg)
+            raise ValueError(f"Barcode {barcode} must be a 9-digit string starting with 3, 6, or 7.")
+        return barcode
 
 
 class Serialisable(ABC):
@@ -712,25 +739,6 @@ def norm_year(year_raw: str) -> str:
     return year
 
 
-def norm_isbn(isbn_raw: str) -> str:
-    if not isbn_raw:
-        return ""
-    isbn_raw = strip_unwanted("-", isbn_raw)
-    isbn = Isbn(isbn_raw)
-    output = ""
-    if isbn.validate():
-        output = isbn_raw
-    else:
-        msg = f"{isbn_raw} is not a valid ISBN"
-        logger.warning(msg)
-        raise MissingFieldError(msg)
-    return output
-
-## TODO work out check for barcodes
-def norm_barcode(code_raw: str) -> str:
-    return code_raw
-
-
 def strip_unwanted(pattern: str, raw: str) -> str:
   clean = re.sub(pattern, "", raw)
   return clean
@@ -793,7 +801,8 @@ def parse_spreadsheet(sheet: list[list[str]]) -> list[Record]:
         cols = iter(row)
         sublibrary = next(cols)
         langs = norm_langs(next(cols))
-        isbn = norm_isbn(next(cols))
+        # isbn = norm_isbn(next(cols))
+        isbn = Isbn_check(isbn=next(cols))
         title = Title(next(cols), next(cols))
         subtitle = Title(next(cols), next(cols))
         parallel_title = Title(next(cols), next(cols))
@@ -812,7 +821,8 @@ def parse_spreadsheet(sheet: list[list[str]]) -> list[Record]:
         date_of_sale = create_date_list(next(cols))
         hol_notes = next(cols)
         donation = next(cols)
-        barcode = norm_barcode(next(cols))
+        # barcode = norm_barcode(next(cols))
+        barcode = Barcode_check(barcode=next(cols))
 
         record = Record(
             sublibrary,
