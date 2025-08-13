@@ -1,7 +1,7 @@
 from openpyxl import load_workbook  # type: ignore
 from dataclasses import dataclass, fields
 from abc import ABC, abstractmethod
-from typing import List, TypeAlias
+from typing import List, TypeAlias, Callable
 from pprint import pprint
 import sys
 from datetime import datetime, timezone
@@ -56,6 +56,15 @@ class Serialisable(ABC):
     def to_mrc(self) -> str:
         pass
 
+# @dataclass
+# class String(Serialisable):
+#     def to_string(self) -> str:
+#         return str(self)
+    
+#     def to_mrc(self) -> str:
+#         return str(self)
+
+
 @dataclass
 class Blank(Serialisable):
     def to_string(self) -> str:
@@ -71,11 +80,10 @@ class Blank(Serialisable):
 class Punctuation(Serialisable):
     """ISBD punctuation used between subfields
     https://www.itsmarc.com/crs/mergedprojects/lcri/lcri/1_0c__lcri.htm
-    code is currently used just for compatibility with Subfield.code, but could be used in future?
     """
-    def __init__(self, contents: str, code: str|int = ""):
+    # def __init__(self, contents: str, code: str|int = ""):
+    def __init__(self, contents: str):
         self.contents = contents
-        self.code = code
 
     def to_string(self) -> str:
         return self.contents
@@ -84,35 +92,27 @@ class Punctuation(Serialisable):
         return self.to_string()
 
     def __str__(self):
-        return f"<code='{self.code}', contents='{self.contents}'>"
-
-sub_fields: TypeAlias = str | Punctuation | Blank
-data: TypeAlias = list[sub_fields] | sub_fields
+        return f"<contents='{self.contents}'>"
 
 
 class Subfield(Serialisable):
     """Subfield class for MARC21 subfields.
     -1 means the content is a single string (for variable control fields)
+    if code is omitted, assumed to be -1 (i.e. no code)
     """
-    def __init__(self, code: str | int, contents: data):
-        self.code = code
-        self.contents = contents
+    # def __init__(self, code: str | int, data: str):
+    def __init__(self,  data: str, code: str | int = -1):
+        self.code: str = code if isinstance(code, str) else str(code)
+        self.data: str = data
 
     def to_string(self) -> str:
         """Returns the subfield as a string."""
         delimiter = "$"
-        if self.code == -1:
+        if self.code == "-1":
             prefix = ""
         else:
             prefix = delimiter + str(self.code)
-        if isinstance(self.contents, list):
-            contents = ""
-            for el in self.contents:
-                contents += el if isinstance(el, str) else el.to_string()
-        else:
-            contents = str(self.contents)
-            # raise Exception(f"this shouldn't be type contents! > {self.contents}, {type(str(self.contents))}")
-        return f"{prefix}{contents}"
+        return f"{prefix}{self.data}"
 
     def to_mrc(self) -> str:
         US = chr(31)
@@ -120,27 +120,21 @@ class Subfield(Serialisable):
             prefix = ""
         else:
             prefix = f"{US}{self.code}"
-        if isinstance(self.contents, list):
-            contents = ""
-            for el in self.contents:
-                contents += el if isinstance(el, str) else el.to_mrc()
-        else:
-            contents = str(self.contents)
-        return f"{prefix}{contents}"
+        return f"{prefix}{self.data}"
 
     def __repl__(self):
-        if isinstance(self.contents, list):
-            contents = ""
-            for el in self.contents:
-                contents += el if isinstance(el, str) else el.to_string()
-        else:
-            contents = str(self.contents)
-        return f"<code='{self.code}', contents='{contents}'>"
+        return f"<code='{self.code}', data='{self.data}'>"
+
+
+atoms: TypeAlias = Subfield | Punctuation | Blank
+# atoms: TypeAlias = String | Subfield | Punctuation | Blank
+# data: TypeAlias = list[atoms] | atoms
+worksheet_row: TypeAlias = list[str]
 
 
 class Content(Serialisable):
-    # def __init__(self, contents: list[Subfield | Punctuation | Blank] | Subfield | Punctuation | Blank):
-    def __init__(self, contents: data):
+    # def __init__(self, contents: data):
+    def __init__(self, contents: atoms | list[atoms]):
         self.contents = []
         if not isinstance(contents, list):
           contents = [contents]
@@ -159,8 +153,8 @@ class Content(Serialisable):
     def to_mrc(self) -> str:
         return "".join([el.to_mrc() for el in self.contents])
 
-    # def add(self, content: list[Subfield | Punctuation | Blank] | Subfield | Punctuation | Blank):
-    def add(self, content: data):
+    # def add(self, content: data):
+    def add(self, content: list[atoms] | atoms):
         if isinstance(content, list):
             self.contents.extend(content)
         else:
@@ -173,17 +167,17 @@ class Content(Serialisable):
         result = ", ".join([str(el) for el in self.contents])
         return f"[{result}]"
 
+
 class Field(Serialisable):
     """Variable Control/Data Field class for MARC21 variable control fields.
     -1 or Blank = indicator placeholder (various realizations, e.g. space or backslash)
     -2 = no indicator"""
-    # def __init__(self, tag: int, i1: int | Blank, i2: int | Blank, contents: list[Subfield | Punctuation | Blank] | Subfield | Content, ordering=1):
-    def __init__(self, tag: int, i1: int | Blank, i2: int | Blank, contents: sub_fields | Subfield | Content, ordering=1):
+    def __init__(self, tag: int, i1: int | Blank, i2: int | Blank, contents: Content | atoms | list[atoms], ordering: int = 1):
         self.tag = tag
         self.i1: int | Blank  = Blank() if i1 == -1 else i1
         self.i2: int | Blank = Blank() if i2 == -1 else i2
         self.contents = contents if isinstance(contents, Content) else Content(contents)
-        self.ordering = ordering ## sort is used to order the fields when there are more than one of the same tag
+        self.ordering: int = ordering ## sort is used to order the fields when there are more than one of the same tag
 
     def expand_indicators(self, indicator: int | Blank, blank_char="\\") -> str:
         if isinstance(indicator, Blank):
@@ -216,6 +210,9 @@ class Field(Serialisable):
     def __repr__(self):
         return f"={self.tag}@{self.ordering} ({self.i1})({self.i2}) {self.contents.to_string()}"
 
+# fields: TypeAlias = list[Field] | Field
+marc_record: TypeAlias = list[Field]
+
 @dataclass
 class Title:
     original: str
@@ -246,16 +243,22 @@ class Record:
     hol_notes: str
     donation: str
     barcode: str
+
     pub_year_is_approx: bool
     extent_is_approx: bool
     timestamp: datetime
+    
     sequence_number: int
     links: List[Field | None]
 
 
 @dataclass
 class Result:
-    is_ok: list[Field] | Field | None    ## [field number, returned data]
+    """
+    holds the successfully acquired data OR
+    the MARC field tag (as an int) where the problem occurred and an error message
+    """
+    is_ok: list[Field] | Field | None    ## MARC field or list of same
     is_err:tuple[int, str] | None   ## [field number, error message]
 
 
@@ -285,6 +288,10 @@ def norm_langs(raw: str) -> list[str]:
             logger.warning(f"Warning: {e} is not a recognised language; it has been passed on unchanged.")
             list_of_languages.append(language)
     return list_of_languages
+
+
+def norm_geographical_name(name: str) -> str:
+    return re.sub(r"[\s\-']", "", name).lower()
 
 
 def norm_country(country_raw: str) -> str:
@@ -571,7 +578,8 @@ def norm_country(country_raw: str) -> str:
         "various": "vp",
     }
     # normed_country = country.replace(" ", "").lower()
-    country = re.sub(r"[\s\-']", "", country_raw).lower()
+    # country = re.sub(r"[\s\-']", "", country_raw).lower()
+    country = norm_geographical_name(country_raw)
     try:
         result = country_codes[country]
     except KeyError as e:
@@ -675,7 +683,8 @@ def norm_place(place_raw: str) -> str:
         "northernterritory": "xoa",
         "southaustralia": "xra",
     }
-    place = place_raw.replace(" ", "").lower()
+    # place = place_raw.replace(" ", "").lower()
+    place = norm_geographical_name(place_raw)
     try:
         result = long_country_codes[place]
     except KeyError as e:
@@ -692,7 +701,7 @@ def get_long_country_code(country: str, place: str) -> str:
     return place.strip().lower() if len(place) == 3 else country
 
 
-def validate(record: Record) -> bool:
+def check_mandatory_fields_exist(record: Record) -> bool:
     mandatory = [
         "sublib",
         "langs",
@@ -739,6 +748,18 @@ def norm_year(year_raw: str) -> str:
     return year
 
 
+# TODO: write sensible validation
+def norm_isbn(raw_isbn: str) -> str:
+    isbn = raw_isbn
+    return isbn
+
+
+# TODO: write sensible validation
+def norm_barcode(raw_barcode: str) -> str:
+    barcode = raw_barcode
+    return barcode
+
+
 def strip_unwanted(pattern: str, raw: str) -> str:
   clean = re.sub(pattern, "", raw)
   return clean
@@ -761,7 +782,8 @@ def trim_mistaken_decimals(string: str) -> str:
     return string
 
 
-def fill_with_blanks(string: str, limit: int = 3) -> list[Blank | str | Punctuation]:
+# TODO: what should this return if nothing? None or []?
+def fill_with_blanks(string: str, limit: int = 3) -> list[Blank]:
     return [Blank() for n in range(limit - len(string))]
 
 
@@ -771,7 +793,8 @@ def create_date_list(dates_raw: str) -> list[str]:
     return dates
 
 
-def extract_from_excel(excel_sheet) -> list[list[str]]:
+# def extract_from_excel(excel_sheet) -> list[list[str]]:
+def extract_from_excel(excel_sheet) -> list[worksheet_row]:
     """
     excel seems pretty random in how it assigns string/int/float, so...
     this routine coerces everything into a string,
@@ -794,71 +817,79 @@ def extract_from_excel(excel_sheet) -> list[list[str]]:
     return sheet
 
 
-def parse_spreadsheet(sheet: list[list[str]]) -> list[Record]:
+# def parse_spreadsheet(sheet: list[list[str]]) -> list[Record]:
+def parse_rows_into_records(sheet: list[worksheet_row]) -> list[Record]:
     current_time = datetime.now()
     records = []
     for row in sheet:
-        cols = iter(row)
-        sublibrary = next(cols)
-        langs = norm_langs(next(cols))
-        # isbn = norm_isbn(next(cols))
-        isbn = Isbn_check(isbn=next(cols))
-        title = Title(next(cols), next(cols))
-        subtitle = Title(next(cols), next(cols))
-        parallel_title = Title(next(cols), next(cols))
-        parallel_subtitle = Title(next(cols), next(cols))
-        country = norm_country(next(cols))
-        place = next(cols)
-        publisher = next(cols)
-        pub_date, pub_date_is_approx = check_for_approx(norm_year(next(cols)))
-        copyright_ = next(cols).replace("©","").strip()
-        extent, extent_is_approx = check_for_approx(norm_pages(next(cols)))
-        size = norm_size(next(cols))
-        series_title = next(cols)
-        series_enum = next(cols)
-        note = next(cols)
-        sale_code = next(cols)
-        date_of_sale = create_date_list(next(cols))
-        hol_notes = next(cols)
-        donation = next(cols)
-        # barcode = norm_barcode(next(cols))
-        barcode = Barcode_check(barcode=next(cols))
-
-        record = Record(
-            sublibrary,
-            langs,
-            isbn,
-            title,
-            subtitle,
-            parallel_title,
-            parallel_subtitle,
-            country,
-            place,
-            publisher,
-            pub_date,
-            copyright_,
-            extent,
-            size,
-            series_title,
-            series_enum,
-            note,
-            sale_code,
-            date_of_sale,
-            hol_notes,
-            donation,
-            barcode,
-
-            pub_date_is_approx,
-            extent_is_approx,
-            current_time,
-
-            sequence_number = 1,
-            links = [],
-        )
-        validate(record)
+        record = parse_row(row, current_time)
+        # validate(record)
         records.append(record)
         # pprint(record: Record) -> Result
     return records
+
+
+def parse_row(row: list[str], current_time: datetime) -> Record:
+    cols = iter(row)
+    sublibrary = next(cols)
+    langs = norm_langs(next(cols))
+    isbn = norm_isbn(next(cols))
+    # isbn = Isbn_check(isbn=next(cols))
+    title = Title(next(cols), next(cols))
+    subtitle = Title(next(cols), next(cols))
+    parallel_title = Title(next(cols), next(cols))
+    parallel_subtitle = Title(next(cols), next(cols))
+    country = norm_country(next(cols))
+    place = next(cols)
+    publisher = next(cols)
+    pub_date, pub_date_is_approx = check_for_approx(norm_year(next(cols)))
+    copyright_ = next(cols).replace("©","").strip()
+    extent, extent_is_approx = check_for_approx(norm_pages(next(cols)))
+    size = norm_size(next(cols))
+    series_title = next(cols)
+    series_enum = next(cols)
+    note = next(cols)
+    sale_code = next(cols)
+    date_of_sale = create_date_list(next(cols))
+    hol_notes = next(cols)
+    donation = next(cols)
+    barcode = norm_barcode(next(cols))
+    # barcode = Barcode_check(barcode=next(cols))
+
+    record = Record(
+        sublibrary,
+        langs,
+        isbn,
+        title,
+        subtitle,
+        parallel_title,
+        parallel_subtitle,
+        country,
+        place,
+        publisher,
+        pub_date,
+        copyright_,
+        extent,
+        size,
+        series_title,
+        series_enum,
+        note,
+        sale_code,
+        date_of_sale,
+        hol_notes,
+        donation,
+        barcode,
+
+        pub_date_is_approx,
+        extent_is_approx,
+        current_time,
+
+        sequence_number = 1,
+        links = [],
+    )
+    check_mandatory_fields_exist(record)
+    return record
+
 
 
 def build_leader(record: Record) -> Result:
@@ -883,7 +914,7 @@ def build_leader(record: Record) -> Result:
     implementation_len_22 = "0"  # placeholder for implementation length
     undefined_23 = "0"  # placeholder for undefined length
     data: str = record_len_00 + record_status_05 + record_type_06 + biblio_level_07 + type_of_ctrl_08 + char_coding_09 + indicator_count_10 + subfield_count_11 + base_address_12 + encoding_level_17 + cat_conventions_18 + multipart_indic_19 + field_len_20 + start_character_len_21 + implementation_len_22 + undefined_23
-    success = Field(tag, i1, i2, [Subfield(-1, data)])
+    success = Field(tag, i1, i2, [Subfield(data)])
     return Result(success, None)
 
 
@@ -896,7 +927,7 @@ def build_005(record: Record) -> Result:
     standard_time = record.timestamp.now(timezone.utc)
     ## NB: python produces this format: YYYY-MM-DD HH:MM:SS.ffffff, e.g. 2020-09-30 12:37:55.713351
     timestamp = str(standard_time).translate(str.maketrans("", "", " -:"))[:16]
-    result = Result(Field(tag, i1, i2, [Subfield(-1, timestamp)]), None)
+    result = Result(Field(tag, i1, i2, [Subfield(timestamp)]), None)
     return result
 
 
@@ -905,16 +936,16 @@ def build_008(record: Record) -> Result:
     tag = 8
     i1, i2 = variable_control_field()
     t = record.timestamp
-    date_entered_on_file = str(t.year)[2:] + str(t.month).zfill(2) + str(t.day).zfill(2)
-    pub_status = "s"
-    date_1 = record.pub_year
-    date_2 = 4 * "|"
-    place_of_pub: list[sub_fields] = [record.country, *fill_with_blanks(record.country)]
-    books_configuration: list[sub_fields] = [(14*"|"), Blank(), (2*"|")]
-    lang: list[sub_fields] = [record.langs[0], *fill_with_blanks(record.langs[0])]
-    modified_and_cataloging = 2*"|"
-    content = [date_entered_on_file,  pub_status,  date_1,  date_2,  *place_of_pub,  *books_configuration,  *lang,  modified_and_cataloging]
-    result = Result(Field(tag, i1, i2, Subfield(-1, content)), None)
+    date_entered_on_file = Subfield(str(t.year)[2:] + str(t.month).zfill(2) + str(t.day).zfill(2))
+    pub_status: Subfield = Subfield("s")
+    date_1: Subfield = Subfield(record.pub_year)
+    date_2: Subfield = Subfield(4 * "|")
+    place_of_pub: list[atoms] = [Subfield(record.country), *fill_with_blanks(record.country)]
+    books_configuration: list[atoms] = [Subfield(14*"|"), Blank(), Subfield(2*"|")]
+    lang: list[atoms] = [Subfield(record.langs[0]), *fill_with_blanks(record.langs[0])]
+    modified_and_cataloging: Subfield = Subfield(2*"|")
+    content = Content([date_entered_on_file,  pub_status,  date_1,  date_2,  *place_of_pub,  *books_configuration,  *lang,  modified_and_cataloging])
+    result = Result(Field(tag, i1, i2, content), None)
     return result
 
 def build_033(record: Record) -> Result:
@@ -975,7 +1006,7 @@ def deal_with_chinese_titles(record: Record, title_original: str, subtitle_origi
     if tag == 245 and chinese_title.can_accept_period():
         chinese_title.add(Punctuation("."))
     sequence_number = seq_num(record.sequence_number)
-    linkage = Subfield(6, f"880-{sequence_number}")
+    linkage = Subfield(f"880-{sequence_number}", 6)
     # print(chinese_title)
     # print(chinese_title.to_string())
     build_880(record, chinese_title, i1, i2, tag, sequence_number)
@@ -1015,7 +1046,7 @@ def build_300(record: Record) -> Result:
 def build_336(record: Record) -> Result:
     """content type (boilerplate)"""
     tag = 336
-    content = Content([Subfield("a", "text"), Subfield(2, "rdacontent")])
+    content = Content([Subfield("a", "text"), Subfield("rdacontent", 2)])
     result = Result(Field(tag, -1, -1,content), None)
     return result
 
@@ -1024,7 +1055,7 @@ def build_337(record: Record) -> Result:
     """media type (boilerplate)"""
     tag = 337
     i1, i2 = -1, -1
-    content = Content([Subfield("a", "unmediated"), Subfield(2, "rdamedia")])
+    content = Content([Subfield("a", "unmediated"), Subfield("rdamedia", 2)])
     result = Result(Field(tag, i1, i2, content), None)
     return result
 
@@ -1033,13 +1064,16 @@ def build_338(record: Record) -> Result:
     """carrier type (boilerplate)"""
     tag = 338
     i1, i2 = -1, -1
-    content =  Content([Subfield("a", "volume"), Subfield(2, "rdacarrier")])
+    content =  Content([Subfield("a", "volume"), Subfield("rdacarrier", 2)])
     result = Result(Field(tag, i1, i2, content), None)
     return result
 
 
 def build_876(record: Record) -> Result:
-    """notes / donations / barcode"""
+    """
+    notes / donations / barcode
+    mandatory because of barcode
+    """
     tag = 876
     i1, i2 = -1, -1
     content = Content([Subfield("p", record.barcode)])
@@ -1189,7 +1223,7 @@ def build_880(record: Record, title: Content, i1: int, i2: int, caller: int, seq
     looks like: =880  31$6246-01$a中國書畫、陶瓷及藝術品拍賣會
     """
     record.sequence_number += 1
-    content = Content(Subfield(6, f"{str(caller).zfill(3)}-{sequence_number}"))
+    content = Content(Subfield(f"{str(caller).zfill(3)}-{sequence_number}", 6))
     content.add(title.contents)
     line = Field(880, i1, i2, content)
     record.links.append(line)
@@ -1263,45 +1297,56 @@ def variable_control_field():
     return (-2, -2)
 
 
-def build_mark_records(records: list[Record]) -> list[list[Field]]:
-    mark_records: list[list[Field]] = []
+def build_marc_records(records: list[Record]) -> list[marc_record]:
+    # marc_records: list[list[Field]] = []
+    marc_records: list[marc_record] = []
     for record in records:
-        mark_record: list[Field] = []
-        for builder, is_mandatory in (
-            [build_leader, True],
-            [build_040, True],
-            [build_336, True],
-            [build_337, True],
-            [build_338, True],
-            [build_904, True],
-            [build_005, True],
-            [build_008, True],
-            [build_033, True],
-            [build_245, True],
-            [build_264, True],
-            [build_300, True],
-            [build_490, False], # series statement
-            [build_876, True],
-            [build_020, False], # isbn
-            [build_024, False], # sales code
-            [build_041, False], # language if not monolingual
-            [build_246, False], # parallel title 
-            [build_500, False], # general notes
-        ):
-            field = check_if_mandatory(builder(record), is_mandatory)
-            if field:
-                for repeat in field:
-                    mark_record.append(repeat)
-        if len(record.links):
-            for link in record.links:
-                if link:
-                    mark_record.append(link)
-        mark_record.sort(key=lambda x: (x.tag * 10) + x.ordering)
-        mark_records.append(mark_record)
-    return mark_records
+        # print(record, type(record))
+        # pprint(record)
+        marc = apply_marc_logic(record)
+        marc_records.append(marc)
+    return marc_records
 
 
-def write_mrk_file(data: list[list[str]], file_name: str="output.mrk") -> None:
+def apply_marc_logic(record: Record) -> list[Field]:
+    marc_record: list[Field] = []
+    # print(record, type(record))
+    # fields_to_deploy: tuple[tuple[Callable[[Record], Result], bool]] = (
+    fields_to_deploy: tuple[tuple[Callable, bool]] = (
+        (build_leader, True),
+        (build_040, True),
+        (build_336, True),
+        (build_337, True),
+        (build_338, True),
+        (build_904, True),
+        (build_005, True),
+        (build_008, True),
+        (build_033, True),
+        (build_245, True),
+        (build_264, True),
+        (build_300, True),
+        (build_490, False), # series statement
+        (build_876, True),
+        (build_020, False), # isbn
+        (build_024, False), # sales code
+        (build_041, False), # language if not monolingual
+        (build_246, False), # parallel title 
+        (build_500, False), # general notes
+    )
+    for builder, is_mandatory in fields_to_deploy:
+        field = check_if_mandatory(builder(record), is_mandatory)
+        if field:
+            for repeat in field:
+                marc_record.append(repeat)
+    if len(record.links):
+        for link in record.links:
+            if link:
+                marc_record.append(link)
+    marc_record.sort(key=lambda x: (x.tag * 10) + x.ordering)
+    return marc_record
+
+
+def write_mrk_files(data: list[list[str]], file_name: str="output.mrk") -> None:
     mrk_file_dir = make_directory("marc21_files")
     out_file = mrk_file_dir / file_name
     with open(out_file, "w", encoding="utf-8") as f:
@@ -1374,32 +1419,30 @@ def make_binary(data: list[list[Field]]) -> list[bytes]:
         output.append(binary_line)
     return output
 
-def get_records(excel_file_address: Path) -> list[Record]:
+
+def parse_excel_into_rows(excel_file_address: Path) -> list[worksheet_row]:
     excel_file_name = str(excel_file_address.resolve())
     worksheet = load_workbook(filename=excel_file_name).active
-    data = extract_from_excel(worksheet)
-    records = parse_spreadsheet(data)
-    return records
+    raw_rows = extract_from_excel(worksheet)
+    return raw_rows
 
 
-def flatten_fields_to_strings(input: list[list[Field]]) -> list[list[str]]:
+def flatten_fields_to_strings(input: list[marc_record]) -> list[list[str]]:
     output: list[list[str]] = []
     for i, record in enumerate(input):
         # print(f">>>>>>>>>>{i} -> {record}")
         output.append([field.to_string() for field in record])
     return output
 
-def process_excel_file(excel_file_address: Path) -> None:
-    raw_records = get_records(excel_file_address)
-    records_with_marc_fields = build_mark_records(raw_records)
-    records_with_string_fields = flatten_fields_to_strings(records_with_marc_fields)
+
+def write_marc_files(records:list[marc_record], excel_file_address: Path) -> None:
+    records_with_string_fields = flatten_fields_to_strings(records)
     # print(records_with_string_fields)
     # pprint(records_with_marc_fields)
-    write_mrk_file(records_with_string_fields, f"{excel_file_address.stem}.paul.mrk")
-    write_mrc_binaries(records_with_marc_fields, f"{excel_file_address.stem}.paul.mrc")
+    write_mrk_files(records_with_string_fields, f"{excel_file_address.stem}.paul.mrk")
+    write_mrc_binaries(records, f"{excel_file_address.stem}.paul.mrc")
 
 
-# def main() -> None:
 def run() -> None:
     # process_excel_file(sys.argv[1])
     # process_excel_file(Path("excel_files") / "chinese_test.xlsx")
@@ -1408,7 +1451,13 @@ def run() -> None:
     for file in Path("excel_files").glob("*.xlsx"):
         logger.info(f"\n>>>>> processing: {file.name}")
         print(f">>>>> processing: {file.name}")
-        process_excel_file(file)
+        raw_rows = parse_excel_into_rows(file)
+        records = parse_rows_into_records(raw_rows)
+        del raw_rows
+        marc_records = build_marc_records(records)
+        del records
+        write_marc_files(marc_records, file)
+        # make_marc_files(raw_records, file)
 
 
 def main() -> None:
