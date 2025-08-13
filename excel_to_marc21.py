@@ -1,7 +1,8 @@
 from openpyxl import load_workbook  # type: ignore
 from dataclasses import dataclass, fields
 from abc import ABC, abstractmethod
-from typing import List, TypeAlias, Callable
+from typing import TypeAlias
+from collections.abc import Callable
 from pprint import pprint
 import sys
 from datetime import datetime, timezone
@@ -9,8 +10,8 @@ import re
 from pathlib import Path
 import logging
 # from pyisbn import Isbn
-from pydantic import BaseModel, field_validator, ValidationError
-from pydantic_extra_types.isbn import ISBN
+# from pydantic import BaseModel, field_validator, ValidationError
+# from pydantic_extra_types.isbn import ISBN
 
 logging.basicConfig(
     filename="output.log",
@@ -21,30 +22,30 @@ logging.basicConfig(
     )
 
 
-class Isbn_check(BaseModel):
-    isbn: ISBN | str = ""
-    @field_validator("isbn", mode="before")
-    @classmethod
-    def validate_isbn_or_empty(cls, input: str | ISBN):
-        if input == "":
-            return input
-        return ISBN(input)
+# class Isbn_check(BaseModel):
+#     isbn: ISBN | str = ""
+#     @field_validator("isbn", mode="before")
+#     @classmethod
+#     def validate_isbn_or_empty(cls, input: str | ISBN):
+#         if input == "":
+#             return input
+#         return ISBN(input)
 
 
-class Barcode_check(BaseModel):
-    """
-    barcode standard is probably 'code 39 modulo 43', but a simple regex is enough as we never include the final checksum character
-    """
-    barcode: str 
-    @field_validator("barcode")
-    @classmethod
-    def validate_barcode_or_empty(cls, barcode: str) -> str:
-        barcode_pattern = r'^[367][0-9]{8}$'
-        if not re.match(barcode_pattern, barcode):
-            msg = f"Barcode {barcode} must be a 9-digit string starting with 3, 6, or 7."
-            logger.critical(msg)
-            raise ValueError(f"Barcode {barcode} must be a 9-digit string starting with 3, 6, or 7.")
-        return barcode
+# class Barcode_check(BaseModel):
+#     """
+#     barcode standard is probably 'code 39 modulo 43', but a simple regex is enough as we never include the final checksum character
+#     """
+#     barcode: str 
+#     @field_validator("barcode")
+#     @classmethod
+#     def validate_barcode_or_empty(cls, barcode: str) -> str:
+#         barcode_pattern = r'^[367][0-9]{8}$'
+#         if not re.match(barcode_pattern, barcode):
+#             msg = f"Barcode {barcode} must be a 9-digit string starting with 3, 6, or 7."
+#             logger.critical(msg)
+#             raise ValueError(f"Barcode {barcode} must be a 9-digit string starting with 3, 6, or 7.")
+#         return barcode
 
 
 class Serialisable(ABC):
@@ -222,7 +223,7 @@ class Title:
 @dataclass
 class Record:
     sublib: str
-    langs: List[str]
+    langs: list[str]
     isbn: str
     title: Title
     subtitle: Title
@@ -239,7 +240,7 @@ class Record:
     series_enum: str
     notes: str
     sales_code: str
-    sale_dates: List[str]
+    sale_dates: list[str]
     hol_notes: str
     donation: str
     barcode: str
@@ -249,7 +250,7 @@ class Record:
     timestamp: datetime
     
     sequence_number: int
-    links: List[Field | None]
+    links: list[Field | None]
 
 
 @dataclass
@@ -280,7 +281,7 @@ def norm_langs(raw: str) -> list[str]:
         "dutch": "dut",
     }
     list_of_languages = []
-    languages: List[str] = raw.replace(" ", "").lower().split("/")
+    languages: list[str] = raw.replace(" ", "").lower().split("/")
     for language in languages:
         try:
             list_of_languages.append(language_codes[language])
@@ -750,14 +751,21 @@ def norm_year(year_raw: str) -> str:
 
 # TODO: write sensible validation
 def norm_isbn(raw_isbn: str) -> str:
-    isbn = raw_isbn
+    isbn = re.sub(r"[\s-]", "", raw_isbn)
+    if 10 > len(isbn) > 13:
+        msg = f"isbn {raw_isbn} is non-standard"
+        print(f"*** {msg}")
+        logger.warning(msg)
     return isbn
 
 
 # TODO: write sensible validation
 def norm_barcode(raw_barcode: str) -> str:
-    barcode = raw_barcode
-    return barcode
+    if not re.match(r"^[367]\d{8}", raw_barcode):
+        msg = f"barcode {raw_barcode} is non-standard"
+        print(f"*** {msg}")
+        logger.warning(msg)
+    return raw_barcode
 
 
 def strip_unwanted(pattern: str, raw: str) -> str:
@@ -1312,7 +1320,7 @@ def apply_marc_logic(record: Record) -> list[Field]:
     marc_record: list[Field] = []
     # print(record, type(record))
     # fields_to_deploy: tuple[tuple[Callable[[Record], Result], bool]] = (
-    fields_to_deploy: tuple[tuple[Callable, bool]] = (
+    fields_to_deploy: tuple[tuple[Callable, bool], ...] = (
         (build_leader, True),
         (build_040, True),
         (build_336, True),

@@ -2,6 +2,7 @@ INFO:
 >>>>> processing: artCats.ernstHauswedell.xlsx
 INFO:
 >>>>> processing: AuctionCats.jeremyWarrenDonation.xlsx
+WARNING:barcode 8241170 is non-standard
 INFO:Advisory: assuming country name ('uk') has already been processed.
 INFO:Advisory: assuming country name ('uk') has already been processed.
 INFO:Advisory: assuming country name ('uk') has already been processed.
