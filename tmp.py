@@ -13,34 +13,8 @@ import logging
 # from pydantic import BaseModel, field_validator, ValidationError
 # from pydantic_extra_types.isbn import ISBN
 
-
-def make_directory(directory_path):
-    directory = Path(directory_path)
-    if not directory.is_dir():
-        directory.mkdir()
-        try:
-            directory.mkdir()
-            logger.info(f"Directory '{directory}' created successfully.")
-        except FileExistsError:
-            logger.info(f"Directory '{directory}' already exists.")
-        except PermissionError:
-            logger.warning(f"Permission denied: Unable to create '{directory}'.")
-        except Exception as e:
-            logger.warning(f"An error occurred: {e}")
-    return directory
-
-
-excel_file_path = "excel_files"
-excel_file_dir = make_directory(excel_file_path)
-output_files_path = "marc21_files"
-output_file_dir = make_directory(output_files_path)
-
-
 logging.basicConfig(
-    filename = output_file_dir / "output.log",
-    # filename = Path(excel_file_path) / "output.log",
-    # filename="output.log",
-    # filename = excel_file_path,
+    filename="output.log",
     filemode="w",
     encoding="utf-8",
     format="%(levelname)s:%(message)s",
@@ -754,7 +728,7 @@ def check_for_detailed_region(country: str, state:str, place: str) -> str:
                 region = tmp
         if region == "xxa": # unlike other 3-digit regions, australia only has 2 digits :S
             region = "at"
-        # print(f"**** {country}, {state} ({len(state)}), {place}  -> {region}")
+        print(f"**** {country}, {state} ({len(state)}), {place}  -> {region}")
     return region
 
 
@@ -825,22 +799,15 @@ def norm_barcode(raw_barcode: str) -> str:
 
 
 def strip_unwanted(pattern: str, raw: str) -> str:
-  clean = re.sub(pattern, "", raw).strip()
+  clean = re.sub(pattern, "", raw)
   return clean
 
 
 def check_for_approx(raw_string: str) -> tuple[str, bool]:
-    """
-    take a question mark in any position to mean the information is not certain.
-    """
     clean = str(raw_string).strip()
-    # if clean[-1] == "?":
-    #     is_approx = True
-    #     clean = clean[:-1].rstrip()
-    if re.search("/?", clean):
+    if clean[-1] == "?":
         is_approx = True
-        # clean = re.sub("/?", "", clean).strip()
-        clean = clean.replace("?", "").strip()
+        clean = clean[:-1].rstrip()
     else:
         is_approx = False
     clean = trim_mistaken_decimals(clean)
@@ -1430,9 +1397,8 @@ def apply_marc_logic(record: Record) -> list[Field]:
 
 
 def write_mrk_files(data: list[list[str]], file_name: str="output.mrk") -> None:
-    # mrk_file_dir = make_directory("marc21_files")
-    # out_file = mrk_file_dir / file_name
-    out_file = output_file_dir / file_name
+    mrk_file_dir = make_directory("marc21_files")
+    out_file = mrk_file_dir / file_name
     with open(out_file, "w", encoding="utf-8") as f:
         for record in data:
             for field in record:
@@ -1441,16 +1407,34 @@ def write_mrk_files(data: list[list[str]], file_name: str="output.mrk") -> None:
 
 
 def write_mrc_binaries(data: list[list[Field]], file_name: str="output.mrc") -> None:
-    # mrc_file_dir = make_directory("marc21_files")
-    out_file = output_file_dir / file_name
+    mrc_file_dir = make_directory("marc21_files")
+    out_file = mrc_file_dir / file_name
     flat_records = make_binary(data)
     # print(flat_records)
+    # with open(out_file, "w", encoding="utf-8") as f:
     with open(out_file, "wb") as f:
         for line in flat_records:
             # f.write(line.encode("utf-8"))
             f.write(line)
 
 
+def make_directory(directory_path):
+    directory = Path(directory_path)
+    if not directory.is_dir():
+        directory.mkdir()
+        try:
+            directory.mkdir()
+            logger.info(f"Directory '{directory}' created successfully.")
+        except FileExistsError:
+            logger.info(f"Directory '{directory}' already exists.")
+        except PermissionError:
+            logger.warning(f"Permission denied: Unable to create '{directory}'.")
+        except Exception as e:
+            logger.warning(f"An error occurred: {e}")
+    return directory
+
+
+# def make_binary(data: list[list[Field]]) -> list[str]:
 def make_binary(data: list[list[Field]]) -> list[bytes]:
     # GS = "@"
     # RS = "%"
@@ -1514,15 +1498,14 @@ def run() -> None:
     # process_excel_file(Path("excel_files") / "chinese_test.xlsx")
     # quit()
     # for file in Path("excel_files").glob("*.xls?"):
-    # for file in Path("excel_files").glob("*.xls[xm]"):
-    for file in Path(excel_file_path).glob("*.xls[xm]"):
+    for file in Path("excel_files").glob("*.xls[xm]"):
         logger.info(f"\n>>>>> processing: {file.name}")
         print(f">>>>> processing: {file.name}")
         raw_rows = parse_excel_into_rows(file)
         records = parse_rows_into_records(raw_rows)
         del raw_rows
         marc_records = build_marc_records(records)
-        # pprint(records)
+        pprint(records)
         del records
         write_marc_files(marc_records, file)
         # make_marc_files(raw_records, file)
