@@ -3,8 +3,8 @@ from dataclasses import dataclass, fields
 from abc import ABC, abstractmethod
 from typing import TypeAlias
 from collections.abc import Callable
-from pprint import pprint
-import sys
+# from pprint import pprint
+# import sys
 from datetime import datetime, timezone
 import re
 from pathlib import Path
@@ -62,7 +62,7 @@ logging.basicConfig(
 #     """
 #     barcode standard is probably 'code 39 modulo 43', but a simple regex is enough as we never include the final checksum character
 #     """
-#     barcode: str 
+#     barcode: str
 #     @field_validator("barcode")
 #     @classmethod
 #     def validate_barcode_or_empty(cls, barcode: str) -> str:
@@ -87,7 +87,7 @@ class Serialisable(ABC):
 # class String(Serialisable):
 #     def to_string(self) -> str:
 #         return str(self)
-    
+
 #     def to_mrc(self) -> str:
 #         return str(self)
 
@@ -276,7 +276,7 @@ class Record:
     pub_year_is_approx: bool
     extent_is_approx: bool
     timestamp: datetime
-    
+
     sequence_number: int
     links: list[Field | None]
 
@@ -309,7 +309,8 @@ def norm_langs(raw: str) -> list[str]:
         "dutch": "dut",
     }
     list_of_languages = []
-    languages: list[str] = raw.replace(" ", "").lower().split("/")
+    # languages: list[str] = raw.replace(" ", "").lower().split("/")
+    languages: list[str] = re.split('[,/]', raw.replace(" ", "").lower())
     for language in languages:
         try:
             list_of_languages.append(language_codes[language])
@@ -737,7 +738,7 @@ def norm_state(state_raw: str) -> str:
         return norm_place(state_raw)
     else:
         return ""
-    
+
 
 def check_for_detailed_region(country: str, state:str, place: str) -> str:
     """
@@ -758,7 +759,7 @@ def check_for_detailed_region(country: str, state:str, place: str) -> str:
     return region
 
 
-def check_mandatory_fields_exist(record: Record) -> bool:
+def validate_record(record: Record) -> bool:
     mandatory = [
         "sublib",
         "langs",
@@ -773,12 +774,17 @@ def check_mandatory_fields_exist(record: Record) -> bool:
         "barcode",
     ]
     is_valid = False
+    place_state_check = 0
     for i, field in enumerate(fields(record)):
         name = field.name
         is_valid = True
+        if name in ("place", "state"):
+            place_state_check += 1
         if name in mandatory and not getattr(record, name):
             logger.warning(f"Record no. {i} is missing the mandatory field '{name}'.")
             is_valid = False
+    if not place_state_check:
+        logger.warning("A record must have EITHER a place OR a state specified; this lacks both.")
     return is_valid
 
 
@@ -805,7 +811,6 @@ def norm_year(year_raw: str) -> str:
     return year
 
 
-# TODO: write sensible validation
 def norm_isbn(raw_isbn: str) -> str:
     isbn = re.sub(r"[\s-]", "", raw_isbn)
     if 10 > len(isbn) > 13:
@@ -815,7 +820,6 @@ def norm_isbn(raw_isbn: str) -> str:
     return isbn
 
 
-# TODO: write sensible validation
 def norm_barcode(raw_barcode: str) -> str:
     if not re.match(r"^[367]\d{8}", raw_barcode):
         msg = f"barcode {raw_barcode} is non-standard"
@@ -855,7 +859,7 @@ def trim_mistaken_decimals(string: str) -> str:
 
 # TODO: what should this return if nothing? None or []?
 def fill_with_blanks(string: str, limit: int = 3) -> list[Blank]:
-    return [Blank() for n in range(limit - len(string))]
+    return [Blank() for _ in range(limit - len(string))]
 
 
 def create_date_list(dates_raw: str) -> list[str]:
@@ -964,7 +968,7 @@ def parse_row(row: list[str], current_time: datetime) -> Record:
         sequence_number = 1,
         links = [],
     )
-    check_mandatory_fields_exist(record)
+    validate_record(record)
     return record
 
 
@@ -1413,7 +1417,7 @@ def apply_marc_logic(record: Record) -> list[Field]:
         (build_020, False), # isbn
         (build_024, False), # sales code
         (build_041, False), # language if not monolingual
-        (build_246, False), # parallel title 
+        (build_246, False), # parallel title
         (build_500, False), # general notes
     )
     for builder, is_mandatory in fields_to_deploy:
