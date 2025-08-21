@@ -10,3 +10,8 @@ dependencies = [
     "pydantic-extra-types>=2.10.5",
     "pytest>=8.4.1",
 ]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.17.1",
+]

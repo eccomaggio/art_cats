@@ -266,6 +266,7 @@ class Record:
     size: int
     series_title: str
     series_enum: str
+    volume: str
     notes: str
     sales_code: str
     sale_dates: list[str]
@@ -927,6 +928,7 @@ def parse_row(row: list[str], current_time: datetime) -> Record:
     size = norm_size(next(cols))
     series_title = next(cols)
     series_enum = next(cols)
+    volume = next(cols)
     note = next(cols)
     sale_code = next(cols)
     date_of_sale = create_date_list(next(cols))
@@ -954,6 +956,7 @@ def parse_row(row: list[str], current_time: datetime) -> Record:
         size,
         series_title,
         series_enum,
+        volume,
         note,
         sale_code,
         date_of_sale,
@@ -1181,12 +1184,28 @@ def build_904(record: Record) -> Result:
     return result
 
 
+# def build_020(record: Record) -> Result:  ##optional
+#     """isbn (if exists)"""
+#     tag = 20
+#     i1, i2 = -1, -1
+#     if record.isbn:
+#         result = Result(Field(tag, i1, i2, Content(Subfield(record.isbn, "a"))), None)
+#     else:
+#         result = Result(None, (tag, ""))
+#     return result
+
+
 def build_020(record: Record) -> Result:  ##optional
     """isbn (if exists)"""
     tag = 20
     i1, i2 = -1, -1
+    contents: list[atoms] = []
     if record.isbn:
-        result = Result(Field(tag, i1, i2, Content(Subfield(record.isbn, "a"))), None)
+        contents.append(Subfield(record.isbn, "a"))
+    if record.volume:
+        contents.append(Subfield(f"volume {record.volume}", "q"))
+    if contents:
+        result = Result(Field(tag, i1, i2, Content(contents)), None)
     else:
         result = Result(None, (tag, ""))
     return result
