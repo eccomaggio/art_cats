@@ -1,6 +1,9 @@
 from openpyxl import load_workbook  # type: ignore
+from pymarc import Record as PyRecord, Indicators, Field, Subfield, Indicators, TextWriter, MARCWriter
 from dataclasses import dataclass, fields
-from typing import List, Any
+from abc import ABC, abstractmethod
+from typing import TypeAlias
+from collections.abc import Callable
 # from pprint import pprint
 from datetime import datetime, timezone
 import re
@@ -8,14 +11,38 @@ from pathlib import Path
 import logging
 
 
-# logger = logging.getLogger(__name__)
+def make_directory(directory_path):
+    directory = Path(directory_path)
+    if not directory.is_dir():
+        directory.mkdir()
+        try:
+            directory.mkdir()
+            logger.info(f"Directory '{directory}' created successfully.")
+        except FileExistsError:
+            logger.info(f"Directory '{directory}' already exists.")
+        except PermissionError:
+            logger.warning(f"Permission denied: Unable to create '{directory}'.")
+        except Exception as e:
+            logger.warning(f"An error occurred: {e}")
+    return directory
+
+
+excel_file_path = "excel_files"
+excel_file_dir = make_directory(excel_file_path)
+output_files_path = "marc21_files"
+output_file_dir = make_directory(output_files_path)
+
+
 logging.basicConfig(
-    filename="output.log",
+    filename = output_file_dir / "output.log",
     filemode="w",
     encoding="utf-8",
     format="%(levelname)s:%(message)s",
     level=logging.DEBUG
     )
+
+
+worksheet_row: TypeAlias = list[str]
 
 
 @dataclass
@@ -27,13 +54,15 @@ class Title:
 @dataclass
 class Record:
     sublib: str
-    langs: List[str]
+    langs: list[str]
     isbn: str
     title: Title
     subtitle: Title
     parallel_title: Title
     parallel_subtitle: Title
-    country: str
+    country_name: str
+    country_code: str
+    state: str
     place: str
     publisher: str
     pub_year: str
@@ -42,22 +71,29 @@ class Record:
     size: int
     series_title: str
     series_enum: str
+    volume: str
     notes: str
     sales_code: str
-    sale_dates: List[str]
+    sale_dates: list[str]
     hol_notes: str
     donation: str
     barcode: str
+
     pub_year_is_approx: bool
     extent_is_approx: bool
     timestamp: datetime
+
     sequence_number: int
-    links: List
+    links: list[Field | None]
 
 
 @dataclass
 class Result:
-    is_ok:tuple[int, Any] | None    ## [field number, returned data]
+    """
+    holds the successfully acquired data OR
+    the MARC field tag (as an int) where the problem occurred and an error message
+    """
+    is_ok: list[Field] | Field | None    ## MARC field or list of same
     is_err:tuple[int, str] | None   ## [field number, error message]
 
 
@@ -79,19 +115,29 @@ def norm_langs(raw: str) -> list[str]:
         "dutch": "dut",
     }
     list_of_languages = []
-    languages: List[str] = raw.replace(" ", "").lower().split("/")
+    languages: list[str] = re.split('[,/]', raw.replace(" ", "").lower())
     for language in languages:
         try:
             list_of_languages.append(language_codes[language])
         except KeyError as e:
             logger.warning(f"Warning: {e} is not a recognised language; it has been passed on unchanged.")
             list_of_languages.append(language)
-    # result = [lang_list[lang.strip().lower()] for lang in raw.split("/")]
     return list_of_languages
+
+
+def norm_geographical_name(name: str) -> str:
+    return re.sub(r"[\s\-\.']", "", name).lower()
 
 
 def norm_country(country_raw: str) -> str:
     country_codes = {
+        "usa": "xxu",
+        "unitedstates": "xxu",
+        "unitedstatesofamerica": "xxu",
+        "uk": "xxk",
+        "unitedkingdom": "xxk",
+        "canada": "xxc",
+        "australia": "xxa", # dummy 3-digit value to trigger detail; swap to "at" at output
         "algeria": "ae",
         "angola": "ao",
         "benin": "dm",
@@ -373,8 +419,7 @@ def norm_country(country_raw: str) -> str:
         "variousplaces": "vp",
         "various": "vp",
     }
-    # normed_country = country.replace(" ", "").lower()
-    country = re.sub(r"[\s\-']", "", country_raw).lower()
+    country = norm_geographical_name(country_raw)
     try:
         result = country_codes[country]
     except KeyError as e:
@@ -395,7 +440,6 @@ def norm_place(place_raw: str) -> str:
 
         "alberta": "abc",
         "britishcolumbia": "bcc",
-        "bc": "bcc",
         "manitoba": "mbc",
         "newbrunswick": "nkc",
         "newfoundland": "nfc",
@@ -407,7 +451,7 @@ def norm_place(place_raw: str) -> str:
         "ontario": "onc",
         "princeedwardisland": "pic",
         "québecprovince": "quc",
-        "quebéc": "quc",
+        "québec": "quc",
         "quebecprovince": "quc",
         "quebec": "quc",
         "saskatchewan": "snc",
@@ -477,8 +521,84 @@ def norm_place(place_raw: str) -> str:
         "newsouthwales": "xna",
         "northernterritory": "xoa",
         "southaustralia": "xra",
+
+        "al": "alu",
+        "ak": "aku",
+        "az": "azu",
+        "ar": "aru",
+        "ca": "cau",
+        "co": "cou",
+        "ct": "ctu",
+        "de": "deu",
+        "dc": "dcu",
+        "fl": "flu",
+        "ga": "gau",
+        "hi": "hiu",
+        "id": "idu",
+        "il": "ilu",
+        "in": "inu",
+        "ia": "iau",
+        "ks": "ksu",
+        "ky": "kyu",
+        "la": "lau",
+        "me": "meu",
+        "md": "mdu",
+        "ma": "mau",
+        "mi": "miu",
+        "mn": "mnu",
+        "ms": "msu",
+        "mo": "mou",
+        "mt": "mtu",
+        "ne": "nbu",
+        "nv": "nvu",
+        "nh": "nhu",
+        "nj": "nju",
+        "nm": "nmu",
+        "ny": "nyu",
+        "nc": "ncu",
+        "nd": "ndu",
+        "oh": "ohu",
+        "ok": "oku",
+        "or": "oru",
+        "pa": "pau",
+        "ri": "riu",
+        "sc": "scu",
+        "sd": "sdu",
+        "tn": "tnu",
+        "tx": "txu",
+        "ut": "utu",
+        "vt": "vtu",
+        "va": "vau",
+        "wa": "wau",
+        "wv": "wvu",
+        "wi": "wiu",
+        "wy": "wyu",
+
+        "act": "aca",
+        "qld": "qea",
+        "tas": "tma",
+        "vic": "vra",
+        "wa": "wea",
+        "nsw": "xna",
+        "nt": "xoa",
+        "sa": "xra",
+
+        "alb": "abc",
+        "bc": "bcc",
+        "man": "mbc",
+        "nb": "nkc",
+        "nfd": "nfc",
+        "lab": "nfc",
+        "nwt": "ntc",
+        "ns": "nsc",
+        "nu": "nuc",
+        "ont": "onc",
+        "pei": "pic",
+        "que": "quc",
+        "sas": "snc",
+        "yt": "ykc",
     }
-    place = place_raw.replace(" ", "").lower()
+    place = norm_geographical_name(place_raw)
     try:
         result = long_country_codes[place]
     except KeyError as e:
@@ -490,18 +610,38 @@ def norm_place(place_raw: str) -> str:
     return result
 
 
-def get_long_country_code(country: str, place: str) -> str:
-    ## USA & UK return a detailed 3-digit code based on local region
-    return place.strip().lower() if len(place) == 3 else country
+def norm_state(state_raw: str) -> str:
+    if state_raw:
+        return norm_place(state_raw)
+    else:
+        return ""
 
 
-def validate(record: Record) -> bool:
+def check_for_detailed_region(country: str, state:str, place: str) -> str:
+    """
+    The country code for USA, Australia, Canada & UK is 3 digit, based on the state
+    Australia, however, only has a 2 digit superordinate code ('at')
+    """
+    region = country
+    if len(region) == 3:
+        if state:
+            region = norm_state(state)
+        else:
+            tmp = norm_state(place)    # maybe state entered as city by mistake
+            if len(tmp) == 3:
+                region = tmp
+        if region == "xxa": # unlike other 3-digit regions, australia only has 2 digits :S
+            region = "at"
+    return region
+
+
+def validate_record(record: Record) -> bool:
     mandatory = [
         "sublib",
         "langs",
         "title",
         "country",
-        "place",
+        # "place",
         "publisher",
         "pub_year",
         "extent",
@@ -509,14 +649,19 @@ def validate(record: Record) -> bool:
         "sale_dates",
         "barcode",
     ]
+    is_valid = False
+    place_state_check = 0
     for i, field in enumerate(fields(record)):
         name = field.name
         is_valid = True
+        if name in ("place", "state"):
+            place_state_check += 1
         if name in mandatory and not getattr(record, name):
             logger.warning(f"Record no. {i} is missing the mandatory field '{name}'.")
             is_valid = False
+    if not place_state_check:
+        logger.warning("A record must have EITHER a place OR a state specified; this lacks both.")
     return is_valid
-    # return record
 
 
 def norm_dates(raw: str) -> list[str]:
@@ -531,10 +676,14 @@ def norm_size(raw: str) -> int:
 
 def norm_pages(pages_raw: str) -> str:
     pages = strip_unwanted(r"pages|\[|\]", pages_raw)
-    if "approximately" in pages:
-        pages = re.sub(r"\s?approximately\s?", "", pages)
+    if "approx" in pages:
+        pages = re.sub(r"[^\d]", "", pages)
         pages = pages + "?"
     return pages
+
+
+def norm_copyright(raw: str) -> str:
+    return raw.replace("©","").strip()
 
 
 def norm_year(year_raw: str) -> str:
@@ -542,22 +691,34 @@ def norm_year(year_raw: str) -> str:
     return year
 
 
+def norm_isbn(raw_isbn: str) -> str:
+    isbn = re.sub(r"[\s-]", "", raw_isbn)
+    if 10 > len(isbn) > 13:
+        msg = f"isbn {raw_isbn} is non-standard"
+        print(f"*** {msg}")
+        logger.warning(msg)
+    return isbn
+
+
+def norm_barcode(raw_barcode: str) -> str:
+    if not re.match(r"^[367]\d{8}", raw_barcode):
+        msg = f"barcode {raw_barcode} is non-standard"
+        print(f"*** {msg}")
+        logger.warning(msg)
+    return raw_barcode
+
+
 def strip_unwanted(pattern: str, raw: str) -> str:
-  clean = re.sub(pattern, "", raw)
+  clean = re.sub(pattern, "", raw).strip()
   return clean
 
 
 def check_for_approx(raw_string: str) -> tuple[str, bool]:
-    clean = str(raw_string).strip()
-    if clean[-1] == "?":
-        is_approx = True
-        # raw = trim_mistaken_decimals(raw[:-1].rstrip())
-        clean = clean[:-1].rstrip()
-    else:
-        is_approx = False
-    clean = trim_mistaken_decimals(clean)
-    return (clean, is_approx)
-
+    """
+    take a question mark in any position to mean the information is not certain.
+    """
+    clean, is_approx =  re.subn(r"\?", "", raw_string)
+    return (clean.strip(), bool(is_approx))
 
 def trim_mistaken_decimals(string: str) -> str:
     if string.endswith(".0"):
@@ -571,7 +732,7 @@ def create_date_list(dates_raw: str) -> list[str]:
     return dates
 
 
-def extract_from_excel(excel_sheet) -> list[list[str]]:
+def extract_from_excel(excel_sheet) -> list[worksheet_row]:
     """
     excel seems pretty random in how it assigns string/int/float, so...
     this routine coerces everything into a string,
@@ -594,81 +755,105 @@ def extract_from_excel(excel_sheet) -> list[list[str]]:
     return sheet
 
 
-# def parse_spreadsheet_data(raw_data) -> list[Record]:
-#     sheet = extract_from_excel(raw_data)
-def parse_spreadsheet(sheet: list[list[str]]) -> list[Record]:
+def parse_rows_into_records(sheet: list[worksheet_row]) -> list[Record]:
     current_time = datetime.now()
     records = []
     for row in sheet:
-        cols = iter(row)
-        sublibrary = next(cols)
-        langs = norm_langs(next(cols))
-        isbn = next(cols)
-        title = Title(next(cols), next(cols))
-        subtitle = Title(next(cols), next(cols))
-        parallel_title = Title(next(cols), next(cols))
-        parallel_subtitle = Title(next(cols), next(cols))
-        country = norm_country(next(cols))
-        place = next(cols)
-        publisher = next(cols)
-        pub_date, pub_date_is_approx = check_for_approx(norm_year(next(cols)))
-        copyright_ = next(cols).replace("©","").strip()
-        extent, extent_is_approx = check_for_approx(norm_pages(next(cols)))
-        size = norm_size(next(cols))
-        series_title = next(cols)
-        series_enum = next(cols)
-        note = next(cols)
-        sale_code = next(cols)
-        date_of_sale = create_date_list(next(cols))
-        hol_notes = next(cols)
-        donation = next(cols)
-        barcode = next(cols)
-
-        record = Record(
-            sublibrary,
-            langs,
-            isbn,
-            title,
-            subtitle,
-            parallel_title,
-            parallel_subtitle,
-            country,
-            place,
-            publisher,
-            pub_date,
-            copyright_,
-            extent,
-            size,
-            series_title,
-            series_enum,
-            note,
-            sale_code,
-            date_of_sale,
-            hol_notes,
-            donation,
-            barcode,
-
-            pub_date_is_approx,
-            extent_is_approx,
-            current_time,
-
-            sequence_number = 1,
-            links = [880, []],
-        )
-        validate(record)
+        record = parse_row(row, current_time)
         records.append(record)
-        # pprint(record: Record) -> Result
     return records
 
 
-def build_000(record: Record) -> Result:
+def parse_row(row: list[str], current_time: datetime) -> Record:
+    cols = iter(row)
+    sublibrary = next(cols)
+    langs = norm_langs(next(cols))
+    isbn = norm_isbn(next(cols))
+    title = Title(next(cols), next(cols))
+    subtitle = Title(next(cols), next(cols))
+    parallel_title = Title(next(cols), next(cols))
+    parallel_subtitle = Title(next(cols), next(cols))
+    country_name = next(cols)
+    country = norm_country(country_name)
+    state = next(cols)
+    place = next(cols)
+    publisher = next(cols)
+    pub_date, pub_date_is_approx = check_for_approx(norm_year(next(cols)))
+    copyright_ = norm_copyright(next(cols))
+    extent, extent_is_approx = check_for_approx(norm_pages(next(cols)))
+    size = norm_size(next(cols))
+    series_title = next(cols)
+    series_enum = next(cols)
+    volume = next(cols)
+    note = next(cols)
+    sale_code = next(cols)
+    date_of_sale = create_date_list(next(cols))
+    hol_notes = next(cols)
+    donation = next(cols)
+    barcode = norm_barcode(next(cols))
+
+    record = Record(
+        sublibrary,
+        langs,
+        isbn,
+        title,
+        subtitle,
+        parallel_title,
+        parallel_subtitle,
+        country_name,
+        country,
+        state,
+        place,
+        publisher,
+        pub_date,
+        copyright_,
+        extent,
+        size,
+        series_title,
+        series_enum,
+        volume,
+        note,
+        sale_code,
+        date_of_sale,
+        hol_notes,
+        donation,
+        barcode,
+
+        pub_date_is_approx,
+        extent_is_approx,
+        current_time,
+
+        sequence_number = 1,
+        links = [],
+    )
+    validate_record(record)
+    return record
+
+
+
+def build_leader(record: Record) -> Result:
     """leader (0 is only for sorting purposes; should read 'LDR')"""
     tag = 0
-    i1, i2 = variable_control_field()
-    content = "00000nam a22000003i 4500"
-    error = None
-    success = (tag, [[i1, i2, content]])
-    return Result(success, error)
+    # content = "00000nam a22000003i 4500"
+    record_len_00 = "00000"  # placeholder for record length
+    record_status_05 = "n"  # "n" for new record
+    record_type_06 = "a"  # "a" for language material
+    biblio_level_07 = "m"  # "m" for monograph
+    type_of_ctrl_08 = " "  # no type of control
+    char_coding_09 = "a"  # Unicode
+    indicator_count_10 = "2"  # no indicators
+    subfield_count_11 = "2"  # no subfields
+    base_address_12 = "00000"  # placeholder for base address of data
+    encoding_level_17 = "3" # "3" for abbrieviated level
+    cat_conventions_18 = "i"  # ISBD punctuation included
+    multipart_indic_19 = " "  # no multipart
+    field_len_20 = "4"  # placeholder for length of field
+    start_character_len_21 = "5"  # placeholder for length of starting character
+    implementation_len_22 = "0"  # placeholder for implementation length
+    undefined_23 = "0"  # placeholder for undefined length
+    data: str = record_len_00 + record_status_05 + record_type_06 + biblio_level_07 + type_of_ctrl_08 + char_coding_09 + indicator_count_10 + subfield_count_11 + base_address_12 + encoding_level_17 + cat_conventions_18 + multipart_indic_19 + field_len_20 + start_character_len_21 + implementation_len_22 + undefined_23
+    success = Field(tag=seq_num(tag), data=data)
+    return Result(success, None)
 
 
 def build_005(record: Record) -> Result:
@@ -676,53 +861,46 @@ def build_005(record: Record) -> Result:
     "The date requires 8 numeric characters in the pattern yyyymmdd. The time requires 8 numeric characters in the pattern hhmmss.f, expressed in terms of the 24-hour (00-23) clock."
     """
     tag = 5
-    i1, i2 = variable_control_field()
-    error = None
     standard_time = record.timestamp.now(timezone.utc)
     ## NB: python produces this format: YYYY-MM-DD HH:MM:SS.ffffff, e.g. 2020-09-30 12:37:55.713351
     timestamp = str(standard_time).translate(str.maketrans("", "", " -:"))[:16]
-    success = (tag, [[i1, i2, timestamp]])
-    return Result(success, error)
+    result = Result(Field(tag=seq_num(tag), data=timestamp), None)
+    return result
 
 
 def build_008(record: Record) -> Result:
-    """pub year & main language?"""
+    """place & year of pub & main language"""
     tag = 8
-    i1, i2 = variable_control_field()
-    error = None
     t = record.timestamp
     date_entered_on_file = str(t.year)[2:] + str(t.month).zfill(2) + str(t.day).zfill(2)
     pub_status = "s"
     date_1 = record.pub_year
     date_2 = 4 * "|"
-    place_of_pub = record.country.ljust(3, "\\")
-    books_configuration = (14*"|") + "\\" + (2*"|")
-    lang = record.langs[0].ljust(3, "\\")
+    region = check_for_detailed_region(record.country_code, record.state, record.place)
+    place_of_pub = f"{region:{"\\"}<3}"
+    books_configuration = [14*"|", " ", 2*"|"]
+    lang = f"{record.langs[0]:{"\\"}<3}"
     modified_and_cataloging = 2*"|"
-    content = f"{date_entered_on_file}{pub_status}{date_1}{date_2}{place_of_pub}{books_configuration}{lang}{modified_and_cataloging}"
-    success = (tag, [[i1, i2, content]])
-    return Result(success, error)
-
+    content = [date_entered_on_file,  pub_status,  date_1,  date_2,  place_of_pub,  *books_configuration,  lang,  modified_and_cataloging]
+    result = Result(Field(tag=seq_num(tag), data="".join(content)), None)
+    return result
 
 def build_033(record: Record) -> Result:
     """sales dates"""
     tag = 33
-    i1 = 0 if len(record.sale_dates) == 1 else 1
-    i2 = -1
-    content = "".join([sub_field("a", date) for date in record.sale_dates])
-    error = None
-    success = (tag, [[i1, i2, content]])
-    return Result(success, error)
+    i1 = "0" if len(record.sale_dates) == 1 else "1"
+    i2 = "\\"
+    result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2),subfields= [Subfield(value=date, code="a") for date in record.sale_dates]), None)
+    return result
 
 
 def build_040(record: Record) -> Result:
-    """catalogued in Oxford"""
+    """Cataloguing source (Oxford)"""
     tag = 40
-    i1, i2 = -1, -1
-    content = sub_field("a", "UkOxU") + sub_field("b", "eng") + sub_field("e", "rda") + sub_field("c", "UkOxU")
-    error = None
-    success = (tag, [[i1, i2, content]])
-    return Result(success, error)
+    i1, i2 = "\\", "\\"
+    content = [Subfield(value="UkOxU", code="a"), Subfield(value="eng", code="b"), Subfield(value="rda", code="e"), Subfield(value="UkOxU", code="c")]
+    result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
+    return result
 
 
 def build_245(record: Record) -> Result:
@@ -730,8 +908,9 @@ def build_245(record: Record) -> Result:
     Field 245 ends with a period, even when another mark of punctuation is present, unless the last word in the field is an abbreviation, initial/letter, or data that ends with final punctuation.
     """
     tag = 245
-    i1 = 0
-    nonfiling = 0
+    i1 = "0"
+    nonfiling = "0"
+    error = None
     has_chinese_title = bool(record.title.transliteration)
     if has_chinese_title:
         title, subtitle = record.title.transliteration, record.subtitle.transliteration
@@ -739,144 +918,159 @@ def build_245(record: Record) -> Result:
     else:
         title, subtitle = record.title.original, record.subtitle.original
         nonfiling, title = check_for_nonfiling(title)
-        linkage = ""
+        linkage = None
     i2 = nonfiling
     if title:
-        title = f"{sub_field("a", title)}"
+        content =[]
+        if linkage:
+            content.append(linkage)
         if subtitle:
-            title += f" :{sub_field("b", subtitle)}"
-        title = end_field_with_period(title)
-        content = f"{linkage}{title}"
-        success = (tag, [[i1, i2, content]])
-        error = None
+            # title += " :"
+            content.append(Subfield(value=title + " :", code="a"))
+            subtitle = add_period_if_necessary(subtitle)
+            content.append(Subfield(value=subtitle, code="b"))
+        else:
+           title = add_period_if_necessary(title)
+           content.append(Subfield(value=title, code="a"))
+        result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), error)
     else:
-        success = None
-        error = (tag, "")
-    return Result(success, error)
+        result = Result(None, (tag, ""))
+    return result
 
 
-def deal_with_chinese_titles(record: Record, title_original: str, subtitle_original: str | None, i1: int, i2: int, tag: int):
-    chinese_title = sub_field("a", title_original)
+def deal_with_chinese_titles(record: Record, title_original: str, subtitle_original: str | None, i1: str, i2: str, tag: int) -> Subfield:
     if subtitle_original:
-        chinese_title += " :" + sub_field("b", subtitle_original)
-    if tag == 245:
-        chinese_title = end_field_with_period(chinese_title)
+        if tag == 245:
+            subtitle_original = add_period_if_necessary(subtitle_original)
+        full_title =[Subfield(value=title_original + " :", code="a"), Subfield(value=subtitle_original, code="b")]
+    else:
+        if tag == 245:
+            title_original = add_period_if_necessary(title_original)
+        full_title = [Subfield(value=title_original, code="a")]
     sequence_number = seq_num(record.sequence_number)
-    linkage = sub_field("6", f"880-{sequence_number}")
-    build_880(record, chinese_title, i1, i2, tag, sequence_number)
+    linkage = Subfield(value=f"880-{sequence_number}", code="6")
+    build_880(record, full_title, i1, i2, tag, sequence_number)
     return linkage
 
 
 def build_264(record: Record) -> Result:
     """publisher & copyright"""
     tag = 264
-    i1 = -1
-    i2 = 1  ## "Publication: Field contains a statement relating to the publication, release, or issuing of a resource."
+    i1 = "\\"
+    i2 = "1"  ## "Publication: Field contains a statement relating to the publication, release, or issuing of a resource."
     # i2 = 0  ## "Production: Field contains a statement relating to the production of a resource."
-    content = []
     error = None
-    place = sub_field("a", record.place)
-    publisher = sub_field("b", record.publisher)
-    pub_year = sub_field("c", f"[{record.pub_year}?]" if record.pub_year_is_approx else record.pub_year)
-    content.append([i1, i2, f"{place} :{publisher},{pub_year}"])
+    copyright_symbol = "\u00a9"
+    place_name = record.place if record.place else record.state
+    place = Subfield(value=place_name + " :", code="a")
+    publisher = Subfield(value=record.publisher + ",", code="b")
+    pub_year = Subfield(value=f"[{record.pub_year}?]" if record.pub_year_is_approx else record.pub_year, code="c")
+    content = Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=[place, publisher, pub_year])
     if record.copyright:
-        ## i2=4 ("Copyright notice date") subfield $c ("Date of production, publication, distribution, manufacture, or copyright notice (R)")
-        # _copyright = sub_field("a", f"\u00a9 {record.copyright}")
-        # content.append([i1, -1, _copyright])
-        _copyright = sub_field("c", f"\u00a9 {record.copyright}")
-        content.append([i1, 4, _copyright])
-    success = (tag, content)
-    return Result(success, error)
+        _copyright = Field(tag=seq_num(tag), indicators=Indicators(i1, "4"), subfields=[Subfield(value=f"{copyright_symbol} {record.copyright}", code="c")])
+        result  = Result([content, _copyright], error)
+    else:
+        result = Result(content, error)
+    return result
 
 
 def build_300(record: Record) -> Result:
     """physical description"""
     tag = 300
-    i1, i2 = -1, -1 ## "undefined"
-    error = None
-    pages = sub_field("a", f"approximately {record.extent} pages" if record.extent_is_approx else f"{record.extent} pages")
-    size = sub_field("c", f"{record.size} cm")
-    content = f"{pages} ;{size}"
-    success = (tag, [[i1, i2, content]])
-    return Result((success), error)
+    i1, i2 = "\\", "\\" ## "undefined"
+    tmp = f"approximately {record.extent} pages" if record.extent_is_approx else f"{record.extent} pages"
+    pages = Subfield(value=tmp + " ;", code="a")
+    size = Subfield(value=f"{record.size} cm", code="c")
+    content = [pages, size]
+    result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
+    return result
 
 
 def build_336(record: Record) -> Result:
     """content type (boilerplate)"""
     tag = 336
-    error = None
-    content = sub_field("a", "text") + sub_field(2, "rdacontent")
-    success = (tag, [[-1, -1,content]])
-    return Result(success, error)
+    i1, i2 = "\\", "\\"
+    content = [Subfield(value="text", code="a"), Subfield(value="rdacontent", code="2")]
+    result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
+    return result
 
 
 def build_337(record: Record) -> Result:
     """media type (boilerplate)"""
     tag = 337
-    i1, i2 = -1, -1
-    content = sub_field("a", "unmediated") + sub_field(2, "rdamedia")
-    error = None
-    success = (tag, [[i1, i2, content]])
-    return Result(success, error)
+    i1, i2 = "\\", "\\"
+    content = [Subfield(value="unmediated", code="a"), Subfield(value="rdamedia", code="2")]
+    result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
+    return result
 
 
 def build_338(record: Record) -> Result:
     """carrier type (boilerplate)"""
     tag = 338
-    i1, i2 = -1, -1
-    content =  sub_field("a", "volume") + sub_field(2, "rdacarrier")
-    error = None
-    success = (tag, [[i1, i2, content]])
-    return Result(success, error)
+    i1, i2 = "\\", "\\"
+    content =  [Subfield(value="volume", code="a"), Subfield(value="rdacarrier", code="2")]
+    result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
+    return result
 
 
 def build_876(record: Record) -> Result:
-    """notes / donations / barcode"""
+    """
+    notes / donations / barcode
+    mandatory because of barcode
+    """
     tag = 876
-    i1, i2 = -1, -1
-    error = None
-    notes = record.hol_notes
-    # notes = record.notes
-    notes = sub_field("z", notes) if notes else ""
-    donation = sub_field("z", record.donation) if record.donation else ""
-    barcode = sub_field("p", record.barcode) if record.barcode else ""
-    content = f"{barcode}{donation}{notes}"
-    success = (tag, [[i1, i2, content]])
-    return Result(success, error)
+    i1, i2 = "\\", "\\"
+    content = [Subfield(value=record.barcode, code="p")]
+    if (donation := record.donation):
+        content.append(Subfield(value=donation, code="z"))
+    if (notes := record.hol_notes):
+        content.append(Subfield(value=notes, code="z"))
+    result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
+    return result
 
 
 def build_904(record: Record) -> Result:
     """authority (boilerplate)"""
     tag = 904
-    i1, i2 = -1, -1
-    error = None
-    content =  sub_field("a", "Oxford Local Record")
-    success = (tag, [[i1, i2,content]])
-    return Result(success, error)
+    content =  [Subfield(value="Oxford Local Record", code="a")]
+    result = Result(Field(tag=seq_num(tag), indicators=Indicators("\\", "\\"), subfields=content), None)
+    return result
+
+
+def build_020(record: Record) -> Result:  ##optional
+    """isbn (if exists)"""
+    tag = 20
+    i1, i2 = "\\", "\\"
+    contents = []
+    if record.isbn:
+        contents.append(Subfield(value=record.isbn, code="a"))
+    if record.volume:
+        contents.append(Subfield(value=f"volume {record.volume}", code="q"))
+    if contents:
+        result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=contents), None)
+    else:
+        result = Result(None, (tag, ""))
+    return result
 
 
 def build_024(record: Record) -> Result:  ##optional
     """sales code (if exists)"""
     tag = 24
-    i1 = 8
-    i2 = -1
+    i1 = "8"
+    i2 = "\\"
     if record.sales_code:
-        content = sub_field("a", record.sales_code)
-        success = (tag, [[i1, i2, content]])
-        error = None
+        result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=[Subfield(value=record.sales_code, code="a")]), None)
     else:
-        error = (tag, "")
-        success = None
-    return Result(success, error)
+        result = Result(None, (tag, ""))
+    return result
 
 
 def build_041(record: Record) -> Result:  ##optional
     """language codes if not monolingual"""
     tag = 41
     # i1 = -1  ## "No information...as to whether the item is or includes a translation."
-    i1 = 0  ## "Item not a translation/does not include a translation."
-    i2 = -1  ## "(followed by) MARC language code"
-    content = ""
+    i1 = "0"  ## "Item not a translation/does not include a translation."
+    i2 = "\\"  ## "(followed by) MARC language code"
     is_multi_lingual = len(record.langs) > 1
     if is_multi_lingual:
         ## OPTION 1
@@ -892,13 +1086,10 @@ def build_041(record: Record) -> Result:  ##optional
         # lang_list = f"$a{"$a".join(others)}$h{main_lang}"
         # result = (build_field(41, [[i1,i2, lang_list]]))
         ## OPTION 3
-        content = "".join([sub_field("a", language) for language in record.langs])
-        success = (tag, [[i1,i2, content]])
-        error = None
+        result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=[Subfield(value=language, code="a") for language in record.langs]), None)
     else:
-        error = (tag, "")
-        success = None
-    return Result(success, error)
+        result = Result(None, (tag, ""))
+    return result
 
 
 def build_246(record: Record) -> Result:  ##optional
@@ -908,123 +1099,116 @@ def build_246(record: Record) -> Result:  ##optional
     NB: Initial articles (e.g., The, La) are generally not recorded in field 246 unless the intent is to file on the article. [https://www.loc.gov/marc/bibliographic/bd246.html]
     """
     tag = 246
-    i1 = 3  ## "No note, added entry"
-    i2 = 1  ## parallel title
+    i1 = "3"  ## "No note, added entry"
+    i2 = "1"  ## parallel title
     has_parallel_title = bool(record.parallel_title.original)
     has_chinese_parallel_title = bool(record.parallel_title.transliteration)
-    # sequence_number = seq_num(record.sequence_number)
-    linkage = ""
+    linkage: Subfield | None = None
     if has_chinese_parallel_title:
         parallel_title = record.parallel_title.transliteration
         parallel_subtitle = record.parallel_subtitle.transliteration
         linkage = deal_with_chinese_titles(record, record.parallel_title.original, record.parallel_subtitle.original, i1, i2, tag)
     elif has_parallel_title:  ## (i.e. Western script)
-        parallel_title, parallel_subtitle = record.parallel_title.original, record.parallel_subtitle.original
+        parallel_title = record.parallel_title.original
+        parallel_subtitle = record.parallel_subtitle.original
     else:
         parallel_title, parallel_subtitle = "", ""
     if parallel_title:
-        content = f"{linkage}{sub_field("a", parallel_title)}"
+        parallel_title_sub = Subfield(value=parallel_title, code="a")
+        if linkage:
+           content = [linkage, parallel_title_sub]
+        else:
+            content = [parallel_title_sub]
         if parallel_subtitle:
-            content += f" :{sub_field("b", parallel_subtitle)}"
-        success = (tag, [[i1, i2, content]])
-        error = None
+            content.append(Subfield(value=parallel_subtitle, code="b"))
+        result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
     else:
-        success = None
-        error = (tag, "")
-    return Result(success, error)
+        result = Result(None, (tag, ""))
+    return result
 
 
 def build_490(record: Record) -> Result:  ## optional
     """Series Statement"""
     tag = 490
-    i1 = 0  ## Series not traced: No series added entry is desired for the series.
-    i2 = -1
-    series_title = sub_field("a", record.series_title if record.series_title else "")
-    series_enum = sub_field("v", record.series_enum if record.series_enum else "")
-    sep = " ;" if series_title and series_enum else ""
-    content = series_title + sep + series_enum
-    # if content:
-    if record.series_title or record.series_enum:
-        error = None
-        success = (tag, [[i1, i2, content ]])
+    i1 = "0"  ## Series not traced: No series added entry is desired for the series.
+    i2 = "\\"
+    series_title_text = record.series_title
+    series_enum_text = record.series_enum
+    if series_title_text and series_enum_text:
+        series_title_text += " ;"
+    series_title = Subfield(value=series_title_text, code="a")
+    series_enum = Subfield(value=series_enum_text, code="v")
+    content = []
+    if series_title_text and series_enum_text:
+        content.extend([series_title, series_enum])
+    elif series_title_text:
+        content.append(series_title)
+    elif series_enum_text:
+        content.append(series_enum)
+    if content:
+        result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
     else:
-        success = None
-        error = (tag, "")
-    return Result(success, error)
+        result = Result(None, (tag, ""))
+    return result
 
 
 def build_500(record: Record) -> Result:  ##optional
     """general notes
     Punctuation - Field 500 ends with a period unless another mark of punctuation is present. If the final subfield is subfield $5, the mark of punctuation precedes that subfield.
     """
-    # notes = record.hol_notes
     tag = 500
-    i1 = -1
-    i2 = -1
-    if record.notes:
-        content = sub_field("a", end_field_with_period(record.notes))
-        success = (tag, [[i1, i2, content]])
-        error = None
+    i1, i2 = "\\", "\\"
+    notes_text = add_period_if_necessary(record.notes)
+    if notes_text:
+        result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=[Subfield(value=notes_text, code="a")]), None)
     else:
-        success = None
-        error = (tag, "")
-    return Result(success, error)
+        result = Result(None, (tag, ""))
+    return result
+
 
 # TODO: need an item with both a Chinese title and subtitle to test the sequence number logic.
-def build_880(record, title, i1, i2, caller, sequence_number) -> None:  ##optional
+def build_880(record: Record, title_subfield, i1: str, i2: str, caller: int, sequence_number: str) -> None:  ##optional
     """Alternate Graphic Representation
-    NB. unlike the other fields, this isn't called directly but by the linked field"""
+    NB. unlike the other fields, this isn't called directly but by the linked field
+    looks like: =880  31$6246-01$a中國書畫、陶瓷及藝術品拍賣會
+    """
+    tag = 880
     record.sequence_number += 1
-    content = sub_field(6, f"{expand_tag(caller)}-{sequence_number}") + title
-    record.links[1].append(build_line(line_prefix(880), i1, i2, content))
+    content = [Subfield(value=f"{str(caller):{"\\"}<3}-{sequence_number}", code="6")]
+    content.extend(title_subfield)
+    field = Field(tag=str(tag), indicators=Indicators(i1, i2), subfields=content)
+    record.links.append(field)
 
 
-def build_field(result: Result) -> tuple[int, list[str]] | None:
+def add_period_if_necessary(title: str) -> str:
+    if title and title.rstrip()[-1] not in "?!.":
+            title += "."
+    return title
+
+
+def check_if_mandatory(result: Result, is_mandatory: bool) -> list[Field] | None:
     """
     silently suppresses optional fields if empty;
     stops with error if required field is empty
     """
-    optional_fields = [
-        24,     ## sales code
-        41,     ## language if not monolingual
-        246,    ## parallel title
-        490,    ## series statement
-        500,    ## general notes
-        880,    ## transliteration
-    ]
-    output: tuple[int, list[str]] | None = None
+    output: list[Field] | None = None
     if result.is_err:
         numeric_tag, error_msg = result.is_err
-        if numeric_tag not in optional_fields:
+        output = None
+        if is_mandatory:
             msg = error_msg if error_msg else f"Data for required field {str(numeric_tag).zfill(3)} is required."
             logger.warning(msg)
             raise MissingFieldError(msg)
     elif result.is_ok:
-        numeric_tag, data = result.is_ok
-        lines = []
-        for line in data:
-            i1 = expand_indicators(line[0])
-            i2 = expand_indicators(line[1])
-            content = line[2]
-            if content:
-                lines.append(build_line(line_prefix(numeric_tag), i1, i2, content))
-            else:
-                break
-        output = (numeric_tag, lines) if lines else None
+        if isinstance(result.is_ok, list):
+            output = result.is_ok
+        else:
+            output = [result.is_ok]
     return output
 
 
-def build_line(line_start, i1, i2, content) -> str:
-    return (f"{line_start}{i1}{i2}{content}")
-
-
-def sub_field(code: int|str, content: str) -> str:
-    sep = "$"
-    return f"{sep}{code}{content}"
-
-
 def line_prefix(numeric_tag: int) -> str:
-    display_tag = "LDR" if numeric_tag == 0 else seq_num(numeric_tag)
+    display_tag = seq_num(numeric_tag)
     return f"={expand_tag(display_tag)}  "
 
 
@@ -1036,20 +1220,7 @@ def seq_num(sequence_number: int) -> str:
     return str(sequence_number).zfill(2)
 
 
-def expand_indicators(indicator: int) -> str:
-    expansions: dict[int, str] = {-2: "", -1: "\\"}
-    expansion: str = expansions.get(indicator, str(indicator))
-    return expansion
-
-
-def end_field_with_period(text: str) -> str:
-    text = text.strip()
-    if text and text[-1] not in "?!.":
-        text = text + "."
-    return text
-
-
-def check_for_nonfiling(title: str, lang: str="eng") -> tuple[int,str]:
+def check_for_nonfiling(title: str, lang: str="eng") -> tuple[str,str]:
     """
     Check for manual nonfiling indicator (@@) & returns its position + extracts it from title string
     if no manual indication, check for nonfiling words according to language of title"""
@@ -1068,14 +1239,14 @@ def check_for_nonfiling(title: str, lang: str="eng") -> tuple[int,str]:
     }
     break_char = "@@"
     nonfiling = title.find(break_char)
-    result = (0, title)
+    result = ("0", title)
     if nonfiling > 0:
-        result = (nonfiling, title.replace(break_char, "", 1))
+        result = (str(nonfiling), title.replace(break_char, "", 1))
     else:
         for article in nonfiling_words[lang]:
             test = re.match(f"({article}\\s?[^\\w\\s]?)\\w", title, re.I)
             if test:
-                result = (test.span()[1] - 1, title)
+                result = (str(test.span()[1] - 1), title)
                 break
     return result
 
@@ -1084,91 +1255,100 @@ def variable_control_field():
     return (-2, -2)
 
 
-def build_mark_records(records: list[Record]) -> list[list]:
-    mark_records: list = []
+def build_pymarc_records(records: list[Record]) -> list[PyRecord]:
+    marc_records: list[PyRecord] = []
     for record in records:
-        mark_record: list = []
-        for builder in (
-            build_000,
-            build_040,
-            build_336,
-            build_337,
-            build_338,
-            build_904,
-            build_005,
-            build_008,
-            build_033,
-            build_245,
-            build_264,
-            build_300,
-            build_490,
-            build_876,
-            build_024,
-            build_041,
-            build_246,
-            build_500,
-        ):
-            field = build_field(builder(record))
-            if field:
-                mark_record.append(field)
-        if record.links:
-            mark_record.append(record.links)
-        mark_record.sort(key=lambda field: field[0])
-        mark_records.append(mark_record)
-    return mark_records
+        # print(record, type(record))
+        # pprint(record)
+        marc = apply_marc_logic(record)
+        marc_records.append(marc)
+    return marc_records
 
 
-def write_mrk_file(data, file_name: str="output.mrk") -> None:
-    mrk_file_dir = Path("mrk_files")
-    if not mrk_file_dir.is_dir():
-        mrk_file_dir.mkdir()
-        try:
-            mrk_file_dir.mkdir()
-            logger.info(f"Directory '{mrk_file_dir}' created successfully.")
-        except FileExistsError:
-            logger.info(f"Directory '{mrk_file_dir}' already exists.")
-        except PermissionError:
-            logger.warning(f"Permission denied: Unable to create '{mrk_file_dir}'.")
-        except Exception as e:
-            logger.warning(f"An error occurred: {e}")
-    out_file = mrk_file_dir / file_name
-    with open(out_file, "w", encoding="utf-8") as f:
-        for record in data:
-            for field in record:
-                for line in field[1]:
-                    # print(line)
-                    f.write(line)
-                    f.write("\n")
-            f.write("\n")
+def apply_marc_logic(record: Record) -> PyRecord:
+    fields_to_deploy: tuple[tuple[Callable, bool], ...] = (
+        (build_leader, True),
+        (build_040, True),
+        (build_336, True),
+        (build_337, True),
+        (build_338, True),
+        (build_904, True),
+        (build_005, True),
+        (build_008, True),
+        (build_033, True),
+        (build_245, True),
+        (build_264, True),
+        (build_300, True),
+        (build_490, False), # series statement
+        (build_876, True),
+        (build_020, False), # isbn
+        (build_024, False), # sales code
+        (build_041, False), # language if not monolingual
+        (build_246, False), # parallel title
+        (build_500, False), # general notes
+    )
+    pymarc_record = PyRecord()
+    for builder, is_mandatory in fields_to_deploy:
+        returned_fields = check_if_mandatory(builder(record), is_mandatory)
+        if returned_fields:
+            if builder.__name__ == "build_leader":
+                # print(f">>>>>>>>>?>>>>>> {returned_fields[0].value()}")
+                pymarc_record.leader = returned_fields[0].value()
+            else:
+                for pyfield in returned_fields:
+                    pymarc_record.add_ordered_field(pyfield)
+    for link in record.links:
+        pymarc_record.add_ordered_field(link)
+    return pymarc_record
 
 
-def get_records(excel_file_address: Path) -> list[Record]:
+def write_mrk_files(data: list[PyRecord], file_name: str="output.mrk") -> None:
+    out_file = output_file_dir / file_name
+    writer = TextWriter(open(out_file, 'wt'))
+    for record in data:
+        writer.write(record)
+    writer.close()
+
+
+def write_mrc_binaries(data: list[PyRecord], file_name: str="output.mrc") -> None:
+    out_file = output_file_dir / file_name
+    writer = MARCWriter(open(out_file,'wb'))
+    for record in data:
+        writer.write(record)
+    writer.close()
+
+
+def parse_excel_into_rows(excel_file_address: Path) -> list[worksheet_row]:
     excel_file_name = str(excel_file_address.resolve())
     worksheet = load_workbook(filename=excel_file_name).active
-    data = extract_from_excel(worksheet)
-    records = parse_spreadsheet(data)
-    return records
+    raw_rows = extract_from_excel(worksheet)
+    return raw_rows
 
 
-def process_excel_file(excel_file_address: Path) -> None:
-    records = get_records(excel_file_address)
-    mark_record_set = build_mark_records(records)
-    write_mrk_file(mark_record_set, f"{excel_file_address.stem}.paul.mrk")
-    # pprint(records)
-    # for count, record in enumerate(records):
-    #     print(f">> {count}")
-    #     pprint(record: Record) -> Result
+def write_marc_files(records:list[PyRecord], excel_file_address: Path) -> None:
+    print(f"Writing {len(records)} record(s)...")
+    write_mrk_files(records, f"{excel_file_address.stem}.pypaul.mrk")
+    write_mrc_binaries(records, f"{excel_file_address.stem}.pypaul.mrc")
 
 
-# def main() -> None:
 def run() -> None:
-    # process_excel_file(sys.argv[1])
-    for file in Path("excel_files").glob("*.xlsx"):
-        logger.info(f"\n>>>>> processing: {file.name}")
-        print(f">>>>> processing: {file.name}")
-        process_excel_file(file)
+    for file in Path(excel_file_path).glob("*.xls[xm]"):
+        msg = f"\n>>>>> processing: {file.name}"
+        logger.info(msg)
+        print(msg)
+        raw_rows = parse_excel_into_rows(file)
+        records = parse_rows_into_records(raw_rows)
+        del raw_rows
+        pymarc_records = build_pymarc_records(records)
+        del records
+        # for record in pymarc_records:
+        #     print(record)
+        write_marc_files(pymarc_records, file)
 
-logger = logging.getLogger(__name__)
 
-# if __name__ == "__main__":
-#     main()
+def main() -> None:
+    run()
+
+if __name__ == "__main__":
+    logger = logging.getLogger(__name__)
+    main()
