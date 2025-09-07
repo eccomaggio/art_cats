@@ -31,6 +31,7 @@ excel_file_path = "excel_files"
 excel_file_dir = make_directory(excel_file_path)
 output_files_path = "marc21_files"
 output_file_dir = make_directory(output_files_path)
+BLANK = " "
 
 
 logging.basicConfig(
@@ -834,19 +835,20 @@ def parse_row(row: list[str], current_time: datetime) -> Record:
 def build_leader(record: Record) -> Result:
     """leader (0 is only for sorting purposes; should read 'LDR')"""
     tag = 0
+    # blank = " "
     # content = "00000nam a22000003i 4500"
     record_len_00 = "00000"  # placeholder for record length
     record_status_05 = "n"  # "n" for new record
     record_type_06 = "a"  # "a" for language material
     biblio_level_07 = "m"  # "m" for monograph
-    type_of_ctrl_08 = " "  # no type of control
+    type_of_ctrl_08 = BLANK  # no type of control
     char_coding_09 = "a"  # Unicode
     indicator_count_10 = "2"  # no indicators
     subfield_count_11 = "2"  # no subfields
     base_address_12 = "00000"  # placeholder for base address of data
     encoding_level_17 = "3" # "3" for abbrieviated level
     cat_conventions_18 = "i"  # ISBD punctuation included
-    multipart_indic_19 = " "  # no multipart
+    multipart_indic_19 = BLANK  # no multipart
     field_len_20 = "4"  # placeholder for length of field
     start_character_len_21 = "5"  # placeholder for length of starting character
     implementation_len_22 = "0"  # placeholder for implementation length
@@ -889,7 +891,8 @@ def build_033(record: Record) -> Result:
     """sales dates"""
     tag = 33
     i1 = "0" if len(record.sale_dates) == 1 else "1"
-    i2 = "\\"
+    # i2 = "\\"
+    i2 = BLANK
     result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2),subfields= [Subfield(value=date, code="a") for date in record.sale_dates]), None)
     return result
 
@@ -897,7 +900,8 @@ def build_033(record: Record) -> Result:
 def build_040(record: Record) -> Result:
     """Cataloguing source (Oxford)"""
     tag = 40
-    i1, i2 = "\\", "\\"
+    # i1, i2 = "\\", "\\"
+    i1, i2 = BLANK, BLANK
     content = [Subfield(value="UkOxU", code="a"), Subfield(value="eng", code="b"), Subfield(value="rda", code="e"), Subfield(value="UkOxU", code="c")]
     result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
     return result
@@ -956,7 +960,8 @@ def deal_with_chinese_titles(record: Record, title_original: str, subtitle_origi
 def build_264(record: Record) -> Result:
     """publisher & copyright"""
     tag = 264
-    i1 = "\\"
+    # i1 = "\\"
+    i1 = BLANK
     i2 = "1"  ## "Publication: Field contains a statement relating to the publication, release, or issuing of a resource."
     # i2 = 0  ## "Production: Field contains a statement relating to the production of a resource."
     error = None
@@ -977,7 +982,8 @@ def build_264(record: Record) -> Result:
 def build_300(record: Record) -> Result:
     """physical description"""
     tag = 300
-    i1, i2 = "\\", "\\" ## "undefined"
+    # i1, i2 = "\\", "\\"
+    i1, i2 = BLANK, BLANK ## "undefined"
     tmp = f"approximately {record.extent} pages" if record.extent_is_approx else f"{record.extent} pages"
     pages = Subfield(value=tmp + " ;", code="a")
     size = Subfield(value=f"{record.size} cm", code="c")
@@ -989,7 +995,8 @@ def build_300(record: Record) -> Result:
 def build_336(record: Record) -> Result:
     """content type (boilerplate)"""
     tag = 336
-    i1, i2 = "\\", "\\"
+    # i1, i2 = "\\", "\\"
+    i1, i2 = BLANK, BLANK
     content = [Subfield(value="text", code="a"), Subfield(value="rdacontent", code="2")]
     result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
     return result
@@ -998,7 +1005,8 @@ def build_336(record: Record) -> Result:
 def build_337(record: Record) -> Result:
     """media type (boilerplate)"""
     tag = 337
-    i1, i2 = "\\", "\\"
+    # i1, i2 = "\\", "\\"
+    i1, i2 = BLANK, BLANK
     content = [Subfield(value="unmediated", code="a"), Subfield(value="rdamedia", code="2")]
     result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
     return result
@@ -1007,7 +1015,8 @@ def build_337(record: Record) -> Result:
 def build_338(record: Record) -> Result:
     """carrier type (boilerplate)"""
     tag = 338
-    i1, i2 = "\\", "\\"
+    # i1, i2 = "\\", "\\"
+    i1, i2 = BLANK, BLANK
     content =  [Subfield(value="volume", code="a"), Subfield(value="rdacarrier", code="2")]
     result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
     return result
@@ -1019,7 +1028,8 @@ def build_876(record: Record) -> Result:
     mandatory because of barcode
     """
     tag = 876
-    i1, i2 = "\\", "\\"
+    # i1, i2 = "\\", "\\"
+    i1, i2 = BLANK, BLANK
     content = [Subfield(value=record.barcode, code="p")]
     if (donation := record.donation):
         content.append(Subfield(value=donation, code="z"))
@@ -1040,7 +1050,8 @@ def build_904(record: Record) -> Result:
 def build_020(record: Record) -> Result:  ##optional
     """isbn (if exists)"""
     tag = 20
-    i1, i2 = "\\", "\\"
+    # i1, i2 = "\\", "\\"
+    i1, i2 = BLANK, BLANK
     contents = []
     if record.isbn:
         contents.append(Subfield(value=record.isbn, code="a"))
@@ -1057,7 +1068,8 @@ def build_024(record: Record) -> Result:  ##optional
     """sales code (if exists)"""
     tag = 24
     i1 = "8"
-    i2 = "\\"
+    # i2 = "\\"
+    i2 = BLANK
     if record.sales_code:
         result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=[Subfield(value=record.sales_code, code="a")]), None)
     else:
@@ -1070,7 +1082,8 @@ def build_041(record: Record) -> Result:  ##optional
     tag = 41
     # i1 = -1  ## "No information...as to whether the item is or includes a translation."
     i1 = "0"  ## "Item not a translation/does not include a translation."
-    i2 = "\\"  ## "(followed by) MARC language code"
+    # i2 = "\\"  ## "(followed by) MARC language code"
+    i2 = BLANK  ## "(followed by) MARC language code"
     is_multi_lingual = len(record.langs) > 1
     if is_multi_lingual:
         ## OPTION 1
@@ -1131,7 +1144,8 @@ def build_490(record: Record) -> Result:  ## optional
     """Series Statement"""
     tag = 490
     i1 = "0"  ## Series not traced: No series added entry is desired for the series.
-    i2 = "\\"
+    # i2 = "\\"
+    i2 = BLANK
     series_title_text = record.series_title
     series_enum_text = record.series_enum
     if series_title_text and series_enum_text:
@@ -1157,7 +1171,8 @@ def build_500(record: Record) -> Result:  ##optional
     Punctuation - Field 500 ends with a period unless another mark of punctuation is present. If the final subfield is subfield $5, the mark of punctuation precedes that subfield.
     """
     tag = 500
-    i1, i2 = "\\", "\\"
+    # i1, i2 = "\\", "\\"
+    i1, i2 = BLANK, BLANK
     notes_text = add_period_if_necessary(record.notes)
     if notes_text:
         result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=[Subfield(value=notes_text, code="a")]), None)

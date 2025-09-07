@@ -71,43 +71,35 @@ logging.basicConfig(
 #         return barcode
 
 
-class Serialisable(ABC):
+class Serializable(ABC):
     @abstractmethod
-    def to_string(self) -> str:
-        pass
-
-    @abstractmethod
-    def to_mrc(self) -> str:
+    def serialize(self, mode="str") -> str:
         pass
 
 @dataclass
-class Blank(Serialisable):
-    def to_string(self) -> str:
-        return "\\"
+class Blank(Serializable):
+    def serialize(self, mode="str") -> str:
+        if mode == "str":
+            return "\\"
+        else:
+            return " "
 
-    def to_mrc(self) -> str:
-        return " "
 
-
-class Punctuation(Serialisable):
+class Punctuation(Serializable):
     """ISBD punctuation used between subfields
     https://www.itsmarc.com/crs/mergedprojects/lcri/lcri/1_0c__lcri.htm
     """
-    # def __init__(self, contents: str, code: str|int = ""):
     def __init__(self, contents: str):
         self.contents = contents
 
-    def to_string(self) -> str:
+    def serialize(self, mode="str") -> str:
         return self.contents
-
-    def to_mrc(self) -> str:
-        return self.to_string()
 
     def __str__(self):
         return f"<contents='{self.contents}'>"
 
 
-class Subfield(Serialisable):
+class Subfield(Serializable):
     """Subfield class for MARC21 subfields.
     -1 means the content is a single string (for variable control fields)
     if code is omitted, assumed to be -1 (i.e. no code)
@@ -117,21 +109,12 @@ class Subfield(Serialisable):
         self.code: str = code if isinstance(code, str) else str(code)
         self.data: str = data
 
-    def to_string(self) -> str:
-        """Returns the subfield as a string."""
-        delimiter = "$"
+    def serialize(self, mode="str") -> str:
+        delimiter = "$" if mode == "str" else chr(31)
         if self.code == "-1":
             prefix = ""
         else:
             prefix = f"{delimiter}{self.code}"
-        return f"{prefix}{self.data}"
-
-    def to_mrc(self) -> str:
-        US = chr(31)
-        if self.code == "-1":
-            prefix = ""
-        else:
-            prefix = f"{US}{self.code}"
         return f"{prefix}{self.data}"
 
     def __repl__(self):
@@ -142,7 +125,7 @@ atoms: TypeAlias = Subfield | Punctuation | Blank
 worksheet_row: TypeAlias = list[str]
 
 
-class Content(Serialisable):
+class Content(Serializable):
     def __init__(self, contents: atoms | list[atoms]):
         self.contents = []
         if not isinstance(contents, list):
@@ -154,13 +137,10 @@ class Content(Serialisable):
                 self.contents.append(el)
 
     def can_accept_period(self) -> bool:
-        return bool(self.to_string().rstrip()[-1] not in "?!.")
+        return bool(self.serialize().rstrip()[-1] not in "?!.")
 
-    def to_string(self) -> str:
-        return "".join([el.to_string() for el in self.contents])
-
-    def to_mrc(self) -> str:
-        return "".join([el.to_mrc() for el in self.contents])
+    def serialize(self, mode="str") -> str:
+        return "".join([el.serialize(mode) for el in self.contents])
 
     def add(self, content: list[atoms] | atoms):
         if isinstance(content, list):
@@ -176,7 +156,7 @@ class Content(Serialisable):
         return f"[{result}]"
 
 
-class Field(Serialisable):
+class Field(Serializable):
     """Variable Control/Data Field class for MARC21 variable control fields.
     -1 or Blank = indicator placeholder (various realizations, e.g. space or backslash)
     -2 = no indicator"""
@@ -187,36 +167,35 @@ class Field(Serialisable):
         self.contents = contents if isinstance(contents, Content) else Content(contents)
         self.ordering: int = ordering ## sort is used to order the fields when there are more than one of the same tag
 
-    def expand_indicators(self, indicator: int | Blank, expand_to_binary=False) -> str:
+    def expand_indicators(self, indicator: int | Blank, mode="str") -> str:
         if indicator == -1:
             indicator = Blank()
         if isinstance(indicator, Blank):
-            expansion = indicator.to_mrc() if expand_to_binary else indicator.to_string()
+            expansion = indicator.serialize(mode)
         elif indicator == -2:
             expansion = ""
         else:
             expansion = str(indicator)
         return expansion
+
     def can_accept_period(self) -> bool:
         return self.contents.can_accept_period()
 
-    def to_string(self) -> str:
-        """Returns the variable control field as a string."""
-        tag = "LDR" if self.tag == 0 else str(self.tag).zfill(3)
-        i1 = self.expand_indicators(self.i1)
-        i2 = self.expand_indicators(self.i2)
-        contents = self.contents.to_string()
-        return f"={tag}  {i1}{i2}{contents}"
-
-    def to_mrc(self) -> str:
-        RS = chr(30)
-        i1 = self.expand_indicators(self.i1, True)
-        i2 = self.expand_indicators(self.i2, True)
-        contents = self.contents.to_mrc()
-        return f"{i1}{i2}{contents}{RS}"
+    def serialize(self, mode="str") -> str:
+        i1 = self.expand_indicators(self.i1, mode)
+        i2 = self.expand_indicators(self.i2, mode)
+        contents = self.contents.serialize(mode)
+        tag, end = "", ""
+        if mode == "str":
+            tag = "LDR" if self.tag == 0 else str(self.tag).zfill(3)
+            tag = f"={tag}  "
+        else:
+            end = chr(30)
+        return f"{tag}{i1}{i2}{contents}{end}"
 
     def __repr__(self):
-        return f"={self.tag}@{self.ordering} ({self.i1})({self.i2}) {self.contents.to_string()}"
+        # return f"={self.tag}@{self.ordering} ({self.i1})({self.i2}) {self.contents.to_string()}"
+        return f"={self.tag}@{self.ordering} ({self.i1})({self.i2}) {self.contents.serialize()}"
 
 marc_record: TypeAlias = list[Field]
 
@@ -1010,31 +989,56 @@ def parse_row(row: list[str], current_time: datetime) -> Record:
 
 
 
+# def build_leader(record: Record) -> Result:
+#     """leader (0 is only for sorting purposes; should read 'LDR')"""
+#     tag = 0
+#     blank = " "
+#     i1, i2 = variable_control_field()
+#     # content = "00000nam a22000003i 4500"
+#     record_len_00 = "00000"  # placeholder for record length
+#     record_status_05 = "n"  # "n" for new record
+#     record_type_06 = "a"  # "a" for language material
+#     biblio_level_07 = "m"  # "m" for monograph
+#     type_of_ctrl_08 = blank # no type of control
+#     char_coding_09 = "a"  # Unicode
+#     indicator_count_10 = "2"  # no indicators
+#     subfield_count_11 = "2"  # no subfields
+#     base_address_12 = "00000"  # placeholder for base address of data
+#     encoding_level_17 = "3" # "3" for abbrieviated level
+#     cat_conventions_18 = "i"  # ISBD punctuation included
+#     multipart_indic_19 = blank # no multipart
+#     field_len_20 = "4"  # placeholder for length of field
+#     start_character_len_21 = "5"  # placeholder for length of starting character
+#     implementation_len_22 = "0"  # placeholder for implementation length
+#     undefined_23 = "0"  # placeholder for undefined length
+#     data: str = record_len_00 + record_status_05 + record_type_06 + biblio_level_07 + type_of_ctrl_08 + char_coding_09 + indicator_count_10 + subfield_count_11 + base_address_12 + encoding_level_17 + cat_conventions_18 + multipart_indic_19 + field_len_20 + start_character_len_21 + implementation_len_22 + undefined_23
+#     success = Field(tag, i1, i2, [Subfield(data)])
+#     return Result(success, None)
+
 def build_leader(record: Record) -> Result:
     """leader (0 is only for sorting purposes; should read 'LDR')"""
     tag = 0
+    blank = " "
     i1, i2 = variable_control_field()
     # content = "00000nam a22000003i 4500"
     record_len_00 = "00000"  # placeholder for record length
     record_status_05 = "n"  # "n" for new record
     record_type_06 = "a"  # "a" for language material
     biblio_level_07 = "m"  # "m" for monograph
-    type_of_ctrl_08 = " "  # no type of control
+    type_of_ctrl_08 = Blank()  # no type of control
     char_coding_09 = "a"  # Unicode
     indicator_count_10 = "2"  # no indicators
     subfield_count_11 = "2"  # no subfields
     base_address_12 = "00000"  # placeholder for base address of data
     encoding_level_17 = "3" # "3" for abbrieviated level
     cat_conventions_18 = "i"  # ISBD punctuation included
-    multipart_indic_19 = " "  # no multipart
+    multipart_indic_19 = Blank()  # no multipart
     field_len_20 = "4"  # placeholder for length of field
     start_character_len_21 = "5"  # placeholder for length of starting character
     implementation_len_22 = "0"  # placeholder for implementation length
     undefined_23 = "0"  # placeholder for undefined length
-    data: str = record_len_00 + record_status_05 + record_type_06 + biblio_level_07 + type_of_ctrl_08 + char_coding_09 + indicator_count_10 + subfield_count_11 + base_address_12 + encoding_level_17 + cat_conventions_18 + multipart_indic_19 + field_len_20 + start_character_len_21 + implementation_len_22 + undefined_23
-    success = Field(tag, i1, i2, [Subfield(data)])
+    success = Field(tag, i1, i2, [Subfield(record_len_00 + record_status_05 + record_type_06 + biblio_level_07), type_of_ctrl_08, Subfield(char_coding_09 + indicator_count_10 + subfield_count_11 + base_address_12 + encoding_level_17 + cat_conventions_18), multipart_indic_19, Subfield(field_len_20 + start_character_len_21 + implementation_len_22 + undefined_23)])
     return Result(success, None)
-
 
 def build_005(record: Record) -> Result:
     """date & time of transaction
@@ -1506,17 +1510,20 @@ def make_binary(data: list[list[Field]]) -> list[bytes]:
         current_start_position = 0
         for field in record[1:]:
             tag = field.tag
-            contents = field.to_mrc()
+            # contents = field.to_mrc()
+            contents = field.serialize("mrc")
             line_length_with_final_record_separator = len(contents.encode("utf-8"))
             fields.append((tag, contents, line_length_with_final_record_separator, current_start_position))
             current_start_position += line_length_with_final_record_separator
-        tmp.append((leader.to_mrc(), fields))
+        # tmp.append((leader.to_mrc(), fields))
+        tmp.append((leader.serialize("mrc"), fields))
 
         directory = [(f[0], f[2], f[3]) for f in fields]
-        leader_length = int(24)
-        directory_length = (12 * len(directory)) + 1
-        base_address_of_data = leader_length + directory_length
-        logical_record_length = base_address_of_data + directory[-1][2]
+        # leader_length = int(24)
+        leader_length:int = 24
+        directory_length:int = (12 * len(directory)) + 1
+        base_address_of_data:int = leader_length + directory_length
+        logical_record_length:int = base_address_of_data + directory[-1][2]
         leader_mrc = f"{str(logical_record_length).zfill(5)}nam a22{str(base_address_of_data).zfill(5)}3i 4500"
         directory_mrc = "".join([f"{str(f[0]).zfill(3)}{str(f[1]).zfill(4)}{str(f[2]).zfill(5)}" for f in directory]) + RS
         fields_mrc = "".join([f[1] for f in fields])
@@ -1535,11 +1542,13 @@ def parse_excel_into_rows(excel_file_address: Path) -> list[worksheet_row]:
 def flatten_fields_to_strings(input: list[marc_record]) -> list[list[str]]:
     output: list[list[str]] = []
     for i, record in enumerate(input):
-        output.append([field.to_string() for field in record])
+        # output.append([field.to_string() for field in record])
+        output.append([field.serialize() for field in record])
     return output
 
 
 def write_marc_files(records:list[marc_record], excel_file_address: Path) -> None:
+    # records_with_string_fields = flatten_fields_to_strings(records)
     records_with_string_fields = flatten_fields_to_strings(records)
     print(f"Writing {len(records)} record(s)...")
     write_mrk_files(records_with_string_fields, f"{excel_file_address.stem}.paul.mrk")
