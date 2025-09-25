@@ -19,6 +19,7 @@ args = parser.parse_args()
 class Brick():
     height: int
     width: int
+    # role: str
 
 @dataclass
 class Slot():
@@ -52,7 +53,7 @@ class Grid():
         self.grid_width = width
         self.rows:list[list[Slot]] = []
         self.add_a_row()
-        self.bricks_with_coordinates: dict[int,tuple[int, int, Brick]] = {}
+        self.widget_info: dict[int,tuple[int, int, Brick, str]] = {}    ## dict[key: (start_row, start_col, Brick(height, width), title)]
 
     def exceeds_grid_length(self, zero_index:int) -> bool:
         return zero_index + 1 > len(self.rows)
@@ -116,8 +117,10 @@ class Grid():
                 # print(f"... ({next_row},{col_index}):{fit_status}->{brick} [check 1st line of brick]")
         return fit_status
 
-    def add_brick(self, brick:Brick, brick_id:int, row_index: int, col_index: int) -> None:
-        self.bricks_with_coordinates[brick_id] = (row_index, col_index, brick)
+    def add_brick(self, brick:Brick, brick_id:int, row_index: int, col_index: int, title:str="") -> None:
+        if not title:
+            title = f"input #{brick_id}"
+        self.widget_info[brick_id] = (row_index, col_index, brick, title)
         for row_increment in range(brick.height):
             for col_increment in range(self.grid_width - col_index):
                 new_col = col_index + col_increment
@@ -136,16 +139,10 @@ class Grid():
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, grid):
+    def __init__(self, grid:Grid):
         super().__init__()
         self.setWindowTitle("Input form")
         layout = QGridLayout()
-
-        self.zero = QLineEdit()
-        self.one = QLineEdit()
-        self.two = QLineEdit()
-        self.three = QTextEdit()
-        self.data = [self.zero, self.one, self.two, self.three]
 
         self.submit_btn = QPushButton("Submit")
         self.submit_btn.setCheckable(True)
@@ -154,33 +151,58 @@ class MainWindow(QMainWindow):
         self.close_btn = QPushButton("Close")
         self.close_btn.clicked.connect(self.handle_close)
 
-        wrapper_0 = QVBoxLayout()
-        wrapper_0.addWidget(QLabel("Zero"))
-        wrapper_0.addWidget(self.zero)
-        # wrapper_0.setContentsMargins(0,0,0,0)
-        wrapper_0.setSpacing(3)
+        self.inputs = []
+        for id, (start_row, start_col, brick, title) in grid.widget_info.items():
+            row_span, col_span = brick.height, brick.width
 
-        wrapper_1 = QVBoxLayout()
-        wrapper_1.addWidget(QLabel("One"))
-        wrapper_1.addWidget(self.one)
-        wrapper_1.setSpacing(3)
+            tmp_input = QLineEdit() if row_span < 4 else QTextEdit()
+            self.inputs.append(tmp_input)
 
-        wrapper_2 = QVBoxLayout()
-        wrapper_2.addWidget(QLabel("Two"))
-        wrapper_2.addWidget(self.two)
-        wrapper_2.setSpacing(3)
+            tmp_wrapper = QVBoxLayout()
+            tmp_wrapper.addWidget(QLabel(title))
+            tmp_wrapper.addWidget(tmp_input)
+            tmp_wrapper.setSpacing(3)
+            layout.addLayout(tmp_wrapper, start_row, start_col, row_span, col_span)
 
-        wrapper_3 = QVBoxLayout()
-        wrapper_3.addWidget(QLabel("Three"))
-        wrapper_3.addWidget(self.three)
-        wrapper_3.setSpacing(3)
+        last_id = list(grid.widget_info.keys())[-1]
+        last_widget = grid.widget_info[last_id]
+        last_row = last_widget[0] + last_widget[2].height
+        layout.addWidget(self.submit_btn, last_row,1,1,2)
+        layout.addWidget(self.close_btn, last_row,3,1,1)
 
-        layout.addLayout(wrapper_0, 0, 0, 1, 2)
-        layout.addLayout(wrapper_1, 0, 2, 1, 2)
-        layout.addLayout(wrapper_2, 1, 0, 1, 4)
-        layout.addLayout(wrapper_3, 2, 0, 4, 4)
-        layout.addWidget(self.submit_btn, 6,1,1,2)
-        layout.addWidget(self.close_btn, 6,3,1,1)
+        # self.zero = QLineEdit()
+        # self.one = QLineEdit()
+        # self.two = QLineEdit()
+        # self.three = QTextEdit()
+        # # self.data = [self.zero, self.one, self.two, self.three]
+
+        # wrapper_0 = QVBoxLayout()
+        # wrapper_0.addWidget(QLabel("Zero"))
+        # wrapper_0.addWidget(self.zero)
+        # # wrapper_0.setContentsMargins(0,0,0,0)
+        # wrapper_0.setSpacing(3)
+
+        # wrapper_1 = QVBoxLayout()
+        # wrapper_1.addWidget(QLabel("One"))
+        # wrapper_1.addWidget(self.one)
+        # wrapper_1.setSpacing(3)
+
+        # wrapper_2 = QVBoxLayout()
+        # wrapper_2.addWidget(QLabel("Two"))
+        # wrapper_2.addWidget(self.two)
+        # wrapper_2.setSpacing(3)
+
+        # wrapper_3 = QVBoxLayout()
+        # wrapper_3.addWidget(QLabel("Three"))
+        # wrapper_3.addWidget(self.three)
+        # wrapper_3.setSpacing(3)
+
+        # layout.addLayout(wrapper_0, 0, 0, 1, 2)
+        # layout.addLayout(wrapper_1, 0, 2, 1, 2)
+        # layout.addLayout(wrapper_2, 1, 0, 1, 4)
+        # layout.addLayout(wrapper_3, 2, 0, 4, 4)
+        # layout.addWidget(self.submit_btn, 6,1,1,2)
+        # layout.addWidget(self.close_btn, 6,3,1,1)
 
         widget = QWidget()
         widget.setLayout(layout)
@@ -188,7 +210,7 @@ class MainWindow(QMainWindow):
 
     def handle_submit(self):
         output = ""
-        for i, el in enumerate(self.data):
+        for i, el in enumerate(self.inputs):
             try:
                 output += f"id:{i}='{el.text()}'"
             except AttributeError:
@@ -237,7 +259,7 @@ def main():
             # print(f">>>>>>> Brick {id} just fitted")
 
         pprint(grid.rows)
-        pprint(grid.bricks_with_coordinates)
+        pprint(grid.widget_info)
 
         pyside_test(grid)
 
