@@ -8,7 +8,7 @@ from enum import Enum, auto
 
 import sys
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QGridLayout, QLabel, QLineEdit, QTextEdit, QWidget, QVBoxLayout
 
 parser = argparse.ArgumentParser()
 
@@ -136,27 +136,74 @@ class Grid():
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, grid):
         super().__init__()
+        self.setWindowTitle("Input form")
+        layout = QGridLayout()
 
-        self.setWindowTitle("My App")
+        self.zero = QLineEdit()
+        self.one = QLineEdit()
+        self.two = QLineEdit()
+        self.three = QTextEdit()
+        self.data = [self.zero, self.one, self.two, self.three]
 
-        button = QPushButton("Press Me!")
+        self.submit_btn = QPushButton("Submit")
+        self.submit_btn.setCheckable(True)
+        self.submit_btn.clicked.connect(self.handle_submit)
 
-        # Set the central widget of the Window.
-        self.setCentralWidget(button)
+        self.close_btn = QPushButton("Close")
+        self.close_btn.clicked.connect(self.handle_close)
+
+        wrapper_0 = QVBoxLayout()
+        wrapper_0.addWidget(QLabel("Zero"))
+        wrapper_0.addWidget(self.zero)
+        # wrapper_0.setContentsMargins(0,0,0,0)
+        wrapper_0.setSpacing(3)
+
+        wrapper_1 = QVBoxLayout()
+        wrapper_1.addWidget(QLabel("One"))
+        wrapper_1.addWidget(self.one)
+        wrapper_1.setSpacing(3)
+
+        wrapper_2 = QVBoxLayout()
+        wrapper_2.addWidget(QLabel("Two"))
+        wrapper_2.addWidget(self.two)
+        wrapper_2.setSpacing(3)
+
+        wrapper_3 = QVBoxLayout()
+        wrapper_3.addWidget(QLabel("Three"))
+        wrapper_3.addWidget(self.three)
+        wrapper_3.setSpacing(3)
+
+        layout.addLayout(wrapper_0, 0, 0, 1, 2)
+        layout.addLayout(wrapper_1, 0, 2, 1, 2)
+        layout.addLayout(wrapper_2, 1, 0, 1, 4)
+        layout.addLayout(wrapper_3, 2, 0, 4, 4)
+        layout.addWidget(self.submit_btn, 6,1,1,2)
+        layout.addWidget(self.close_btn, 6,3,1,1)
+
+        widget = QWidget()
+        widget.setLayout(layout)
+        self.setCentralWidget(widget)
+
+    def handle_submit(self):
+        output = ""
+        for i, el in enumerate(self.data):
+            try:
+                output += f"id:{i}='{el.text()}'"
+            except AttributeError:
+                output += f"id:{i}='{el.toPlainText()}'"
+        print(f"Submitted: {output}")
+
+    def handle_close(self):
+        self.close()
 
 
-def pyside_test() -> None:
+def pyside_test(grid:Grid) -> None:
     app = QApplication(sys.argv)
-    window = MainWindow()
+    window = MainWindow(grid)
     window.show()
     app.exec()
-
-
-
-
-
 
 
 def main():
@@ -192,7 +239,7 @@ def main():
         pprint(grid.rows)
         pprint(grid.bricks_with_coordinates)
 
-        pyside_test()
+        pyside_test(grid)
 
 if __name__ == "__main__":
     main()
