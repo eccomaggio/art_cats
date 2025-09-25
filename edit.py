@@ -139,17 +139,31 @@ class Grid():
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, grid:Grid):
+    def __init__(self, grid:Grid, excel_rows:list[list[str]]):
         super().__init__()
+        self.excel_rows = excel_rows
+        self.current_row = len(excel_rows) - 1
         self.setWindowTitle("Input form")
         layout = QGridLayout()
 
         self.submit_btn = QPushButton("Submit")
-        self.submit_btn.setCheckable(True)
         self.submit_btn.clicked.connect(self.handle_submit)
 
         self.close_btn = QPushButton("Close")
         self.close_btn.clicked.connect(self.handle_close)
+
+        self.first_btn = QPushButton("First")
+        self.first_btn.clicked.connect(self.go_to_first_record)
+        self.last_btn = QPushButton("Last")
+        self.last_btn.clicked.connect(self.go_to_last_record)
+        self.prev_btn = QPushButton("<")
+        self.prev_btn.clicked.connect(self.go_to_previous_record)
+        self.next_btn = QPushButton(">")
+        self.next_btn.clicked.connect(self.go_to_next_record)
+        self.clear_btn = QPushButton("Clear")
+        self.clear_btn.clicked.connect(self.clear_form)
+        self.new_btn = QPushButton("New")
+        self.new_btn.clicked.connect(self.start_new_record)
 
         self.inputs = []
         for id, (start_row, start_col, brick, title) in grid.widget_info.items():
@@ -167,42 +181,16 @@ class MainWindow(QMainWindow):
         last_id = list(grid.widget_info.keys())[-1]
         last_widget = grid.widget_info[last_id]
         last_row = last_widget[0] + last_widget[2].height
-        layout.addWidget(self.submit_btn, last_row,1,1,2)
+        layout.addWidget(self.first_btn, last_row,0,1,1)
+        layout.addWidget(self.prev_btn, last_row,1,1,1)
+        layout.addWidget(self.next_btn, last_row,2,1,1)
+        layout.addWidget(self.last_btn, last_row,3,1,1)
+        last_row += 1
+        layout.addWidget(self.new_btn, last_row,0,1,2)
+        layout.addWidget(self.clear_btn, last_row,2,1,2)
+        last_row += 1
+        layout.addWidget(self.submit_btn, last_row,0,1,3)
         layout.addWidget(self.close_btn, last_row,3,1,1)
-
-        # self.zero = QLineEdit()
-        # self.one = QLineEdit()
-        # self.two = QLineEdit()
-        # self.three = QTextEdit()
-        # # self.data = [self.zero, self.one, self.two, self.three]
-
-        # wrapper_0 = QVBoxLayout()
-        # wrapper_0.addWidget(QLabel("Zero"))
-        # wrapper_0.addWidget(self.zero)
-        # # wrapper_0.setContentsMargins(0,0,0,0)
-        # wrapper_0.setSpacing(3)
-
-        # wrapper_1 = QVBoxLayout()
-        # wrapper_1.addWidget(QLabel("One"))
-        # wrapper_1.addWidget(self.one)
-        # wrapper_1.setSpacing(3)
-
-        # wrapper_2 = QVBoxLayout()
-        # wrapper_2.addWidget(QLabel("Two"))
-        # wrapper_2.addWidget(self.two)
-        # wrapper_2.setSpacing(3)
-
-        # wrapper_3 = QVBoxLayout()
-        # wrapper_3.addWidget(QLabel("Three"))
-        # wrapper_3.addWidget(self.three)
-        # wrapper_3.setSpacing(3)
-
-        # layout.addLayout(wrapper_0, 0, 0, 1, 2)
-        # layout.addLayout(wrapper_1, 0, 2, 1, 2)
-        # layout.addLayout(wrapper_2, 1, 0, 1, 4)
-        # layout.addLayout(wrapper_3, 2, 0, 4, 4)
-        # layout.addWidget(self.submit_btn, 6,1,1,2)
-        # layout.addWidget(self.close_btn, 6,3,1,1)
 
         widget = QWidget()
         widget.setLayout(layout)
@@ -217,13 +205,51 @@ class MainWindow(QMainWindow):
                 output += f"id:{i}='{el.toPlainText()}'"
         print(f"Submitted: {output}")
 
-    def handle_close(self):
+    def handle_close(self) -> None:
         self.close()
 
+    def go_to_first_record(self) -> None:
+        self.current_row = 0
+        print("to first")
 
-def pyside_test(grid:Grid) -> None:
+    def go_to_last_record(self) -> None:
+        self.current_row = len(self.excel_rows) - 1
+        print("to last")
+
+    def go_to_previous_record(self) -> None:
+        self.update_current_position()
+        print("previous")
+
+    def go_to_next_record(self) -> None:
+        self.update_current_position("forwards")
+        print("next")
+
+    def clear_form(self) -> None:
+        for el in self.inputs:
+            try:
+                el.setText("")
+            except AttributeError:
+                el.setPlainText("")
+        print("cleared")
+
+    def start_new_record(self) -> None:
+        print("new record")
+
+    def update_current_position(self, direction="back"):
+        if direction == "back":
+            if self.current_row > 0:
+                self.current_row -= 1
+        else:
+            if self.current_row < len(self.excel_rows) - 1:
+                self.current_row += 1
+        print(f"record no. {self.current_row}")
+
+
+
+
+def pyside_test(grid:Grid, excel_rows:list[list[str]]) -> None:
     app = QApplication(sys.argv)
-    window = MainWindow(grid)
+    window = MainWindow(grid, excel_rows)
     window.show()
     app.exec()
 
@@ -261,7 +287,7 @@ def main():
         pprint(grid.rows)
         pprint(grid.widget_info)
 
-        pyside_test(grid)
+        pyside_test(grid, rows)
 
 if __name__ == "__main__":
     main()
