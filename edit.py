@@ -147,6 +147,7 @@ class MainWindow(QMainWindow):
         layout = QGridLayout()
 
         self.submit_btn = QPushButton("Submit")
+        self.submit_btn.setStyleSheet("font-weight: bold;")
         self.submit_btn.clicked.connect(self.handle_submit)
 
         self.close_btn = QPushButton("Close")
@@ -161,6 +162,7 @@ class MainWindow(QMainWindow):
         self.next_btn = QPushButton(">")
         self.next_btn.clicked.connect(self.go_to_next_record)
         self.clear_btn = QPushButton("Clear")
+        self.clear_btn.setStyleSheet("color: red;")
         self.clear_btn.clicked.connect(self.clear_form)
         self.new_btn = QPushButton("New")
         self.new_btn.clicked.connect(self.start_new_record)
@@ -243,8 +245,6 @@ class MainWindow(QMainWindow):
             if self.current_row < len(self.excel_rows) - 1:
                 self.current_row += 1
         print(f"record no. {self.current_row}")
-
-
 
 
 def pyside_test(grid:Grid, excel_rows:list[list[str]]) -> None:
