@@ -7,7 +7,7 @@ from pprint import pprint
 from enum import Enum, auto
 
 import sys
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import QSize, Qt, Slot
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QGridLayout, QLabel, QLineEdit, QTextEdit, QWidget, QVBoxLayout
 
 parser = argparse.ArgumentParser()
@@ -22,13 +22,13 @@ class Brick():
     # role: str
 
 @dataclass
-class Slot():
+class Cell():
     brick_id: int
-    free_slots: int
+    free_cells: int
 
     def __repr__(self) -> str:
         is_occupied = self.brick_id > -1
-        return f"<{f'@{self.brick_id}' if is_occupied else "##" }: {self.free_slots} slot{"s" if self.free_slots > 1 else ""}>"
+        return f"<{f'@{self.brick_id}' if is_occupied else "##" }: {self.free_cells} slot{"s" if self.free_cells > 1 else ""}>"
 
 class BRICK(Enum):
     oneone = Brick(1, 1)
@@ -51,7 +51,7 @@ class STATUS(Enum):
 class Grid():
     def __init__(self, width:int = 4) -> None:
         self.grid_width = width
-        self.rows:list[list[Slot]] = []
+        self.rows:list[list[Cell]] = []
         self.add_a_row()
         self.widget_info: dict[int,tuple[int, int, Brick, str]] = {}    ## dict[key: (start_row, start_col, Brick(height, width), title)]
 
@@ -62,7 +62,7 @@ class Grid():
         return id == -1
 
     def add_a_row(self):
-        self.rows.append([Slot(-1, self.grid_width - slot) for slot in range(self.grid_width)])
+        self.rows.append([Cell(-1, self.grid_width - slot) for slot in range(self.grid_width)])
 
     def fit_brick(self, brick_id:int, brick:Brick) -> None:
         fit_status:STATUS
@@ -91,10 +91,10 @@ class Grid():
             if self.exceeds_grid_length(row_index):
                 self.add_a_row()
 
-    def check_col_fit(self, brick:Brick, current_slot:Slot) -> STATUS:
+    def check_col_fit(self, brick:Brick, current_slot:Cell) -> STATUS:
         if current_slot.brick_id > -1:
             output = STATUS.occupied
-        elif current_slot.free_slots < brick.width:
+        elif current_slot.free_cells < brick.width:
             output = STATUS.toosmall
         else:
             output = STATUS.ok
@@ -110,7 +110,7 @@ class Grid():
                 if self.exceeds_grid_length(next_row):
                     self.add_a_row()
                 next_slot = self.rows[next_row][col_index]
-                if self.is_free(next_slot.brick_id) and next_slot.free_slots >= brick.width:
+                if self.is_free(next_slot.brick_id) and next_slot.free_cells >= brick.width:
                     fit_status = STATUS.ok
                 else:
                     fit_status = STATUS.occupied
@@ -128,10 +128,10 @@ class Grid():
                 next_slot = self.rows[new_row][new_col]
                 if col_increment < brick.width:
                     next_slot.brick_id = brick_id
-                    next_slot.free_slots = 0
+                    next_slot.free_cells = 0
                     # print(f"___add brick {brick_id}___({new_row},{new_col})")
                 else:
-                    next_slot.free_slots = self.update_free_slot_count(new_col)
+                    next_slot.free_cells = self.update_free_slot_count(new_col)
                     # print("___updating free_slots...")
 
     def update_free_slot_count(self, col_index:int) -> int:
@@ -145,6 +145,11 @@ class MainWindow(QMainWindow):
         self.current_row = len(excel_rows) - 1
         self.setWindowTitle("Input form")
         layout = QGridLayout()
+
+        # self.DEFAULT_STYLE = "QLineEdit { border: 1px solid gray; }"
+        # self.MODIFIED_STYLE = "QLineEdit { border: 2px solid red; }"
+        self.style_for_default_input = "border: 2px solid lightgrey;"
+        self.style_if_text_changed = "border: 2px solid red;"
 
         self.submit_btn = QPushButton("Submit")
         self.submit_btn.setStyleSheet("font-weight: bold;")
@@ -170,8 +175,14 @@ class MainWindow(QMainWindow):
         self.inputs = []
         for id, (start_row, start_col, brick, title) in grid.widget_info.items():
             row_span, col_span = brick.height, brick.width
-
-            tmp_input = QLineEdit() if row_span < 4 else QTextEdit()
+            tmp_input: QLineEdit | QTextEdit
+            if row_span < 4:
+                tmp_input = QLineEdit()
+                tmp_input.textEdited.connect(self.alert_on_textchange)
+            else:
+                tmp_input = QTextEdit()
+                tmp_input.textChanged.connect(self.alert_on_textchange)
+            # tmp_input = QLineEdit if row_span < 4 else QTextEdit
             self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
@@ -180,6 +191,7 @@ class MainWindow(QMainWindow):
             tmp_wrapper.setSpacing(3)
             layout.addLayout(tmp_wrapper, start_row, start_col, row_span, col_span)
 
+        # self.add_signal_to_fire_on_text_change()
         last_id = list(grid.widget_info.keys())[-1]
         last_widget = grid.widget_info[last_id]
         last_row = last_widget[0] + last_widget[2].height
@@ -199,6 +211,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(widget)
 
     def handle_submit(self):
+        ## TODO add request for confirmation (as this could be destructive)
         output = ""
         for i, el in enumerate(self.inputs):
             try:
@@ -211,40 +224,105 @@ class MainWindow(QMainWindow):
         self.close()
 
     def go_to_first_record(self) -> None:
-        self.current_row = 0
-        print("to first")
+        self.update_current_position("first")
 
     def go_to_last_record(self) -> None:
-        self.current_row = len(self.excel_rows) - 1
-        print("to last")
+        self.update_current_position("last")
 
     def go_to_previous_record(self) -> None:
-        self.update_current_position()
-        print("previous")
+        self.update_current_position("back")
 
     def go_to_next_record(self) -> None:
         self.update_current_position("forwards")
-        print("next")
+
+    def update_title_with_record_number(self, text="", prefix="Record no. "):
+        text = text if text else str(self.current_row)
+        self.setWindowTitle(prefix + text)
+        self.update_input_styles("changed")
+
+    def update_input_styles(self, mode="default"):
+        stylesheet = self.style_for_default_input if mode == "default" else self.style_if_text_changed
+        for input in self.inputs:
+            input.setStyleSheet(stylesheet)
+
+    def add_signal_to_fire_on_text_change(self):
+        for input in self.inputs:
+            if isinstance(input, QLineEdit):
+                input.textEdited.connect(self.alert_on_textchange)
+            elif isinstance(input, QTextEdit):
+                input.textChanged.connect(self.alert_on_textchange)
+
+
+    # def alert_on_textchange(self, new_text:str) -> None:
+    def alert_on_textchange(self) -> None:
+        # self.set
+        sender = self.sender()
+        if isinstance(sender, QLineEdit):
+            sender.setStyleSheet(self.style_if_text_changed)
+            sender.textEdited.disconnect(self.alert_on_textchange)
+        elif isinstance(sender, QTextEdit):
+            sender.setStyleSheet(self.style_if_text_changed)
+            sender.textChanged.disconnect(self.alert_on_textchange)
+        else:
+            print("Huston, we have a problem with text input...")
+        # print(f"text changed to: {new_text}")
+        print("text changed")
+
+    def load_record_into_gui(self, excel_row=None) -> None:
+        msg = "record loaded" if excel_row else "record cleared"
+        for i, el in enumerate(self.inputs):
+            data = "" if not excel_row else excel_row[i]
+            if isinstance(el, QLineEdit):
+                el.setText(data)
+            elif isinstance(el, QTextEdit):
+                el.setPlainText(data)
+            else:
+                print("Huston, we have a problem loading data into the form...")
+        self.update_input_styles()
+        self.add_signal_to_fire_on_text_change()
+        print(msg)
 
     def clear_form(self) -> None:
-        for el in self.inputs:
-            try:
-                el.setText("")
-            except AttributeError:
-                el.setPlainText("")
-        print("cleared")
+        ## TODO add request for confirmation (as this could be destructive)
+        self.load_record_into_gui()
 
     def start_new_record(self) -> None:
         print("new record")
+        self.update_title_with_record_number("[new]")
 
-    def update_current_position(self, direction="back"):
-        if direction == "back":
-            if self.current_row > 0:
-                self.current_row -= 1
+    def update_current_position(self, direction) -> None:
+        ## TODO add request for confirmation (as this could be destructive)
+        index_of_last_record = len(self.excel_rows) - 1
+        match direction:
+            case "first":
+                self.current_row = 0
+            case "last":
+                self.current_row = index_of_last_record
+            case "back":
+                if self.current_row > 0:
+                    self.current_row -= 1
+            case _:
+                if self.current_row < index_of_last_record:
+                    self.current_row += 1
+        msg = str(self.current_row)
+        if self.current_row == 0:
+            msg += " (first)"
+            self.first_btn.setEnabled(False)
+            self.prev_btn.setEnabled(False)
+        elif self.current_row == index_of_last_record:
+            msg += " (last)"
+            self.last_btn.setEnabled(False)
+            self.next_btn.setEnabled(False)
         else:
-            if self.current_row < len(self.excel_rows) - 1:
-                self.current_row += 1
-        print(f"record no. {self.current_row}")
+            self.first_btn.setEnabled(True)
+            self.prev_btn.setEnabled(True)
+            self.last_btn.setEnabled(True)
+            self.next_btn.setEnabled(True)
+
+        self.update_title_with_record_number(msg)
+        # self.load_record_into_gui(self.excel_rows[self.current_row])
+        self.load_record_into_gui()
+        self.update_input_styles()
 
 
 def pyside_test(grid:Grid, excel_rows:list[list[str]]) -> None:
