@@ -1,13 +1,12 @@
+import art_cats as shared
 from dataclasses import dataclass
 from turtle import width
-import art_cats as shared
 import argparse
 from pathlib import Path
 from pprint import pprint
 from enum import Enum, auto
-
 import sys
-from PySide6.QtCore import QSize, Qt, Slot
+# from PySide6.QtCore import QSize, Qt, Slot
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QGridLayout, QLabel, QLineEdit, QTextEdit, QWidget, QVBoxLayout
 
 parser = argparse.ArgumentParser()
@@ -35,12 +34,30 @@ class BRICK(Enum):
     onetwo = Brick(1, 2)
     onethree = Brick(1, 3)
     onefour = Brick(1, 4)
+    twoone = Brick(2, 1)
     twotwo = Brick(2, 2)
     twothree = Brick(2, 3)
     twofour = Brick(2,4)
+    threeone = Brick(3, 1)
+    threetwo = Brick(3, 2)
     threethree = Brick(3, 3)
     threefour = Brick(3, 4)
+    fourone = Brick(4, 1)
+    fourtwo = Brick(4, 2)
+    fourthree = Brick(4, 3)
     fourfour = Brick(4, 4)
+
+
+def select_brick_by_content_length(length:int) -> BRICK:
+        if length < 50:
+            return BRICK.oneone
+        elif length < 100:
+            return BRICK.onetwo
+        elif length < 400:
+            return BRICK.twotwo
+        else:
+            return BRICK.fourtwo
+
 
 class STATUS(Enum):
     occupied = auto()
@@ -64,10 +81,11 @@ class Grid():
     def add_a_row(self):
         self.rows.append([Cell(-1, self.grid_width - slot) for slot in range(self.grid_width)])
 
-    def fit_brick(self, brick_id:int, brick:Brick) -> None:
+    def fit_brick(self, brick_id:int, brick:Brick, title:str = "") -> None:
         fit_status:STATUS
         row_index = 0
-        while row_index < 10:
+        # while row_index < 10:
+        while row_index < 40:
             for col_index in range(self.grid_width):
                 current_slot = self.rows[row_index][col_index]
                 fit_status = self.check_col_fit(brick, current_slot)
@@ -85,7 +103,7 @@ class Grid():
                             case STATUS.toosmall:
                                 break
                             case STATUS.ok:
-                                self.add_brick(brick, brick_id, row_index, col_index)
+                                self.add_brick(brick, brick_id, row_index, col_index, title)
                                 return
             row_index += 1
             if self.exceeds_grid_length(row_index):
@@ -143,7 +161,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.excel_rows = excel_rows
         self.current_row = len(excel_rows) - 1
-        self.setWindowTitle("Input form")
+        # self.setWindowTitle("Input form")
         layout = QGridLayout()
 
         # self.DEFAULT_STYLE = "QLineEdit { border: 1px solid gray; }"
@@ -176,13 +194,13 @@ class MainWindow(QMainWindow):
         for id, (start_row, start_col, brick, title) in grid.widget_info.items():
             row_span, col_span = brick.height, brick.width
             tmp_input: QLineEdit | QTextEdit
-            if row_span < 4:
-                tmp_input = QLineEdit()
-                tmp_input.textEdited.connect(self.alert_on_textchange)
-            else:
-                tmp_input = QTextEdit()
-                tmp_input.textChanged.connect(self.alert_on_textchange)
-            # tmp_input = QLineEdit if row_span < 4 else QTextEdit
+            # if row_span < 4:
+            #     tmp_input = QLineEdit()
+            #     tmp_input.textEdited.connect(self.alert_on_textchange)
+            # else:
+            #     tmp_input = QTextEdit()
+            #     tmp_input.textChanged.connect(self.alert_on_textchange)
+            tmp_input = QLineEdit() if row_span < 4 else QTextEdit()
             self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
@@ -190,8 +208,8 @@ class MainWindow(QMainWindow):
             tmp_wrapper.addWidget(tmp_input)
             tmp_wrapper.setSpacing(3)
             layout.addLayout(tmp_wrapper, start_row, start_col, row_span, col_span)
+        self.add_signal_to_fire_on_text_change()
 
-        # self.add_signal_to_fire_on_text_change()
         last_id = list(grid.widget_info.keys())[-1]
         last_widget = grid.widget_info[last_id]
         last_row = last_widget[0] + last_widget[2].height
@@ -209,6 +227,7 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         widget.setLayout(layout)
         self.setCentralWidget(widget)
+        self.update_current_position("last")
 
     def handle_submit(self):
         ## TODO add request for confirmation (as this could be destructive)
@@ -238,7 +257,8 @@ class MainWindow(QMainWindow):
     def update_title_with_record_number(self, text="", prefix="Record no. "):
         text = text if text else str(self.current_row)
         self.setWindowTitle(prefix + text)
-        self.update_input_styles("changed")
+        # self.update_input_styles("changed")
+        self.update_input_styles()
 
     def update_input_styles(self, mode="default"):
         stylesheet = self.style_for_default_input if mode == "default" else self.style_if_text_changed
@@ -252,10 +272,7 @@ class MainWindow(QMainWindow):
             elif isinstance(input, QTextEdit):
                 input.textChanged.connect(self.alert_on_textchange)
 
-
-    # def alert_on_textchange(self, new_text:str) -> None:
     def alert_on_textchange(self) -> None:
-        # self.set
         sender = self.sender()
         if isinstance(sender, QLineEdit):
             sender.setStyleSheet(self.style_if_text_changed)
@@ -309,10 +326,14 @@ class MainWindow(QMainWindow):
             msg += " (first)"
             self.first_btn.setEnabled(False)
             self.prev_btn.setEnabled(False)
+            self.last_btn.setEnabled(True)
+            self.next_btn.setEnabled(True)
         elif self.current_row == index_of_last_record:
             msg += " (last)"
             self.last_btn.setEnabled(False)
             self.next_btn.setEnabled(False)
+            self.first_btn.setEnabled(True)
+            self.prev_btn.setEnabled(True)
         else:
             self.first_btn.setEnabled(True)
             self.prev_btn.setEnabled(True)
@@ -320,52 +341,43 @@ class MainWindow(QMainWindow):
             self.next_btn.setEnabled(True)
 
         self.update_title_with_record_number(msg)
-        # self.load_record_into_gui(self.excel_rows[self.current_row])
-        self.load_record_into_gui()
+        self.load_record_into_gui(self.excel_rows[self.current_row])
+        # self.load_record_into_gui()
         self.update_input_styles()
 
 
-def pyside_test(grid:Grid, excel_rows:list[list[str]]) -> None:
+def launch_gui(grid:Grid, excel_rows:list[list[str]]) -> None:
     app = QApplication(sys.argv)
     window = MainWindow(grid, excel_rows)
     window.show()
     app.exec()
 
 
+
 def main():
     if args.file:
         print(f"processing file: {args.file}")
         file = Path(args.file)
-        rows = shared.parse_excel_into_rows(file)
-        # pprint(rows[0])
-        # pprint(rows[1])
+        headers, rows = shared.parse_excel_into_rows(file)
         print(f"no. of rows = {len(rows[0])}")
-        max_lens = [0 for _ in range(len(rows[0]))]
-        headers = []
-        for num, row in enumerate(rows):
-            if num == 0:
-                headers = row
-                continue
-            for i, col in enumerate(row):
-                if (latest_len := len(col)) > max_lens[i]:
-                    max_lens[i] = latest_len
-        print(headers)
-        print(max_lens)
-
-
-        test_layout = [BRICK.onetwo, BRICK.onetwo, BRICK.onefour, BRICK.fourfour]
-
+        max_lengths = [max([len(content) for content in rows[i]]) for i in range(len(rows[0]))]
+        layout = [select_brick_by_content_length(length) for length in max_lengths]
+        # print(headers)
+        # print(max_lengths)
+        # print(layout)
+        pprint(list(zip(headers, max_lengths, layout)))
+        # layout = [BRICK.onetwo, BRICK.onetwo, BRICK.onefour, BRICK.fourfour]
         grid = Grid()
-        pprint(grid.rows)
-        for id, brick_enum in enumerate(test_layout):
+        # pprint(grid.rows)
+        for id, brick_enum in enumerate(layout):
             brick = brick_enum.value
-            grid.fit_brick(id, brick)
+            grid.fit_brick(id, brick, headers[id])
             # print(f">>>>>>> Brick {id} just fitted")
 
         pprint(grid.rows)
         pprint(grid.widget_info)
 
-        pyside_test(grid, rows)
+        launch_gui(grid, rows)
 
 if __name__ == "__main__":
     main()

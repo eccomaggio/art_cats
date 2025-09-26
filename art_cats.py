@@ -890,7 +890,7 @@ def create_date_list(dates_raw: str) -> list[str]:
     return dates
 
 
-def extract_from_excel(excel_sheet) -> list[worksheet_row]:
+def extract_from_excel(excel_sheet) -> tuple[list[str], list[worksheet_row]]:
     """
     excel seems pretty random in how it assigns string/int/float, so...
     this routine coerces everything into a string,
@@ -898,9 +898,14 @@ def extract_from_excel(excel_sheet) -> list[worksheet_row]:
     & removes trailing spaces
     """
     sheet = []
-    for excel_row in excel_sheet.iter_rows(min_row=2, values_only=True):
+    headers = []
+    # for excel_row in excel_sheet.iter_rows(min_row=2, values_only=True):
+    for i, excel_row in enumerate(excel_sheet.iter_rows(min_row=1, values_only=True)):
         row = []
-        if not excel_row[0]:
+        if i == 0:
+            headers = excel_row
+            continue
+        elif not excel_row[0]:
             break
         for col in excel_row:
             if col:
@@ -910,7 +915,7 @@ def extract_from_excel(excel_sheet) -> list[worksheet_row]:
                 data = ""
             row.append(data)
         sheet.append(row)
-    return sheet
+    return (headers, sheet)
 
 
 def parse_rows_into_records(sheet: list[worksheet_row]) -> list[Record]:
@@ -1532,11 +1537,11 @@ def make_binary(data: list[list[Field]]) -> list[bytes]:
     return output
 
 
-def parse_excel_into_rows(excel_file_address: Path) -> list[worksheet_row]:
+def parse_excel_into_rows(excel_file_address: Path) -> tuple[list[str], list[worksheet_row]]:
     excel_file_name = str(excel_file_address.resolve())
     worksheet = load_workbook(filename=excel_file_name).active
-    raw_rows = extract_from_excel(worksheet)
-    return raw_rows
+    headers, raw_rows = extract_from_excel(worksheet)
+    return (headers, raw_rows)
 
 
 def flatten_fields_to_strings(input: list[marc_record]) -> list[list[str]]:
@@ -1559,8 +1564,9 @@ def run() -> None:
     for file in Path(excel_file_path).glob("*.xls[xm]"):
         logger.info(f"\n>>>>> processing: {file.name}")
         print(f">>>>> processing: {file.name}")
-        raw_rows = parse_excel_into_rows(file)
+        headers, raw_rows = parse_excel_into_rows(file)
         records = parse_rows_into_records(raw_rows)
+        del headers
         del raw_rows
         marc_records = build_marc_records(records)
         del records
