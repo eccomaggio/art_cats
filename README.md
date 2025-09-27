@@ -9,3 +9,9 @@
 5. **fields** contain: subfields, or blanks or punctuation; bare strings are coded as subfields with no subcode
 6. **marc_record** = list[Field]
 
+## To do:
+1. add in layout hints: look for [filename].hint or failing that, any file ending .hint in the source file folder & use this (if heading count fits), else default to algorithmic layout
+2. enable changes to data
+3. enable saving changes to csv (or excel)
+4. allow .csv / .tsv as source file
+5. enable adding a new record

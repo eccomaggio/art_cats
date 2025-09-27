@@ -7,7 +7,18 @@ from pprint import pprint
 from enum import Enum, auto
 import sys
 # from PySide6.QtCore import QSize, Qt, Slot
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QGridLayout, QLabel, QLineEdit, QTextEdit, QWidget, QVBoxLayout
+from PySide6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QPushButton,
+    QGridLayout,
+    QLabel,
+    QLineEdit,
+    QTextEdit,
+    QWidget,
+    QVBoxLayout,
+    QGroupBox,
+)
 
 parser = argparse.ArgumentParser()
 
@@ -23,11 +34,13 @@ class Brick():
 @dataclass
 class Cell():
     brick_id: int
-    free_cells: int
+    # free_cells: int
+    free_down: int
+    free_across: int
 
     def __repr__(self) -> str:
         is_occupied = self.brick_id > -1
-        return f"<{f'@{self.brick_id}' if is_occupied else "##" }: {self.free_cells} slot{"s" if self.free_cells > 1 else ""}>"
+        return f"<{f'@{self.brick_id}' if is_occupied else "##"}> 1 else ""}>"
 
 class BRICK(Enum):
     oneone = Brick(1, 1)
@@ -68,92 +81,75 @@ class STATUS(Enum):
 class Grid():
     def __init__(self, width:int = 4) -> None:
         self.grid_width = width
-        self.rows:list[list[Cell]] = []
+        self.rows:list[list[int]] = []  ## each row is a list of brick ids OR -1 to indicate cell is unoccupied
         self.add_a_row()
-        self.widget_info: dict[int,tuple[int, int, Brick, str]] = {}    ## dict[key: (start_row, start_col, Brick(height, width), title)]
+        self.widget_info: dict[int,tuple[int, int, Brick, str]] = {}    ## dict[id: (start_row, start_col, Brick(height, width), title)]
 
-    def exceeds_grid_length(self, zero_index:int) -> bool:
-        return zero_index + 1 > len(self.rows)
+    @property
+    def total_rows(self) -> int:
+        return len(self.rows)
+
+    def exceeds_grid_length(self, current_row:int) -> bool:
+        return current_row + 1 > self.total_rows
 
     def is_free(self, id:int) -> bool:
         return id == -1
 
+    def is_occupied(self, id:int) -> bool:
+        return not self.is_free(id)
+
     def add_a_row(self):
-        self.rows.append([Cell(-1, self.grid_width - slot) for slot in range(self.grid_width)])
+        self.rows.append([-1 for _ in range(self.grid_width)])
 
-    def fit_brick(self, brick_id:int, brick:Brick, title:str = "") -> None:
-        fit_status:STATUS
-        row_index = 0
-        # while row_index < 10:
-        while row_index < 40:
-            for col_index in range(self.grid_width):
-                current_slot = self.rows[row_index][col_index]
-                fit_status = self.check_col_fit(brick, current_slot)
-                # print(f"brick id: {brick_id} ({row_index},{col_index}):{fit_status}->{brick}")
-                match fit_status:
-                    case STATUS.occupied:
-                        continue
-                    case STATUS.toosmall:
-                        break
-                    case STATUS.ok :
-                        fit_status = self.check_row_fit(brick, row_index, col_index)
-                        match fit_status:
-                            case STATUS.occupied:
-                                continue
-                            case STATUS.toosmall:
-                                break
-                            case STATUS.ok:
-                                self.add_brick(brick, brick_id, row_index, col_index, title)
-                                return
-            row_index += 1
-            if self.exceeds_grid_length(row_index):
-                self.add_a_row()
-
-    def check_col_fit(self, brick:Brick, current_slot:Cell) -> STATUS:
-        if current_slot.brick_id > -1:
-            output = STATUS.occupied
-        elif current_slot.free_cells < brick.width:
-            output = STATUS.toosmall
-        else:
-            output = STATUS.ok
-        return output
-
-    def check_row_fit(self, brick:Brick, row_index: int, col_index: int) -> STATUS:
-        fit_status:STATUS
-        if brick.height == 1:
-            fit_status = STATUS.ok
-        else:
-            for i in range(brick.height - 1):
-                next_row = row_index + i + 1
-                if self.exceeds_grid_length(next_row):
-                    self.add_a_row()
-                next_slot = self.rows[next_row][col_index]
-                if self.is_free(next_slot.brick_id) and next_slot.free_cells >= brick.width:
-                    fit_status = STATUS.ok
-                else:
-                    fit_status = STATUS.occupied
-                # print(f"... ({next_row},{col_index}):{fit_status}->{brick} [check 1st line of brick]")
-        return fit_status
-
-    def add_brick(self, brick:Brick, brick_id:int, row_index: int, col_index: int, title:str="") -> None:
+    def add_brick(self, brick_id:int, brick:Brick, title:str = "") -> None:
+        if brick.width > self.grid_width:
+            print("Input field has been truncated to fit the grid.")
+            brick.width = self.grid_width
         if not title:
             title = f"input #{brick_id}"
-        self.widget_info[brick_id] = (row_index, col_index, brick, title)
-        for row_increment in range(brick.height):
-            for col_increment in range(self.grid_width - col_index):
-                new_col = col_index + col_increment
-                new_row = row_index + row_increment
-                next_slot = self.rows[new_row][new_col]
-                if col_increment < brick.width:
-                    next_slot.brick_id = brick_id
-                    next_slot.free_cells = 0
-                    # print(f"___add brick {brick_id}___({new_row},{new_col})")
-                else:
-                    next_slot.free_cells = self.update_free_slot_count(new_col)
-                    # print("___updating free_slots...")
+        row_i = 0
+        no_place_found_for_brick = True
+        while no_place_found_for_brick:
+            rows_needed = row_i + brick.height
+            if self.total_rows - rows_needed < 0:
+                extra_rows = rows_needed - self.total_rows + 1
+                for _ in range(extra_rows):
+                    self.add_a_row()
+            for col_i in range(self.grid_width):
+                if self.is_occupied(self.rows[row_i][col_i]):
+                    continue
+                enough_space_across = self.count_free_spaces_across(row_i, col_i) - brick.width >= 0
+                enough_space_down = self.count_free_spaces_down(row_i, col_i) - brick.height >= 0
+                if enough_space_across and enough_space_down:
+                    no_place_found_for_brick = False
+                    self.place_brick_in_grid(brick, brick_id, row_i, col_i)
+                    self.widget_info[brick_id] = (row_i, col_i, brick, title)
+                    break
+            row_i += 1
 
-    def update_free_slot_count(self, col_index:int) -> int:
-        return self.grid_width - col_index
+    def count_free_spaces_across(self, row, start_col):
+        free_spaces = 0
+        for col_i in range(start_col, self.grid_width):
+            if self.is_occupied(self.rows[row][col_i]):
+                return free_spaces
+            free_spaces += 1
+        return free_spaces
+
+    def count_free_spaces_down(self, start_row, col):
+        free_spaces = 0
+        row_i = start_row
+        print(f"@@@@ counting spaces down from row {start_row}, col {col}")
+        while True:
+            print(f"  @@ row: {row_i}; total rows: {self.total_rows}")
+            if  self.exceeds_grid_length(row_i) or self.is_occupied(self.rows[row_i][col]):
+                return free_spaces
+            free_spaces += 1
+            row_i += 1
+
+    def place_brick_in_grid(self, brick: Brick, brick_id:int, start_row:int, start_col:int) -> None:
+        for row_i in range(start_row, start_row + brick.height):
+            for col_i in range(start_col, start_col + brick.width):
+                self.rows[row_i][col_i] = brick_id
 
 
 class MainWindow(QMainWindow):
@@ -161,11 +157,14 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.excel_rows = excel_rows
         self.current_row = len(excel_rows) - 1
-        # self.setWindowTitle("Input form")
-        layout = QGridLayout()
+        master_layout = QVBoxLayout()
+        inputs_layout = QGridLayout()
+        nav_layout = QGridLayout()
+        self.fieldset = QGroupBox("Navigation")
+        # self.fieldset.setStyleSheet(
+        #    "QGroupBox {background-color: lightgrey;}"
+        # )
 
-        # self.DEFAULT_STYLE = "QLineEdit { border: 1px solid gray; }"
-        # self.MODIFIED_STYLE = "QLineEdit { border: 2px solid red; }"
         self.style_for_default_input = "border: 2px solid lightgrey;"
         self.style_if_text_changed = "border: 2px solid red;"
 
@@ -194,38 +193,39 @@ class MainWindow(QMainWindow):
         for id, (start_row, start_col, brick, title) in grid.widget_info.items():
             row_span, col_span = brick.height, brick.width
             tmp_input: QLineEdit | QTextEdit
-            # if row_span < 4:
-            #     tmp_input = QLineEdit()
-            #     tmp_input.textEdited.connect(self.alert_on_textchange)
-            # else:
-            #     tmp_input = QTextEdit()
-            #     tmp_input.textChanged.connect(self.alert_on_textchange)
-            tmp_input = QLineEdit() if row_span < 4 else QTextEdit()
+            tmp_input = QLineEdit() if row_span == 1 else QTextEdit()
             self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
             tmp_wrapper.addWidget(QLabel(title))
             tmp_wrapper.addWidget(tmp_input)
+            if isinstance(tmp_input, QLineEdit):
+                tmp_wrapper.addStretch(1)
             tmp_wrapper.setSpacing(3)
-            layout.addLayout(tmp_wrapper, start_row, start_col, row_span, col_span)
+            inputs_layout.addLayout(tmp_wrapper, start_row, start_col, row_span, col_span)
         self.add_signal_to_fire_on_text_change()
 
         last_id = list(grid.widget_info.keys())[-1]
         last_widget = grid.widget_info[last_id]
         last_row = last_widget[0] + last_widget[2].height
-        layout.addWidget(self.first_btn, last_row,0,1,1)
-        layout.addWidget(self.prev_btn, last_row,1,1,1)
-        layout.addWidget(self.next_btn, last_row,2,1,1)
-        layout.addWidget(self.last_btn, last_row,3,1,1)
+        nav_layout.addWidget(self.first_btn, last_row,0,1,1)
+        nav_layout.addWidget(self.prev_btn, last_row,1,1,1)
+        nav_layout.addWidget(self.next_btn, last_row,2,1,1)
+        nav_layout.addWidget(self.last_btn, last_row,3,1,1)
         last_row += 1
-        layout.addWidget(self.new_btn, last_row,0,1,2)
-        layout.addWidget(self.clear_btn, last_row,2,1,2)
+        nav_layout.addWidget(self.new_btn, last_row,0,1,2)
+        nav_layout.addWidget(self.clear_btn, last_row,2,1,2)
         last_row += 1
-        layout.addWidget(self.submit_btn, last_row,0,1,3)
-        layout.addWidget(self.close_btn, last_row,3,1,1)
+        nav_layout.addWidget(self.submit_btn, last_row,0,1,3)
+        nav_layout.addWidget(self.close_btn, last_row,3,1,1)
 
+        master_layout.addLayout(inputs_layout)
+        # master_layout.addLayout(nav_layout)
+        self.fieldset.setLayout(nav_layout)
+        master_layout.addWidget(self.fieldset)
+        master_layout.addStretch(1)
         widget = QWidget()
-        widget.setLayout(layout)
+        widget.setLayout(master_layout)
         self.setCentralWidget(widget)
         self.update_current_position("last")
 
@@ -257,7 +257,6 @@ class MainWindow(QMainWindow):
     def update_title_with_record_number(self, text="", prefix="Record no. "):
         text = text if text else str(self.current_row)
         self.setWindowTitle(prefix + text)
-        # self.update_input_styles("changed")
         self.update_input_styles()
 
     def update_input_styles(self, mode="default"):
@@ -282,7 +281,6 @@ class MainWindow(QMainWindow):
             sender.textChanged.disconnect(self.alert_on_textchange)
         else:
             print("Huston, we have a problem with text input...")
-        # print(f"text changed to: {new_text}")
         print("text changed")
 
     def load_record_into_gui(self, excel_row=None) -> None:
@@ -352,7 +350,12 @@ def launch_gui(grid:Grid, excel_rows:list[list[str]]) -> None:
     window.show()
     app.exec()
 
-
+def create_max_lengths(rows:list[list[str]]) -> list[int]:
+    max_lengths:list[list[int]] = [[] for _ in rows[0]]
+    for row in rows:
+        for i, col in enumerate(row):
+            max_lengths[i].append(len(col))
+    return [max(col) for col in max_lengths]
 
 def main():
     if args.file:
@@ -360,18 +363,30 @@ def main():
         file = Path(args.file)
         headers, rows = shared.parse_excel_into_rows(file)
         print(f"no. of rows = {len(rows[0])}")
-        max_lengths = [max([len(content) for content in rows[i]]) for i in range(len(rows[0]))]
+        # max_lengths = [max([len(content) for content in rows[i]]) for i in range(len(rows[0]))]
+        # max_lengths = [[] for _ in rows[0]]
+        # for row in rows:
+        #     for i, col in enumerate(row):
+        #         max_lengths[i].append(len(col))
+        # max_lengths = [max(col) for col in max_lengths]
+        max_lengths = create_max_lengths(rows)
+        # print(max_lengths)
+
         layout = [select_brick_by_content_length(length) for length in max_lengths]
+        # layout = [BRICK.oneone, BRICK.twotwo, BRICK.oneone, BRICK.onetwo, BRICK.onetwo, BRICK.fourtwo, BRICK.twotwo, BRICK.twotwo, BRICK.twotwo]
+        # layout = [BRICK.onetwo, BRICK.onetwo, BRICK.onefour, BRICK.fourfour]
+        # layout = [BRICK.twothree, BRICK.onetwo, BRICK.threethree, BRICK.fourfour]
         # print(headers)
         # print(max_lengths)
         # print(layout)
         pprint(list(zip(headers, max_lengths, layout)))
-        # layout = [BRICK.onetwo, BRICK.onetwo, BRICK.onefour, BRICK.fourfour]
-        grid = Grid()
-        # pprint(grid.rows)
+        grid = Grid(6)
+        print("\n\n")
+        pprint(grid.rows)
         for id, brick_enum in enumerate(layout):
             brick = brick_enum.value
-            grid.fit_brick(id, brick, headers[id])
+            # grid.add_brick(id, brick)
+            grid.add_brick(id, brick, headers[id])
             # print(f">>>>>>> Brick {id} just fitted")
 
         pprint(grid.rows)
