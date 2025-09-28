@@ -12,6 +12,10 @@
 ## To do:
 1. add in layout hints: look for [filename].hint or failing that, any file ending .hint in the source file folder & use this (if heading count fits), else default to algorithmic layout
 2. OK - enable changes to data
-3. enable saving changes to csv (or excel)
+3. OK - enable saving changes to csv (or excel)
 4. allow .csv / .tsv as source file
 5. OK - enable adding a new record
+5. make it command line based: edit,py -f data.csv/xls -h hintfile.hint -o output.csv
+6. ?? add in field validation
+7. ?? add in smart extras, e.g. automatically add pub date from saledate; erase isbn etc. on 'New'
+8. integrate more closely with art_cats.py

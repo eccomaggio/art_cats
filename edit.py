@@ -1,11 +1,11 @@
 import art_cats as shared
 from dataclasses import dataclass
-from turtle import width
 import argparse
 from pathlib import Path
 from pprint import pprint
 from enum import Enum, auto
 import sys
+import csv
 # from PySide6.QtCore import QSize, Qt, Slot
 from PySide6.QtWidgets import (
     QApplication,
@@ -152,10 +152,16 @@ class Grid():
                 self.rows[row_i][col_i] = brick_id
 
 
+
+
+
+
 class MainWindow(QMainWindow):
-    def __init__(self, grid:Grid, excel_rows:list[list[str]]):
+    def __init__(self, grid:Grid, excel_rows:list[list[str]], file_name:str):
         super().__init__()
+        self.grid = grid
         self.excel_rows = excel_rows
+        self.file_name = file_name
         self.current_row = len(excel_rows) - 1
         master_layout = QVBoxLayout()
         inputs_layout = QGridLayout()
@@ -191,13 +197,13 @@ class MainWindow(QMainWindow):
         self.new_btn.clicked.connect(self.start_new_record)
         self.save_btn = QPushButton("Save as .csv file")
         self.save_btn.clicked.connect(self.save_as_csv)
-        self.save_btn.setEnabled(False)
+        # self.save_btn.setEnabled(False)
         self.marc_btn = QPushButton("Save as MARC")
         self.marc_btn.clicked.connect(self.save_as_marc)
         self.marc_btn.setEnabled(False)
 
         self.inputs = []
-        for id, (start_row, start_col, brick, title) in grid.widget_info.items():
+        for id, (start_row, start_col, brick, title) in self.grid.widget_info.items():
             row_span, col_span = brick.height, brick.width
             tmp_input: QLineEdit | QTextEdit
             tmp_input = QLineEdit() if row_span == 1 else QTextEdit()
@@ -255,10 +261,6 @@ class MainWindow(QMainWindow):
                 log_text += f"id:{i}='{el.toPlainText()}'"
             else:
                 print(f"Huston, we have a problem with submitting record no. {self.current_row}")
-            # try:
-            #     output += f"id:{i}='{el.text()}'"
-            # except AttributeError:
-            #     output += f"id:{i}='{el.toPlainText()}'"
         if self.current_row < 0:
             self.excel_rows.append(data)
             self.current_row = len(self.excel_rows) - 1
@@ -266,6 +268,9 @@ class MainWindow(QMainWindow):
             self.update_input_styles()
         else:
             self.excel_rows[self.current_row] = data
+        self.has_unsaved_text = False
+        self.update_input_styles()
+        self.add_signal_to_fire_on_text_change()
         print(f"Submitted record no. {self.current_row}: {log_text}")
 
     def handle_close(self) -> None:
@@ -331,7 +336,6 @@ class MainWindow(QMainWindow):
         # if self.current_row != -1 and self.abort_on_clearing_existing_record(self):
         if not self.current_record_is_new and self.abort_on_clearing_existing_record(self):
             return
-        ## TODO add request for confirmation (as this could be destructive)
         self.load_record_into_gui()
 
     def start_new_record(self) -> None:
@@ -381,7 +385,10 @@ class MainWindow(QMainWindow):
         self.update_input_styles()
 
     def save_as_csv(self) -> None:
-        pass
+        headers = [el[3] for el in self.grid.widget_info.values()]
+        print(headers)
+        file_name = f"{self.file_name}.csv" if self.file_name else "out.csv"
+        write_to_csv(file_name, self.excel_rows, headers)
 
     def save_as_marc(self) -> None:
         pass
@@ -420,11 +427,12 @@ class DialogueOkCancel(QDialog):
         self.setLayout(layout)
 
 
-def launch_gui(grid:Grid, excel_rows:list[list[str]]) -> None:
+def launch_gui(grid:Grid, excel_rows:list[list[str]], file_name:str) -> None:
     app = QApplication(sys.argv)
-    window = MainWindow(grid, excel_rows)
+    window = MainWindow(grid, excel_rows, file_name)
     window.show()
     app.exec()
+
 
 def create_max_lengths(rows:list[list[str]]) -> list[int]:
     max_lengths:list[list[int]] = [[] for _ in rows[0]]
@@ -433,20 +441,23 @@ def create_max_lengths(rows:list[list[str]]) -> list[int]:
             max_lengths[i].append(len(col))
     return [max(col) for col in max_lengths]
 
+
+def write_to_csv(file_name:str, data:list[list[str]], headers:list[str]) -> None:
+    out_file = Path(file_name)
+    with open(out_file, "w", newline="") as f:
+        csvwriter = csv.writer(f)
+        csvwriter.writerow(headers)
+        csvwriter.writerows(data)
+
+
+
 def main():
     if args.file:
         print(f"processing file: {args.file}")
         file = Path(args.file)
         headers, rows = shared.parse_excel_into_rows(file)
         print(f"no. of rows = {len(rows[0])}")
-        # max_lengths = [max([len(content) for content in rows[i]]) for i in range(len(rows[0]))]
-        # max_lengths = [[] for _ in rows[0]]
-        # for row in rows:
-        #     for i, col in enumerate(row):
-        #         max_lengths[i].append(len(col))
-        # max_lengths = [max(col) for col in max_lengths]
         max_lengths = create_max_lengths(rows)
-        # print(max_lengths)
 
         layout = [select_brick_by_content_length(length) for length in max_lengths]
         # layout = [BRICK.oneone, BRICK.twotwo, BRICK.oneone, BRICK.onetwo, BRICK.onetwo, BRICK.fourtwo, BRICK.twotwo, BRICK.twotwo, BRICK.twotwo]
@@ -468,7 +479,7 @@ def main():
         pprint(grid.rows)
         pprint(grid.widget_info)
 
-        launch_gui(grid, rows)
+        launch_gui(grid, rows, args.file)
 
 if __name__ == "__main__":
     main()
