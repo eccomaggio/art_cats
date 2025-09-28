@@ -18,6 +18,8 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QGroupBox,
+    QDialog,
+    QDialogButtonBox
 )
 
 parser = argparse.ArgumentParser()
@@ -138,9 +140,7 @@ class Grid():
     def count_free_spaces_down(self, start_row, col):
         free_spaces = 0
         row_i = start_row
-        print(f"@@@@ counting spaces down from row {start_row}, col {col}")
         while True:
-            print(f"  @@ row: {row_i}; total rows: {self.total_rows}")
             if  self.exceeds_grid_length(row_i) or self.is_occupied(self.rows[row_i][col]):
                 return free_spaces
             free_spaces += 1
@@ -164,6 +164,7 @@ class MainWindow(QMainWindow):
         # self.fieldset.setStyleSheet(
         #    "QGroupBox {background-color: lightgrey;}"
         # )
+        self.has_unsaved_text = False
 
         self.style_for_default_input = "border: 2px solid lightgrey;"
         self.style_if_text_changed = "border: 2px solid red;"
@@ -188,6 +189,12 @@ class MainWindow(QMainWindow):
         self.clear_btn.clicked.connect(self.clear_form)
         self.new_btn = QPushButton("New")
         self.new_btn.clicked.connect(self.start_new_record)
+        self.save_btn = QPushButton("Save as .csv file")
+        self.save_btn.clicked.connect(self.save_as_csv)
+        self.save_btn.setEnabled(False)
+        self.marc_btn = QPushButton("Save as MARC")
+        self.marc_btn.clicked.connect(self.save_as_marc)
+        self.marc_btn.setEnabled(False)
 
         self.inputs = []
         for id, (start_row, start_col, brick, title) in grid.widget_info.items():
@@ -213,11 +220,13 @@ class MainWindow(QMainWindow):
         nav_layout.addWidget(self.next_btn, last_row,2,1,1)
         nav_layout.addWidget(self.last_btn, last_row,3,1,1)
         last_row += 1
-        nav_layout.addWidget(self.new_btn, last_row,0,1,2)
-        nav_layout.addWidget(self.clear_btn, last_row,2,1,2)
+        nav_layout.addWidget(self.new_btn, last_row,0,1,1)
+        nav_layout.addWidget(self.submit_btn, last_row,1,1,2)
+        nav_layout.addWidget(self.clear_btn, last_row,3,1,1)
         last_row += 1
-        nav_layout.addWidget(self.submit_btn, last_row,0,1,3)
-        nav_layout.addWidget(self.close_btn, last_row,3,1,1)
+        nav_layout.addWidget(self.save_btn, last_row,0,1,1)
+        nav_layout.addWidget(self.marc_btn, last_row,1,1,1)
+        nav_layout.addWidget(self.close_btn, last_row,2,1,2)
 
         master_layout.addLayout(inputs_layout)
         # master_layout.addLayout(nav_layout)
@@ -229,15 +238,35 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(widget)
         self.update_current_position("last")
 
+    @property
+    def current_record_is_new(self):
+        return self.current_row == -1
+
     def handle_submit(self):
         ## TODO add request for confirmation (as this could be destructive)
-        output = ""
+        log_text = ""
+        data = []
         for i, el in enumerate(self.inputs):
-            try:
-                output += f"id:{i}='{el.text()}'"
-            except AttributeError:
-                output += f"id:{i}='{el.toPlainText()}'"
-        print(f"Submitted: {output}")
+            if isinstance(el, QLineEdit):
+                data.append(el.text())
+                log_text += f"id:{i}='{el.text()}'"
+            elif isinstance(el, QTextEdit):
+                data.append(el.toPlainText())
+                log_text += f"id:{i}='{el.toPlainText()}'"
+            else:
+                print(f"Huston, we have a problem with submitting record no. {self.current_row}")
+            # try:
+            #     output += f"id:{i}='{el.text()}'"
+            # except AttributeError:
+            #     output += f"id:{i}='{el.toPlainText()}'"
+        if self.current_row < 0:
+            self.excel_rows.append(data)
+            self.current_row = len(self.excel_rows) - 1
+            self.update_title_with_record_number()
+            self.update_input_styles()
+        else:
+            self.excel_rows[self.current_row] = data
+        print(f"Submitted record no. {self.current_row}: {log_text}")
 
     def handle_close(self) -> None:
         self.close()
@@ -281,7 +310,8 @@ class MainWindow(QMainWindow):
             sender.textChanged.disconnect(self.alert_on_textchange)
         else:
             print("Huston, we have a problem with text input...")
-        print("text changed")
+        self.has_unsaved_text = True
+        # print("text changed")
 
     def load_record_into_gui(self, excel_row=None) -> None:
         msg = "record loaded" if excel_row else "record cleared"
@@ -298,15 +328,21 @@ class MainWindow(QMainWindow):
         print(msg)
 
     def clear_form(self) -> None:
+        # if self.current_row != -1 and self.abort_on_clearing_existing_record(self):
+        if not self.current_record_is_new and self.abort_on_clearing_existing_record(self):
+            return
         ## TODO add request for confirmation (as this could be destructive)
         self.load_record_into_gui()
 
     def start_new_record(self) -> None:
         print("new record")
+        self.current_row = -1
+        self.has_unsaved_text = True
         self.update_title_with_record_number("[new]")
 
     def update_current_position(self, direction) -> None:
-        ## TODO add request for confirmation (as this could be destructive)
+        if self.has_unsaved_text and self.abort_on_unsaved_text(self):
+            return
         index_of_last_record = len(self.excel_rows) - 1
         match direction:
             case "first":
@@ -340,8 +376,48 @@ class MainWindow(QMainWindow):
 
         self.update_title_with_record_number(msg)
         self.load_record_into_gui(self.excel_rows[self.current_row])
+        self.has_unsaved_text = False
         # self.load_record_into_gui()
         self.update_input_styles()
+
+    def save_as_csv(self) -> None:
+        pass
+
+    def save_as_marc(self) -> None:
+        pass
+
+    def abort_on_unsaved_text(self, s) -> int:
+        # print("unsaved text alert...", s)
+        dialogue = DialogueOkCancel(
+            self,
+            "There is unsaved text in this record. Are you OK to contine and lose this text?",
+        )
+        return dialogue.exec() != 1
+
+    def abort_on_clearing_existing_record(self, s) -> int:
+        # print("unsaved text alert...", s)
+        dialogue = DialogueOkCancel(
+            self,
+            "This wipes the existing record when you save it. Are you OK to contine and lose this text?",
+        )
+        return dialogue.exec() != 1
+
+class DialogueOkCancel(QDialog):
+    def __init__(self, parent, text):
+        super().__init__(parent)
+        self.text = text
+
+        button = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+
+        self.buttonBox = QDialogButtonBox(button)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        layout = QVBoxLayout()
+        message = QLabel(text)
+        layout.addWidget(message)
+        layout.addWidget(self.buttonBox)
+        self.setLayout(layout)
 
 
 def launch_gui(grid:Grid, excel_rows:list[list[str]]) -> None:
