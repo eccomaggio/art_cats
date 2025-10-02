@@ -62,6 +62,36 @@ class BRICK(Enum):
     fourthree = Brick(4, 3)
     fourfour = Brick(4, 4)
 
+class COL(Enum):
+    sublib = 0
+    langs = auto()
+    isbn = auto()
+    title = auto()
+    tr_title = auto()
+    subtitle = auto()
+    tr_subtitle = auto()
+    parallel_title = auto()
+    tr_parallel_title = auto()
+    parallel_subtitle = auto()
+    tr_parallel_subtitle = auto()
+    country_name = auto()
+    state = auto()
+    place = auto()
+    publisher = auto()
+    pub_year = auto()
+    copyright = auto()
+    extent = auto()
+    size = auto()
+    series_title = auto()
+    series_enum = auto()
+    volume = auto()
+    notes = auto()
+    sales_code = auto()
+    sale_dates = auto()
+    hol_notes = auto()
+    donation = auto()
+    barcode = auto()
+    start = 0
 
 def select_brick_by_content_length(length:int) -> BRICK:
         if length < 50:
@@ -152,10 +182,6 @@ class Grid():
                 self.rows[row_i][col_i] = brick_id
 
 
-
-
-
-
 class MainWindow(QMainWindow):
     def __init__(self, grid:Grid, excel_rows:list[list[str]], file_name:str):
         super().__init__()
@@ -200,7 +226,7 @@ class MainWindow(QMainWindow):
         # self.save_btn.setEnabled(False)
         self.marc_btn = QPushButton("Save as MARC")
         self.marc_btn.clicked.connect(self.save_as_marc)
-        self.marc_btn.setEnabled(False)
+        # self.marc_btn.setEnabled(False)
 
         self.inputs = []
         for id, (start_row, start_col, brick, title) in self.grid.widget_info.items():
@@ -217,6 +243,10 @@ class MainWindow(QMainWindow):
             tmp_wrapper.setSpacing(3)
             inputs_layout.addLayout(tmp_wrapper, start_row, start_col, row_span, col_span)
         self.add_signal_to_fire_on_text_change()
+
+        sale_dates = self.inputs[COL.sale_dates.value]
+        if isinstance(sale_dates, QLineEdit):
+            sale_dates.editingFinished.connect(self.saledates_action)
 
         last_id = list(grid.widget_info.keys())[-1]
         last_widget = grid.widget_info[last_id]
@@ -288,6 +318,19 @@ class MainWindow(QMainWindow):
     def go_to_next_record(self) -> None:
         self.update_current_position("forwards")
 
+    def saledates_action(self) -> None:
+        print("sales_date filled in!!")
+        sender = self.sender()
+        # sender = self.inputs[COL.sale_dates.value]
+        pubdate = self.inputs[COL.pub_year.value]
+        if isinstance(sender, QLineEdit) and isinstance(pubdate, QLineEdit):
+            if not pubdate.text():
+                year_of_pub = sender.text().strip()[:4]
+                print(f">>>>>>>>> {year_of_pub}")
+                pubdate.setText(year_of_pub)
+        else:
+            print("Can't access salecode or pubdate fields...")
+
     def update_title_with_record_number(self, text="", prefix="Record no. "):
         text = text if text else str(self.current_row)
         self.setWindowTitle(prefix + text)
@@ -341,6 +384,10 @@ class MainWindow(QMainWindow):
     def start_new_record(self) -> None:
         print("new record")
         self.current_row = -1
+        fields_to_clear = [COL.barcode, COL.hol_notes, COL.extent, COL.pub_year, COL.sale_dates, COL.copyright, COL.sale_dates]
+        for field in fields_to_clear:
+            # print(f"{field.name}={field.value}")
+            self.inputs[field.value].setText("")
         self.has_unsaved_text = True
         self.update_title_with_record_number("[new]")
 
@@ -391,7 +438,9 @@ class MainWindow(QMainWindow):
         write_to_csv(file_name, self.excel_rows, headers)
 
     def save_as_marc(self) -> None:
-        pass
+        # records = shared.parse_rows_into_records(self.excel_rows)
+        marc_records = shared.build_marc_records(shared.parse_rows_into_records(self.excel_rows))
+        shared.write_marc_files(marc_records, Path(self.file_name))
 
     def abort_on_unsaved_text(self, s) -> int:
         # print("unsaved text alert...", s)
@@ -448,7 +497,6 @@ def write_to_csv(file_name:str, data:list[list[str]], headers:list[str]) -> None
         csvwriter = csv.writer(f)
         csvwriter.writerow(headers)
         csvwriter.writerows(data)
-
 
 
 def main():
