@@ -1,5 +1,5 @@
 from tempfile import template
-import art_cats as shared
+import convert as shared
 from dataclasses import dataclass
 import argparse
 from pathlib import Path
@@ -7,6 +7,7 @@ from pprint import pprint
 from enum import Enum, auto
 import sys
 import csv
+
 # from PySide6.QtCore import QSize, Qt, Slot
 from PySide6.QtWidgets import (
     QApplication,
@@ -21,23 +22,22 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QDialog,
     QDialogButtonBox,
-    QFileDialog
+    QFileDialog,
+    QMessageBox,
 )
 
-parser = argparse.ArgumentParser()
+settings = shared.settings
 
-# parser.add_argument("--file", "-f", type=str, required=True)
-parser.add_argument("--file", "-f", type=str, required=False)
-args = parser.parse_args()
 
 @dataclass
-class Brick():
+class Brick:
     height: int
     width: int
     # role: str
 
+
 @dataclass
-class Cell():
+class Cell:
     brick_id: int
     # free_cells: int
     free_down: int
@@ -45,7 +45,8 @@ class Cell():
 
     def __repr__(self) -> str:
         is_occupied = self.brick_id > -1
-        return f"<{f'@{self.brick_id}' if is_occupied else "##"}> 1 else ""}>"
+        return f"<{f'@{self.brick_id}' if is_occupied else "##"}> 1 else " "}>"
+
 
 class BRICK(Enum):
     oneone = Brick(1, 1)
@@ -55,7 +56,7 @@ class BRICK(Enum):
     twoone = Brick(2, 1)
     twotwo = Brick(2, 2)
     twothree = Brick(2, 3)
-    twofour = Brick(2,4)
+    twofour = Brick(2, 4)
     threeone = Brick(3, 1)
     threetwo = Brick(3, 2)
     threethree = Brick(3, 3)
@@ -64,6 +65,7 @@ class BRICK(Enum):
     fourtwo = Brick(4, 2)
     fourthree = Brick(4, 3)
     fourfour = Brick(4, 4)
+
 
 brick_lookup = {
     "1:1": BRICK.oneone,
@@ -82,8 +84,8 @@ brick_lookup = {
     "4:2": BRICK.fourtwo,
     "4:3": BRICK.fourthree,
     "4:4": BRICK.fourfour,
-
 }
+
 
 class COL(Enum):
     sublib = 0
@@ -116,21 +118,23 @@ class COL(Enum):
     barcode = auto()
     start = 0
 
-def select_brick_by_content_length(length:int) -> BRICK:
-        if length < 50:
-            return BRICK.oneone
-        elif length < 100:
-            return BRICK.onetwo
-        elif length < 400:
-            return BRICK.twotwo
-        else:
-            return BRICK.fourtwo
+
+def select_brick_by_content_length(length: int) -> BRICK:
+    if length < 50:
+        return BRICK.oneone
+    elif length < 100:
+        return BRICK.onetwo
+    elif length < 400:
+        return BRICK.twotwo
+    else:
+        return BRICK.fourtwo
 
 
 class STATUS(Enum):
     occupied = auto()
     toosmall = auto()
     ok = auto()
+
 
 default_hint = (
     ## non-algorithmic version needs to be: [title, brick-type, start-row, start-col]
@@ -164,26 +168,43 @@ default_hint = (
     ("Barcode ", "1:2", 16, 4),
 )
 
+settings.flavour = {
+    "title": "art_catalogue",
+    "fields_to_clear": [
+        COL.barcode,
+        COL.hol_notes,
+        COL.extent,
+        COL.pub_year,
+        COL.sale_dates,
+        COL.copyright,
+        COL.sale_dates,
+    ],
+}
 
-class Grid():
-    def __init__(self, width:int = 6) -> None:
+
+class Grid:
+    def __init__(self, width: int = 6) -> None:
         self.grid_width = width
         self.current_row = 0
-        self.rows:list[list[int]] = []  ## each row is a list of brick ids OR -1 to indicate cell is unoccupied
+        self.rows: list[list[int]] = (
+            []
+        )  ## each row is a list of brick ids OR -1 to indicate cell is unoccupied
         self.add_a_row()
-        self.widget_info: dict[int,tuple[int, int, Brick, str]] = {}    ## dict[id: (start_row, start_col, Brick(height, width), title)]
+        self.widget_info: dict[int, tuple[int, int, Brick, str]] = (
+            {}
+        )  ## dict[id: (start_row, start_col, Brick(height, width), title)]
 
     @property
     def total_rows(self) -> int:
         return len(self.rows)
 
-    def exceeds_grid_length(self, current_row:int) -> bool:
+    def exceeds_grid_length(self, current_row: int) -> bool:
         return current_row + 1 > self.total_rows
 
-    def is_free(self, id:int) -> bool:
+    def is_free(self, id: int) -> bool:
         return id == -1
 
-    def is_occupied(self, id:int) -> bool:
+    def is_occupied(self, id: int) -> bool:
         return not self.is_free(id)
 
     def add_a_row(self) -> None:
@@ -193,7 +214,9 @@ class Grid():
     def make_row(self) -> list:
         return [-1 for _ in range(self.grid_width)]
 
-    def add_brick_algorithmically(self, brick_id:int, brick:Brick, title:str = "") -> None:
+    def add_brick_algorithmically(
+        self, brick_id: int, brick: Brick, title: str = ""
+    ) -> None:
         """
         algorithm:
         1. check the brick will fit in the current grid (error if not)
@@ -220,8 +243,12 @@ class Grid():
             for col_i in range(self.grid_width):
                 if self.is_occupied(self.rows[row_i][col_i]):
                     continue
-                enough_space_across = self.count_free_spaces_across(row_i, col_i) - brick.width >= 0
-                enough_space_down = self.count_free_spaces_down(row_i, col_i) - brick.height >= 0
+                enough_space_across = (
+                    self.count_free_spaces_across(row_i, col_i) - brick.width >= 0
+                )
+                enough_space_down = (
+                    self.count_free_spaces_down(row_i, col_i) - brick.height >= 0
+                )
                 no_following_bricks = all(el == -1 for el in self.rows[row_i][col_i:])
                 if enough_space_across and enough_space_down and no_following_bricks:
                     no_place_found_for_brick = False
@@ -231,7 +258,7 @@ class Grid():
                     break
             row_i += 1
 
-    def add_bricks_by_template(self, template:tuple[tuple[str, str, int, int]]) -> None:
+    def add_bricks_by_template(self, template: tuple) -> None:
         last_brick = template[-1]
         last_brick_start_col = last_brick[2]
         last_brick_height = brick_lookup[last_brick[1]].value.height
@@ -241,7 +268,6 @@ class Grid():
             brick = brick_lookup[type_name].value
             self.place_brick_in_grid(brick, brick_id, start_row, start_col)
             self.widget_info[brick_id] = (start_row, start_col, brick, title)
-
 
     def count_free_spaces_across(self, row, start_col):
         free_spaces = 0
@@ -255,25 +281,29 @@ class Grid():
         free_spaces = 0
         row_i = start_row
         while True:
-            if  self.exceeds_grid_length(row_i) or self.is_occupied(self.rows[row_i][col]):
+            if self.exceeds_grid_length(row_i) or self.is_occupied(
+                self.rows[row_i][col]
+            ):
                 return free_spaces
             free_spaces += 1
             row_i += 1
 
-    def place_brick_in_grid(self, brick: Brick, brick_id:int, start_row:int, start_col:int) -> None:
+    def place_brick_in_grid(
+        self, brick: Brick, brick_id: int, start_row: int, start_col: int
+    ) -> None:
         for row_i in range(start_row, start_row + brick.height):
             for col_i in range(start_col, start_col + brick.width):
                 self.rows[row_i][col_i] = brick_id
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, grid:Grid, excel_rows:list[list[str]], file_name:str):
+    def __init__(self, grid: Grid, excel_rows: list[list[str]], file_name: str):
         super().__init__()
         self.grid = grid
         self.excel_rows = excel_rows
         self.col_count = len(excel_rows[0])
         self.file_name = file_name
-        self.short_file_name = self.get_filename_only(file_name)
+        self.short_file_name = self.get_filename_only(settings.in_file)
         self.current_row = len(excel_rows) - 1
         master_layout = QVBoxLayout()
         inputs_layout = QGridLayout()
@@ -286,6 +316,7 @@ class MainWindow(QMainWindow):
 
         self.style_for_default_input = "border: 2px solid lightgrey;"
         self.style_if_text_changed = "border: 2px solid red;"
+        self.style_for_labels = "font-weight: bold;"
 
         self.submit_btn = QPushButton("Submit")
         self.submit_btn.setStyleSheet("font-weight: bold;")
@@ -309,14 +340,15 @@ class MainWindow(QMainWindow):
         self.clear_btn.clicked.connect(self.clear_form)
         self.new_btn = QPushButton("New")
         self.new_btn.clicked.connect(self.start_new_record)
-        self.save_btn = QPushButton("Save as .csv file")
+        self.save_btn = QPushButton("Export as .csv file")
         self.save_btn.clicked.connect(self.save_as_csv)
         # self.save_btn.setEnabled(False)
-        self.marc_btn = QPushButton("Save as MARC")
+        self.marc_btn = QPushButton("Export as MARC")
         self.marc_btn.clicked.connect(self.save_as_marc)
         # self.marc_btn.setEnabled(False)
 
         self.inputs = []
+        self.labels = []
         for id, (start_row, start_col, brick, title) in self.grid.widget_info.items():
             row_span, col_span = brick.height, brick.width
             tmp_input: QLineEdit | QTextEdit
@@ -324,34 +356,40 @@ class MainWindow(QMainWindow):
             self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
-            tmp_wrapper.addWidget(QLabel(title))
+            tmp_label = QLabel(title)
+            # tmp_label.setStyleSheet(self.style_for_labels)
+            font = tmp_label.font()
+            font.setBold(True)
+            tmp_label.setFont(font)
+            self.labels.append(tmp_label)
+
+            tmp_wrapper.addWidget(tmp_label)
+            # tmp_wrapper.addWidget(QLabel(title))
             tmp_wrapper.addWidget(tmp_input)
             if isinstance(tmp_input, QLineEdit):
                 tmp_wrapper.addStretch(1)
             tmp_wrapper.setSpacing(3)
-            inputs_layout.addLayout(tmp_wrapper, start_row, start_col, row_span, col_span)
+            inputs_layout.addLayout(
+                tmp_wrapper, start_row, start_col, row_span, col_span
+            )
         self.add_signal_to_fire_on_text_change()
-
-        sale_dates = self.inputs[COL.sale_dates.value]
-        if isinstance(sale_dates, QLineEdit):
-            sale_dates.editingFinished.connect(self.saledates_action)
 
         last_id = list(grid.widget_info.keys())[-1]
         last_widget = grid.widget_info[last_id]
         last_row = last_widget[0] + last_widget[2].height
-        nav_layout.addWidget(self.first_btn, last_row,0,1,1)
-        nav_layout.addWidget(self.prev_btn, last_row,1,1,1)
-        nav_layout.addWidget(self.next_btn, last_row,2,1,1)
-        nav_layout.addWidget(self.last_btn, last_row,3,1,1)
+        nav_layout.addWidget(self.first_btn, last_row, 0, 1, 1)
+        nav_layout.addWidget(self.prev_btn, last_row, 1, 1, 1)
+        nav_layout.addWidget(self.next_btn, last_row, 2, 1, 1)
+        nav_layout.addWidget(self.last_btn, last_row, 3, 1, 1)
         last_row += 1
-        nav_layout.addWidget(self.new_btn, last_row,0,1,1)
-        nav_layout.addWidget(self.submit_btn, last_row,1,1,2)
-        nav_layout.addWidget(self.clear_btn, last_row,3,1,1)
+        nav_layout.addWidget(self.new_btn, last_row, 0, 1, 1)
+        nav_layout.addWidget(self.submit_btn, last_row, 1, 1, 2)
+        nav_layout.addWidget(self.clear_btn, last_row, 3, 1, 1)
         last_row += 1
-        nav_layout.addWidget(self.load_file_btn, last_row,0,1,1)
-        nav_layout.addWidget(self.save_btn, last_row,1,1,1)
-        nav_layout.addWidget(self.marc_btn, last_row,2,1,1)
-        nav_layout.addWidget(self.close_btn, last_row,3,1,1)
+        nav_layout.addWidget(self.load_file_btn, last_row, 0, 1, 1)
+        nav_layout.addWidget(self.save_btn, last_row, 1, 1, 1)
+        nav_layout.addWidget(self.marc_btn, last_row, 2, 1, 1)
+        nav_layout.addWidget(self.close_btn, last_row, 3, 1, 1)
 
         master_layout.addLayout(inputs_layout)
         # master_layout.addLayout(nav_layout)
@@ -362,6 +400,19 @@ class MainWindow(QMainWindow):
         widget.setLayout(master_layout)
         self.setCentralWidget(widget)
         self.update_current_position("last")
+        self.add_custom_behaviour()
+
+    def add_custom_behaviour(self) -> None:
+        if settings.flavour["title"] == "art_catalogue":
+            sale_dates = self.inputs[COL.sale_dates.value]
+            if isinstance(sale_dates, QLineEdit):
+                sale_dates.editingFinished.connect(self.saledates_action)
+            for label in self.labels:
+                if "transliteration" in label.text():
+                    font = label.font()
+                    font.setBold(False)
+                    font.setItalic(True)
+                    label.setFont(font)
 
     @property
     def current_record_is_new(self):
@@ -369,17 +420,19 @@ class MainWindow(QMainWindow):
 
     def handle_submit(self):
         ## TODO add request for confirmation (as this could be destructive)
-        log_text = ""
+        # log_text = ""
         data = []
         for i, el in enumerate(self.inputs):
             if isinstance(el, QLineEdit):
                 data.append(el.text())
-                log_text += f"id:{i}='{el.text()}'"
+                # log_text += f"id:{i}='{el.text()}'"
             elif isinstance(el, QTextEdit):
                 data.append(el.toPlainText())
-                log_text += f"id:{i}='{el.toPlainText()}'"
+                # log_text += f"id:{i}='{el.toPlainText()}'"
             else:
-                print(f"Huston, we have a problem with submitting record no. {self.current_row}")
+                print(
+                    f"Huston, we have a problem with submitting record no. {self.current_row}"
+                )
         if self.current_row < 0:
             self.excel_rows.append(data)
             self.current_row = len(self.excel_rows) - 1
@@ -390,7 +443,7 @@ class MainWindow(QMainWindow):
         self.has_unsaved_text = False
         self.update_input_styles()
         self.add_signal_to_fire_on_text_change()
-        print(f"Submitted record no. {self.current_row}: {log_text}")
+        # print(f"Submitted record no. {self.current_row}: {log_text}")
 
     def handle_close(self) -> None:
         self.close()
@@ -408,25 +461,30 @@ class MainWindow(QMainWindow):
         self.update_current_position("forwards")
 
     def saledates_action(self) -> None:
-        print("sales_date filled in!!")
+        # print("sales_date filled in!!")
         sender = self.sender()
         # sender = self.inputs[COL.sale_dates.value]
         pubdate = self.inputs[COL.pub_year.value]
         if isinstance(sender, QLineEdit) and isinstance(pubdate, QLineEdit):
             if not pubdate.text():
                 year_of_pub = sender.text().strip()[:4]
-                print(f">>>>>>>>> {year_of_pub}")
+                # print(f">>>>>>>>> {year_of_pub}")
                 pubdate.setText(year_of_pub)
         else:
             print("Can't access salecode or pubdate fields...")
 
     def update_title_with_record_number(self, text="", prefix="Record no. "):
         text = text if text else str(self.current_row)
-        self.setWindowTitle(f"[{self.short_file_name}]: {prefix}{text}")
+        # self.setWindowTitle(f"[{self.short_file_name}]: {prefix}{text}")
+        self.setWindowTitle(f"[{settings.in_file}]: {prefix}{text}")
         self.update_input_styles()
 
     def update_input_styles(self, mode="default"):
-        stylesheet = self.style_for_default_input if mode == "default" else self.style_if_text_changed
+        stylesheet = (
+            self.style_for_default_input
+            if mode == "default"
+            else self.style_if_text_changed
+        )
         for input in self.inputs:
             input.setStyleSheet(stylesheet)
 
@@ -451,7 +509,7 @@ class MainWindow(QMainWindow):
         # print("text changed")
 
     def load_record_into_gui(self, excel_row=None) -> None:
-        msg = "record loaded" if excel_row else "record cleared"
+        # msg = "record loaded" if excel_row else "record cleared"
         for i, el in enumerate(self.inputs):
             data = "" if not excel_row else excel_row[i]
             if isinstance(el, QLineEdit):
@@ -462,22 +520,27 @@ class MainWindow(QMainWindow):
                 print("Huston, we have a problem loading data into the form...")
         self.update_input_styles()
         self.add_signal_to_fire_on_text_change()
-        print(msg)
+        # print(msg)
 
     def clear_form(self) -> None:
         # if self.current_row != -1 and self.abort_on_clearing_existing_record(self):
-        if not self.current_record_is_new and self.abort_on_clearing_existing_record(self):
+        if not self.current_record_is_new and self.abort_on_clearing_existing_record(
+            self
+        ):
             return
         self.load_record_into_gui()
 
     def start_new_record(self) -> None:
-        print("new record")
+        # print("new record")
         self.current_row = -1
-        fields_to_clear = [COL.barcode, COL.hol_notes, COL.extent, COL.pub_year, COL.sale_dates, COL.copyright, COL.sale_dates]
-        for field in fields_to_clear:
-            # print(f"{field.name}={field.value}")
-            self.inputs[field.value].setText("")
-        self.inputs[COL.sublib.value].setText("ARTBL")
+        if settings.flavour["title"] == "art_catalogue":
+            for field in settings.flavour["fields_to_clear"]:
+                self.inputs[field.value].setText("")
+            self.inputs[COL.sublib.value].setText("ARTBL")
+        # fields_to_clear = [COL.barcode, COL.hol_notes, COL.extent, COL.pub_year, COL.sale_dates, COL.copyright, COL.sale_dates]
+        # for field in fields_to_clear:
+        #     self.inputs[field.value].setText("")
+        # self.inputs[COL.sublib.value].setText("ARTBL")
         self.has_unsaved_text = True
         self.update_title_with_record_number("[new]")
 
@@ -523,14 +586,35 @@ class MainWindow(QMainWindow):
 
     def save_as_csv(self) -> None:
         headers = [el[3] for el in self.grid.widget_info.values()]
-        print(headers)
-        file_name = f"{self.file_name}.csv" if self.file_name else "out.csv"
+        file_name = (
+            f"{settings.out_file}.csv"
+            if settings.out_file
+            else settings.default_output_filename
+        )
         write_to_csv(file_name, self.excel_rows, headers)
+        msg = f"The {len(self.excel_rows)} records in {settings.in_file} have been successfully saved as {file_name}."
+        logger.info(msg)
+        msg_box = QMessageBox()
+        msg_box.setText(msg)
+        msg_box.exec()
 
     def save_as_marc(self) -> None:
         # records = shared.parse_rows_into_records(self.excel_rows)
-        marc_records = shared.build_marc_records(shared.parse_rows_into_records(self.excel_rows))
-        shared.write_marc_files(marc_records, Path(self.file_name))
+        marc_records = shared.build_marc_records(
+            shared.parse_rows_into_records(self.excel_rows)
+        )
+        file_name = (
+            settings.out_file
+            if settings.out_file
+            else settings.default_output_filename
+        )
+        # print(f">>>>>>> out_file = {file_name}")
+        shared.write_marc_files(marc_records, Path(file_name))
+        msg = f"The {len(self.excel_rows)} records in {settings.in_file} have been successfully saved as {file_name}.mrk/.mrc in {settings.output_dir}."
+        logger.info(msg)
+        msg_box = QMessageBox()
+        msg_box.setText(msg)
+        msg_box.exec()
 
     def abort_on_unsaved_text(self, s) -> int:
         # print("unsaved text alert...", s)
@@ -550,8 +634,6 @@ class MainWindow(QMainWindow):
 
     def open_file_dialog(self):
         """Opens the native file selection dialog and processes the result."""
-
-        # 1. Call the static method getOpenFileName
         # This returns a tuple: (file_path, filter_used)
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getOpenFileName(
@@ -560,18 +642,24 @@ class MainWindow(QMainWindow):
             dir="./excel_files",
             filter="Database Files (*.xls *.xlsx *.xlsm *.csv *.tsv)",
         )
-
-        # 2. Check if a file was selected (i.e., the user didn't press Cancel)
         if file_path:
-            self.short_file_name = self.get_filename_only(file_path)
-            print(f"File Selected: {self.file_name} ({file_path})")
-            self.update_title_with_record_number()
-            # TODO: parse and load file; alert if old file not saved
+            # self.short_file_name = self.get_filename_only(file_path)
+            settings.in_file_full = file_path
+            settings.in_file = self.get_filename_only(file_path)
+            settings.out_file = settings.in_file
+            print(f"File Selected: {settings.in_file} ({file_path})")
+            # headers, self.excel_rows = shared.parse_file_into_rows(Path(file_path))
+            headers, self.excel_rows = shared.parse_file_into_rows(Path(file_path))
+            if not settings.use_default_layout:
+                print("Haven't coded for non-default layout yet!")
+                ## TODO: code for change of layout on file loading (i.e. make a standalone: 'load file and update grid' function)
+            self.update_current_position("last")
+            logger.info(f"Just opened {file_path}")
         else:
             print("Selection cancelled.")
 
-    def get_filename_only(self, file_path:str) -> str:
-        if (name_start_index := file_path.rfind("/") + 1):
+    def get_filename_only(self, file_path: str) -> str:
+        if name_start_index := file_path.rfind("/") + 1:
             file_name = file_path[name_start_index:]
         else:
             file_name = file_path
@@ -583,7 +671,9 @@ class DialogueOkCancel(QDialog):
         super().__init__(parent)
         self.text = text
 
-        button = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        button = (
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
 
         self.buttonBox = QDialogButtonBox(button)
         self.buttonBox.accepted.connect(self.accept)
@@ -596,65 +686,96 @@ class DialogueOkCancel(QDialog):
         self.setLayout(layout)
 
 
-def launch_gui(grid:Grid, excel_rows:list[list[str]], file_name:str) -> None:
+def launch_gui(grid: Grid, excel_rows: list[list[str]], file_name: str) -> None:
     app = QApplication(sys.argv)
     window = MainWindow(grid, excel_rows, file_name)
     window.show()
     app.exec()
 
 
-def create_max_lengths(rows:list[list[str]]) -> list[int]:
-    max_lengths:list[list[int]] = [[] for _ in rows[0]]
+def create_max_lengths(rows: list[list[str]]) -> list[int]:
+    max_lengths: list[list[int]] = [[] for _ in rows[0]]
     for row in rows:
         for i, col in enumerate(row):
             max_lengths[i].append(len(col))
     return [max(col) for col in max_lengths]
 
 
-def write_to_csv(file_name:str, data:list[list[str]], headers:list[str]) -> None:
-    out_file = Path(file_name)
+def write_to_csv(file_name: str, data: list[list[str]], headers: list[str]) -> None:
+    out_file = Path(settings.output_dir) / Path(file_name)
     with open(out_file, "w", newline="") as f:
         csvwriter = csv.writer(f)
         csvwriter.writerow(headers)
         csvwriter.writerows(data)
 
 
-def main():
-    grid = Grid()
-    if args.file:
-        file_name = args.file
-        print(f"processing file: {file_name}")
-        file = Path(args.file)
-        headers, rows = shared.parse_excel_into_rows(file)
-        # print(f"no. of rows = {len(rows[0])}")
-        max_lengths = create_max_lengths(rows)
-        layout = [select_brick_by_content_length(length) for length in max_lengths]
-        # layout = [BRICK.oneone, BRICK.twotwo, BRICK.oneone, BRICK.onetwo, BRICK.onetwo, BRICK.fourtwo, BRICK.twotwo, BRICK.twotwo, BRICK.twotwo]
-        # layout = [BRICK.onetwo, BRICK.onetwo, BRICK.onefour, BRICK.fourfour]
-        # layout = [BRICK.twothree, BRICK.onetwo, BRICK.threethree, BRICK.fourfour]
-        # layout = [BRICK.oneone, BRICK.onetwo, BRICK.onethree, BRICK.onefour, BRICK.twoone,BRICK.twotwo, BRICK.twothree, BRICK.twofour, BRICK.threeone, BRICK.threetwo, BRICK.threethree, BRICK.threefour, BRICK.fourone, BRICK.fourtwo, BRICK.fourthree, BRICK.fourfour]
-        # headers = [f"col {i}" for i in range(len(layout))]
-        # print(headers)
-        # print(max_lengths)
-        # print(layout)
-        pprint(list(zip(headers, max_lengths, layout)))
-        print("\n\n")
-        pprint(grid.rows)
-        for id, brick_enum in enumerate(layout):
-            brick = brick_enum.value
-            grid.add_brick_algorithmically(id, brick, headers[id])
+def read_cli_into_settings() -> None:
+    parser = argparse.ArgumentParser()
+
+    # parser.add_argument("--file", "-f", type=str, required=True)
+    parser.add_argument(
+        "--file",
+        "-f",
+        type=str,
+        required=False,
+        help="file to edit",
+    )
+    # parser.add_argument(
+    #     "--out",
+    #     "-o",
+    #     type=str,
+    #     required=False,
+    #     help="name to give saved file",)
+    args = parser.parse_args()
+    settings.in_file = args.file
+    if file := args.file:
+        settings.in_file = file
     else:
-        template = default_hint
-        # headers = []
-        # rows = ["" for _ in range(len(headers))]
+        settings.is_existing_file = False
+        settings.in_file = settings.default_output_filename
+    settings.layout_template = default_hint
+
+
+def main():
+    read_cli_into_settings()
+    grid = Grid()
+    if settings.is_existing_file:
+        print(f"processing file: {settings.in_file}")
+        headers, rows = shared.parse_file_into_rows(Path(settings.in_file))
+        if settings.use_default_layout:
+            grid.add_bricks_by_template(settings.layout_template)
+        else:
+            # print(f"no. of rows = {len(rows[0])}")
+            max_lengths = create_max_lengths(rows)
+            layout = [select_brick_by_content_length(length) for length in max_lengths]
+            # layout = [BRICK.oneone, BRICK.twotwo, BRICK.oneone, BRICK.onetwo, BRICK.onetwo, BRICK.fourtwo, BRICK.twotwo, BRICK.twotwo, BRICK.twotwo]
+            # layout = [BRICK.onetwo, BRICK.onetwo, BRICK.onefour, BRICK.fourfour]
+            # layout = [BRICK.twothree, BRICK.onetwo, BRICK.threethree, BRICK.fourfour]
+            # layout = [BRICK.oneone, BRICK.onetwo, BRICK.onethree, BRICK.onefour, BRICK.twoone,BRICK.twotwo, BRICK.twothree, BRICK.twofour, BRICK.threeone, BRICK.threetwo, BRICK.threethree, BRICK.threefour, BRICK.fourone, BRICK.fourtwo, BRICK.fourthree, BRICK.fourfour]
+            # headers = [f"col {i}" for i in range(len(layout))]
+            # print(headers)
+            # print(max_lengths)
+            # print(layout)
+
+            # pprint(list(zip(headers, max_lengths, layout)))
+            # print("\n\n")
+            # pprint(grid.rows)
+            for id, brick_enum in enumerate(layout):
+                brick = brick_enum.value
+                grid.add_brick_algorithmically(id, brick, headers[id])
+    else:
+        print("creating new file")
+        template = settings.layout_template
         rows = [["" for _ in range(len(template))]]
         grid.add_bricks_by_template(template)
-        file_name = "new_file"
 
-    pprint(grid.rows)
-    pprint(grid.widget_info)
+    # pprint(grid.rows)
+    # pprint(grid.widget_info)
 
-    launch_gui(grid, rows, file_name)
+    launch_gui(grid, rows, settings.in_file)
+
 
 if __name__ == "__main__":
+    logger = shared.logging.getLogger(__name__)
+    shared.logger = shared.logging.getLogger(__name__)
     main()

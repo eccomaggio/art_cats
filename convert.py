@@ -1,14 +1,17 @@
 from openpyxl import load_workbook  # type: ignore
-from dataclasses import dataclass, fields
+import csv
+from dataclasses import dataclass, fields, field
 from abc import ABC, abstractmethod
-from typing import TypeAlias
+from typing import TypeAlias, Any
 from collections.abc import Callable
+
 # from pprint import pprint
 # import sys
 from datetime import datetime, timezone
 import re
 from pathlib import Path
 import logging
+
 # from pyisbn import Isbn
 # from pydantic import BaseModel, field_validator, ValidationError
 # from pydantic_extra_types.isbn import ISBN
@@ -30,51 +33,40 @@ def make_directory(directory_path):
     return directory
 
 
-excel_file_path = "excel_files"
-excel_file_dir = make_directory(excel_file_path)
-output_files_path = "marc21_files"
-output_file_dir = make_directory(output_files_path)
+@dataclass
+class Settings:
+    in_file_full = ""
+    in_file = ""
+    out_file = ""
+    default_output_filename = "output"
+    data_dir = "excel_files"
+    output_dir = "marc21_files"
+    use_default_layout = True
+    is_existing_file = True
+    layout_template: tuple = ()
+    first_row_is_header = True
+    flavour: dict[str, Any] = field(default_factory=dict)
+
+
+settings = Settings()
+excel_file_dir = make_directory(settings.data_dir)
+output_file_dir = make_directory(settings.output_dir)
 
 
 logging.basicConfig(
-    filename = output_file_dir / "output.log",
+    filename=output_file_dir / "output.log",
     filemode="w",
     encoding="utf-8",
     format="%(levelname)s:%(message)s",
-    level=logging.DEBUG
-    )
-
-
-# class Isbn_check(BaseModel):
-#     isbn: ISBN | str = ""
-#     @field_validator("isbn", mode="before")
-#     @classmethod
-#     def validate_isbn_or_empty(cls, input: str | ISBN):
-#         if input == "":
-#             return input
-#         return ISBN(input)
-
-
-# class Barcode_check(BaseModel):
-#     """
-#     barcode standard is probably 'code 39 modulo 43', but a simple regex is enough as we never include the final checksum character
-#     """
-#     barcode: str
-#     @field_validator("barcode")
-#     @classmethod
-#     def validate_barcode_or_empty(cls, barcode: str) -> str:
-#         barcode_pattern = r'^[367][0-9]{8}$'
-#         if not re.match(barcode_pattern, barcode):
-#             msg = f"Barcode {barcode} must be a 9-digit string starting with 3, 6, or 7."
-#             logger.critical(msg)
-#             raise ValueError(f"Barcode {barcode} must be a 9-digit string starting with 3, 6, or 7.")
-#         return barcode
+    level=logging.DEBUG,
+)
 
 
 class Serializable(ABC):
     @abstractmethod
     def serialize(self, mode="str") -> str:
         pass
+
 
 @dataclass
 class Blank(Serializable):
@@ -89,6 +81,7 @@ class Punctuation(Serializable):
     """ISBD punctuation used between subfields
     https://www.itsmarc.com/crs/mergedprojects/lcri/lcri/1_0c__lcri.htm
     """
+
     def __init__(self, contents: str):
         self.contents = contents
 
@@ -104,8 +97,9 @@ class Subfield(Serializable):
     -1 means the content is a single string (for variable control fields)
     if code is omitted, assumed to be -1 (i.e. no code)
     """
+
     # def __init__(self, code: str | int, data: str):
-    def __init__(self,  data: str, code: str | int = "-1"):
+    def __init__(self, data: str, code: str | int = "-1"):
         self.code: str = code if isinstance(code, str) else str(code)
         self.data: str = data
 
@@ -129,7 +123,7 @@ class Content(Serializable):
     def __init__(self, contents: atoms | list[atoms]):
         self.contents = []
         if not isinstance(contents, list):
-          contents = [contents]
+            contents = [contents]
         for el in contents:
             if type(el) not in [Subfield, Punctuation, Blank]:
                 raise TypeError("Only subfields or punctuation allowed")
@@ -148,7 +142,7 @@ class Content(Serializable):
         else:
             self.contents.append(content)
 
-    def __getitem__(self, index:int):
+    def __getitem__(self, index: int):
         return self.contents[index]
 
     def __str__(self):
@@ -160,12 +154,22 @@ class Field(Serializable):
     """Variable Control/Data Field class for MARC21 variable control fields.
     -1 or Blank = indicator placeholder (various realizations, e.g. space or backslash)
     -2 = no indicator"""
-    def __init__(self, tag: int, i1: int | Blank, i2: int | Blank, contents: Content | atoms | list[atoms], ordering: int = 1):
+
+    def __init__(
+        self,
+        tag: int,
+        i1: int | Blank,
+        i2: int | Blank,
+        contents: Content | atoms | list[atoms],
+        ordering: int = 1,
+    ):
         self.tag = tag
-        self.i1: int | Blank  = Blank() if i1 == -1 else i1
+        self.i1: int | Blank = Blank() if i1 == -1 else i1
         self.i2: int | Blank = Blank() if i2 == -1 else i2
         self.contents = contents if isinstance(contents, Content) else Content(contents)
-        self.ordering: int = ordering ## sort is used to order the fields when there are more than one of the same tag
+        self.ordering: int = (
+            ordering  ## sort is used to order the fields when there are more than one of the same tag
+        )
 
     def expand_indicators(self, indicator: int | Blank, mode="str") -> str:
         if indicator == -1:
@@ -197,7 +201,9 @@ class Field(Serializable):
         # return f"={self.tag}@{self.ordering} ({self.i1})({self.i2}) {self.contents.to_string()}"
         return f"={self.tag}@{self.ordering} ({self.i1})({self.i2}) {self.contents.serialize()}"
 
+
 marc_record: TypeAlias = list[Field]
+
 
 @dataclass
 class Title:
@@ -247,8 +253,9 @@ class Result:
     holds the successfully acquired data OR
     the MARC field tag (as an int) where the problem occurred and an error message
     """
-    is_ok: list[Field] | Field | None    ## MARC field or list of same
-    is_err:tuple[int, str] | None   ## [field number, error message]
+
+    is_ok: list[Field] | Field | None  ## MARC field or list of same
+    is_err: tuple[int, str] | None  ## [field number, error message]
 
 
 class MissingFieldError(Exception):
@@ -269,12 +276,14 @@ def norm_langs(raw: str) -> list[str]:
         "dutch": "dut",
     }
     list_of_languages = []
-    languages: list[str] = re.split('[,/]', raw.replace(" ", "").lower())
+    languages: list[str] = re.split("[,/]", raw.replace(" ", "").lower())
     for language in languages:
         try:
             list_of_languages.append(language_codes[language])
         except KeyError as e:
-            logger.warning(f"Warning: {e} is not a recognised language; it has been passed on unchanged.")
+            logger.warning(
+                f"Warning: {e} is not a recognised language; it has been passed on unchanged."
+            )
             list_of_languages.append(language)
     return list_of_languages
 
@@ -291,7 +300,7 @@ def norm_country(country_raw: str) -> str:
         "uk": "xxk",
         "unitedkingdom": "xxk",
         "canada": "xxc",
-        "australia": "xxa", # dummy 3-digit value to trigger detail; swap to "at" at output
+        "australia": "xxa",  # dummy 3-digit value to trigger detail; swap to "at" at output
         "algeria": "ae",
         "angola": "ao",
         "benin": "dm",
@@ -578,9 +587,13 @@ def norm_country(country_raw: str) -> str:
         result = country_codes[country]
     except KeyError as e:
         if len({e}) < 4:
-            logger.info(f"Advisory: assuming country name ({e}) has already been processed.")
+            logger.info(
+                f"Advisory: assuming country name ({e}) has already been processed."
+            )
         else:
-            logger.warning(f"Warning: {e} is not a recognised country name; it has been passed on unchanged.")
+            logger.warning(
+                f"Warning: {e} is not a recognised country name; it has been passed on unchanged."
+            )
         result = country_raw
     return result
 
@@ -591,7 +604,6 @@ def norm_place(place_raw: str) -> str:
         "northernireland": "nik",
         "scotland": "stk",
         "wales": "wlk",
-
         "alberta": "abc",
         "britishcolumbia": "bcc",
         "manitoba": "mbc",
@@ -611,7 +623,6 @@ def norm_place(place_raw: str) -> str:
         "saskatchewan": "snc",
         "yukonterritory": "ykc",
         "yukon": "ykc",
-
         "alabama": "alu",
         "alaska": "aku",
         "arizona": "azu",
@@ -666,7 +677,6 @@ def norm_place(place_raw: str) -> str:
         "westvirginia": "wvu",
         "wisconsin": "wiu",
         "wyoming": "wyu",
-
         "australiancapitalterritory": "aca",
         "queensland": "qea",
         "tasmania": "tma",
@@ -675,7 +685,6 @@ def norm_place(place_raw: str) -> str:
         "newsouthwales": "xna",
         "northernterritory": "xoa",
         "southaustralia": "xra",
-
         "al": "alu",
         "ak": "aku",
         "az": "azu",
@@ -727,7 +736,6 @@ def norm_place(place_raw: str) -> str:
         "wv": "wvu",
         "wi": "wiu",
         "wy": "wyu",
-
         "act": "aca",
         "qld": "qea",
         "tas": "tma",
@@ -736,7 +744,6 @@ def norm_place(place_raw: str) -> str:
         "nsw": "xna",
         "nt": "xoa",
         "sa": "xra",
-
         "alb": "abc",
         "bc": "bcc",
         "man": "mbc",
@@ -757,9 +764,13 @@ def norm_place(place_raw: str) -> str:
         result = long_country_codes[place]
     except KeyError as e:
         if len({e}) == 3:
-            logger.info(f"Advisory: assuming place name ({e}) has already been processed.")
+            logger.info(
+                f"Advisory: assuming place name ({e}) has already been processed."
+            )
         else:
-            logger.warning(f"Warning: {e} is not a recognised place name; it has been passed on unchanged.")
+            logger.warning(
+                f"Warning: {e} is not a recognised place name; it has been passed on unchanged."
+            )
         result = place_raw
     return result
 
@@ -771,7 +782,7 @@ def norm_state(state_raw: str) -> str:
         return ""
 
 
-def check_for_detailed_region(country: str, state:str, place: str) -> str:
+def check_for_detailed_region(country: str, state: str, place: str) -> str:
     """
     The country code for USA, Australia, Canada & UK is 3 digit, based on the state
     Australia, however, only has a 2 digit superordinate code ('at')
@@ -781,10 +792,12 @@ def check_for_detailed_region(country: str, state:str, place: str) -> str:
         if state:
             region = norm_state(state)
         else:
-            tmp = norm_state(place)    # maybe state entered as city by mistake
+            tmp = norm_state(place)  # maybe state entered as city by mistake
             if len(tmp) == 3:
                 region = tmp
-        if region == "xxa": # unlike other 3-digit regions, australia only has 2 digits :S
+        if (
+            region == "xxa"
+        ):  # unlike other 3-digit regions, australia only has 2 digits :S
             region = "at"
         # print(f"**** {country}, {state} ({len(state)}), {place}  -> {region}")
     return region
@@ -815,7 +828,9 @@ def validate_record(record: Record) -> bool:
             logger.warning(f"Record no. {i} is missing the mandatory field '{name}'.")
             is_valid = False
     if not place_state_check:
-        logger.warning("A record must have EITHER a place OR a state specified; this lacks both.")
+        logger.warning(
+            "A record must have EITHER a place OR a state specified; this lacks both."
+        )
     return is_valid
 
 
@@ -825,8 +840,9 @@ def norm_dates(raw: str) -> list[str]:
 
 
 def norm_size(raw: str) -> int:
-    raw = strip_unwanted(r"cm",raw)
-    return int(raw)
+    raw = strip_unwanted(r"cm", raw)
+    clean_value = int(raw) if raw.isnumeric() else -1
+    return clean_value
 
 
 def norm_pages(pages_raw: str) -> str:
@@ -860,23 +876,25 @@ def norm_barcode(raw_barcode: str) -> str:
 
 
 def strip_unwanted(pattern: str, raw: str) -> str:
-  clean = re.sub(pattern, "", raw).strip()
-  return clean
+    clean = re.sub(pattern, "", raw).strip()
+    return clean
 
 
 def check_for_approx(raw_string: str) -> tuple[str, bool]:
     """
     take a question mark in any position to mean the information is not certain.
     """
-    clean, is_approx =  re.subn(r"\?", "", raw_string)
+    clean, is_approx = re.subn(r"\?", "", raw_string)
     clean = trim_mistaken_decimals(clean).strip()
     return (clean, bool(is_approx))
 
 
-def trim_mistaken_decimals(string: str) -> str:
-    if string.endswith(".0"):
-        string = string[:-2]
-    return string
+def trim_mistaken_decimals(value: str | int) -> str:
+    if not isinstance(value, str):
+        value = str(value)
+    if value.endswith(".0"):
+        value = value[:-2]
+    return value
 
 
 # TODO: what should this return if nothing? None or []?
@@ -901,27 +919,34 @@ def extract_from_excel(excel_sheet) -> tuple[list[str], list[worksheet_row]]:
     headers = []
     # for excel_row in excel_sheet.iter_rows(min_row=2, values_only=True):
     for i, excel_row in enumerate(excel_sheet.iter_rows(min_row=1, values_only=True)):
-        row = []
-        if i == 0:
-            headers = excel_row
-            continue
-        elif not excel_row[0]:
-            break
-        for col in excel_row:
-            if col:
-                data = str(col).strip()
-                data = trim_mistaken_decimals(data)
-            else:
-                data = ""
-            row.append(data)
-        sheet.append(row)
+        if not excel_row[0] and not excel_row[1]:
+            break  ## needed as openpyxl keeps spitting out empty rows at the end
+        row = normalize_row(excel_row)
+        if i == 0 and settings.first_row_is_header:
+            headers = row
+        else:
+            sheet.append(row)
     return (headers, sheet)
+
+
+def normalize_row(row: list) -> list:
+    clean_row = []
+    for col in row:
+        if col:
+            data = str(col).strip()
+            data = trim_mistaken_decimals(data)
+        else:
+            data = ""
+        clean_row.append(data)
+    return clean_row
 
 
 def parse_rows_into_records(sheet: list[worksheet_row]) -> list[Record]:
     current_time = datetime.now()
     records = []
     for row in sheet:
+        # for i, row in enumerate(sheet):
+        #     print(f"Parsing record no. {i + 1}")
         record = parse_row(row, current_time)
         records.append(record)
     return records
@@ -942,7 +967,7 @@ def parse_row(row: list[str], current_time: datetime) -> Record:
     place = next(cols)
     publisher = next(cols)
     pub_date, pub_date_is_approx = check_for_approx(norm_year(next(cols)))
-    copyright_ = next(cols).replace("©","").strip()
+    copyright_ = next(cols).replace("©", "").strip()
     extent, extent_is_approx = check_for_approx(norm_pages(next(cols)))
     size = norm_size(next(cols))
     series_title = next(cols)
@@ -981,44 +1006,15 @@ def parse_row(row: list[str], current_time: datetime) -> Record:
         hol_notes,
         donation,
         barcode,
-
         pub_date_is_approx,
         extent_is_approx,
         current_time,
-
-        sequence_number = 1,
-        links = [],
+        sequence_number=1,
+        links=[],
     )
     validate_record(record)
     return record
 
-
-
-# def build_leader(record: Record) -> Result:
-#     """leader (0 is only for sorting purposes; should read 'LDR')"""
-#     tag = 0
-#     blank = " "
-#     i1, i2 = variable_control_field()
-#     # content = "00000nam a22000003i 4500"
-#     record_len_00 = "00000"  # placeholder for record length
-#     record_status_05 = "n"  # "n" for new record
-#     record_type_06 = "a"  # "a" for language material
-#     biblio_level_07 = "m"  # "m" for monograph
-#     type_of_ctrl_08 = blank # no type of control
-#     char_coding_09 = "a"  # Unicode
-#     indicator_count_10 = "2"  # no indicators
-#     subfield_count_11 = "2"  # no subfields
-#     base_address_12 = "00000"  # placeholder for base address of data
-#     encoding_level_17 = "3" # "3" for abbrieviated level
-#     cat_conventions_18 = "i"  # ISBD punctuation included
-#     multipart_indic_19 = blank # no multipart
-#     field_len_20 = "4"  # placeholder for length of field
-#     start_character_len_21 = "5"  # placeholder for length of starting character
-#     implementation_len_22 = "0"  # placeholder for implementation length
-#     undefined_23 = "0"  # placeholder for undefined length
-#     data: str = record_len_00 + record_status_05 + record_type_06 + biblio_level_07 + type_of_ctrl_08 + char_coding_09 + indicator_count_10 + subfield_count_11 + base_address_12 + encoding_level_17 + cat_conventions_18 + multipart_indic_19 + field_len_20 + start_character_len_21 + implementation_len_22 + undefined_23
-#     success = Field(tag, i1, i2, [Subfield(data)])
-#     return Result(success, None)
 
 def build_leader(record: Record) -> Result:
     """leader (0 is only for sorting purposes; should read 'LDR')"""
@@ -1035,15 +1031,41 @@ def build_leader(record: Record) -> Result:
     indicator_count_10 = "2"  # no indicators
     subfield_count_11 = "2"  # no subfields
     base_address_12 = "00000"  # placeholder for base address of data
-    encoding_level_17 = "3" # "3" for abbrieviated level
+    encoding_level_17 = "3"  # "3" for abbrieviated level
     cat_conventions_18 = "i"  # ISBD punctuation included
     multipart_indic_19 = Blank()  # no multipart
     field_len_20 = "4"  # placeholder for length of field
     start_character_len_21 = "5"  # placeholder for length of starting character
     implementation_len_22 = "0"  # placeholder for implementation length
     undefined_23 = "0"  # placeholder for undefined length
-    success = Field(tag, i1, i2, [Subfield(record_len_00 + record_status_05 + record_type_06 + biblio_level_07), type_of_ctrl_08, Subfield(char_coding_09 + indicator_count_10 + subfield_count_11 + base_address_12 + encoding_level_17 + cat_conventions_18), multipart_indic_19, Subfield(field_len_20 + start_character_len_21 + implementation_len_22 + undefined_23)])
+    success = Field(
+        tag,
+        i1,
+        i2,
+        [
+            Subfield(
+                record_len_00 + record_status_05 + record_type_06 + biblio_level_07
+            ),
+            type_of_ctrl_08,
+            Subfield(
+                char_coding_09
+                + indicator_count_10
+                + subfield_count_11
+                + base_address_12
+                + encoding_level_17
+                + cat_conventions_18
+            ),
+            multipart_indic_19,
+            Subfield(
+                field_len_20
+                + start_character_len_21
+                + implementation_len_22
+                + undefined_23
+            ),
+        ],
+    )
     return Result(success, None)
+
 
 def build_005(record: Record) -> Result:
     """date & time of transaction
@@ -1063,25 +1085,41 @@ def build_008(record: Record) -> Result:
     tag = 8
     i1, i2 = variable_control_field()
     t = record.timestamp
-    date_entered_on_file = Subfield(str(t.year)[2:] + str(t.month).zfill(2) + str(t.day).zfill(2))
+    date_entered_on_file = Subfield(
+        str(t.year)[2:] + str(t.month).zfill(2) + str(t.day).zfill(2)
+    )
     pub_status: Subfield = Subfield("s")
     date_1: Subfield = Subfield(record.pub_year)
     date_2: Subfield = Subfield(4 * "|")
     region = check_for_detailed_region(record.country_code, record.state, record.place)
     place_of_pub: list[atoms] = [Subfield(region), *fill_with_blanks(region)]
-    books_configuration: list[atoms] = [Subfield(14*"|"), Blank(), Subfield(2*"|")]
+    books_configuration: list[atoms] = [Subfield(14 * "|"), Blank(), Subfield(2 * "|")]
     lang: list[atoms] = [Subfield(record.langs[0]), *fill_with_blanks(record.langs[0])]
-    modified_and_cataloging: Subfield = Subfield(2*"|")
-    content = Content([date_entered_on_file,  pub_status,  date_1,  date_2,  *place_of_pub,  *books_configuration,  *lang,  modified_and_cataloging])
+    modified_and_cataloging: Subfield = Subfield(2 * "|")
+    content = Content(
+        [
+            date_entered_on_file,
+            pub_status,
+            date_1,
+            date_2,
+            *place_of_pub,
+            *books_configuration,
+            *lang,
+            modified_and_cataloging,
+        ]
+    )
     result = Result(Field(tag, i1, i2, content), None)
     return result
+
 
 def build_033(record: Record) -> Result:
     """sales dates"""
     tag = 33
     i1 = 0 if len(record.sale_dates) == 1 else 1
     i2 = -1
-    result = Result(Field(tag, i1, i2, [Subfield(date, "a") for date in record.sale_dates]), None)
+    result = Result(
+        Field(tag, i1, i2, [Subfield(date, "a") for date in record.sale_dates]), None
+    )
     return result
 
 
@@ -1089,7 +1127,14 @@ def build_040(record: Record) -> Result:
     """Cataloguing source (Oxford)"""
     tag = 40
     i1, i2 = -1, -1
-    content = Content([Subfield("UkOxU", "a"), Subfield("eng", "b"), Subfield("rda", "e"), Subfield("UkOxU", "c")])
+    content = Content(
+        [
+            Subfield("UkOxU", "a"),
+            Subfield("eng", "b"),
+            Subfield("rda", "e"),
+            Subfield("UkOxU", "c"),
+        ]
+    )
     result = Result(Field(tag, i1, i2, content), None)
     return result
 
@@ -1105,7 +1150,9 @@ def build_245(record: Record) -> Result:
     has_chinese_title = bool(record.title.transliteration)
     if has_chinese_title:
         title, subtitle = record.title.transliteration, record.subtitle.transliteration
-        linkage = deal_with_chinese_titles(record, record.title.original, record.subtitle.original, i1, nonfiling, tag)
+        linkage = deal_with_chinese_titles(
+            record, record.title.original, record.subtitle.original, i1, nonfiling, tag
+        )
     else:
         title, subtitle = record.title.original, record.subtitle.original
         nonfiling, title = check_for_nonfiling(title)
@@ -1117,7 +1164,7 @@ def build_245(record: Record) -> Result:
             content.add(linkage)
         content.add(Subfield(title, "a"))
         if subtitle:
-           content.add([Punctuation(" :"), Subfield(subtitle, "b")])
+            content.add([Punctuation(" :"), Subfield(subtitle, "b")])
         if content.can_accept_period():
             content.add(Punctuation("."))
 
@@ -1127,7 +1174,14 @@ def build_245(record: Record) -> Result:
     return result
 
 
-def deal_with_chinese_titles(record: Record, title_original: str, subtitle_original: str | None, i1: int, i2: int, tag: int) -> Subfield:
+def deal_with_chinese_titles(
+    record: Record,
+    title_original: str,
+    subtitle_original: str | None,
+    i1: int,
+    i2: int,
+    tag: int,
+) -> Subfield:
     chinese_title = Content(Subfield(title_original, "a"))
     if subtitle_original:
         chinese_title.add([Punctuation(" :"), Subfield(subtitle_original, "b")])
@@ -1150,12 +1204,22 @@ def build_264(record: Record) -> Result:
     place_name = record.place if record.place else record.state
     place = Subfield(place_name, "a")
     publisher = Subfield(record.publisher, "b")
-    pub_year = Subfield(f"[{record.pub_year}?]" if record.pub_year_is_approx else record.pub_year, "c")
-    content = Field(tag, i1, i2, [place, Punctuation(" :"), publisher, Punctuation(","), pub_year], 1)
+    pub_year = Subfield(
+        f"[{record.pub_year}?]" if record.pub_year_is_approx else record.pub_year, "c"
+    )
+    content = Field(
+        tag,
+        i1,
+        i2,
+        [place, Punctuation(" :"), publisher, Punctuation(","), pub_year],
+        1,
+    )
     if record.copyright:
         # _copyright = Field(tag, i1, 4, [Subfield(f"\u00a9 {record.copyright}", "c")], 2)
-        _copyright = Field(tag, i1, 4, [Subfield(f"{copyright_symbol} {record.copyright}", "c")], 2)
-        result  = Result([content, _copyright], error)
+        _copyright = Field(
+            tag, i1, 4, [Subfield(f"{copyright_symbol} {record.copyright}", "c")], 2
+        )
+        result = Result([content, _copyright], error)
     else:
         result = Result(content, error)
     return result
@@ -1164,8 +1228,15 @@ def build_264(record: Record) -> Result:
 def build_300(record: Record) -> Result:
     """physical description"""
     tag = 300
-    i1, i2 = -1, -1 ## "undefined"
-    pages = Subfield(f"approximately {record.extent} pages" if record.extent_is_approx else f"{record.extent} pages", "a")
+    i1, i2 = -1, -1  ## "undefined"
+    pages = Subfield(
+        (
+            f"approximately {record.extent} pages"
+            if record.extent_is_approx
+            else f"{record.extent} pages"
+        ),
+        "a",
+    )
     size = Subfield(f"{record.size} cm", "c")
     content = Content([pages, Punctuation(" ;"), size])
     result = Result(Field(tag, i1, i2, content), None)
@@ -1176,7 +1247,7 @@ def build_336(record: Record) -> Result:
     """content type (boilerplate)"""
     tag = 336
     content = Content([Subfield("text", "a"), Subfield("rdacontent", 2)])
-    result = Result(Field(tag, -1, -1,content), None)
+    result = Result(Field(tag, -1, -1, content), None)
     return result
 
 
@@ -1193,7 +1264,7 @@ def build_338(record: Record) -> Result:
     """carrier type (boilerplate)"""
     tag = 338
     i1, i2 = -1, -1
-    content =  Content([Subfield("volume", "a"), Subfield("rdacarrier", 2)])
+    content = Content([Subfield("volume", "a"), Subfield("rdacarrier", 2)])
     result = Result(Field(tag, i1, i2, content), None)
     return result
 
@@ -1206,9 +1277,9 @@ def build_876(record: Record) -> Result:
     tag = 876
     i1, i2 = -1, -1
     content = Content([Subfield(record.barcode, "p")])
-    if (donation := record.donation):
+    if donation := record.donation:
         content.add(Subfield(donation, "z"))
-    if (notes := record.hol_notes):
+    if notes := record.hol_notes:
         content.add(Subfield(notes, "z"))
     result = Result(Field(tag, i1, i2, content), None)
     return result
@@ -1218,7 +1289,7 @@ def build_904(record: Record) -> Result:
     """authority (boilerplate)"""
     tag = 904
     i1, i2 = -1, -1
-    content =  Content(Subfield("Oxford Local Record", "a"))
+    content = Content(Subfield("Oxford Local Record", "a"))
     result = Result(Field(tag, i1, i2, content), None)
     return result
 
@@ -1245,7 +1316,9 @@ def build_024(record: Record) -> Result:  ##optional
     i1 = 8
     i2 = -1
     if record.sales_code:
-        result = Result(Field(tag, i1, i2, Content(Subfield(record.sales_code, "a"))), None)
+        result = Result(
+            Field(tag, i1, i2, Content(Subfield(record.sales_code, "a"))), None
+        )
     else:
         result = Result(None, (tag, ""))
     return result
@@ -1272,7 +1345,10 @@ def build_041(record: Record) -> Result:  ##optional
         # lang_list = f"$a{"$a".join(others)}$h{main_lang}"
         # result = (build_field(41, [[i1,i2, lang_list]]))
         ## OPTION 3
-        result = Result(Field(tag, i1, i2, [Subfield(language, "a") for language in record.langs]), None)
+        result = Result(
+            Field(tag, i1, i2, [Subfield(language, "a") for language in record.langs]),
+            None,
+        )
     else:
         result = Result(None, (tag, ""))
     return result
@@ -1293,15 +1369,25 @@ def build_246(record: Record) -> Result:  ##optional
     if has_chinese_parallel_title:
         parallel_title = record.parallel_title.transliteration
         parallel_subtitle = record.parallel_subtitle.transliteration
-        linkage = deal_with_chinese_titles(record, record.parallel_title.original, record.parallel_subtitle.original, i1, i2, tag)
+        linkage = deal_with_chinese_titles(
+            record,
+            record.parallel_title.original,
+            record.parallel_subtitle.original,
+            i1,
+            i2,
+            tag,
+        )
     elif has_parallel_title:  ## (i.e. Western script)
-        parallel_title, parallel_subtitle = record.parallel_title.original, record.parallel_subtitle.original
+        parallel_title, parallel_subtitle = (
+            record.parallel_title.original,
+            record.parallel_subtitle.original,
+        )
     else:
         parallel_title, parallel_subtitle = "", ""
     if parallel_title:
         parallel_title_sub = Subfield(parallel_title, "a")
         if linkage:
-           content = Content([linkage, parallel_title_sub])
+            content = Content([linkage, parallel_title_sub])
         else:
             content = Content(parallel_title_sub)
         if parallel_subtitle:
@@ -1351,7 +1437,9 @@ def build_500(record: Record) -> Result:  ##optional
 
 
 # TODO: need an item with both a Chinese title and subtitle to test the sequence number logic.
-def build_880(record: Record, title: Content, i1: int, i2: int, caller: int, sequence_number: str) -> None:  ##optional
+def build_880(
+    record: Record, title: Content, i1: int, i2: int, caller: int, sequence_number: str
+) -> None:  ##optional
     """Alternate Graphic Representation
     NB. unlike the other fields, this isn't called directly but by the linked field
     looks like: =880  31$6246-01$a中國書畫、陶瓷及藝術品拍賣會
@@ -1372,7 +1460,11 @@ def check_if_mandatory(result: Result, is_mandatory: bool) -> list[Field] | None
     if result.is_err:
         numeric_tag, error_msg = result.is_err
         if is_mandatory:
-            msg = error_msg if error_msg else f"Data for required field {str(numeric_tag).zfill(3)} is required."
+            msg = (
+                error_msg
+                if error_msg
+                else f"Data for required field {str(numeric_tag).zfill(3)} is required."
+            )
             logger.warning(msg)
             raise MissingFieldError(msg)
     elif result.is_ok:
@@ -1396,7 +1488,7 @@ def seq_num(sequence_number: int) -> str:
     return str(sequence_number).zfill(2)
 
 
-def check_for_nonfiling(title: str, lang: str="eng") -> tuple[int,str]:
+def check_for_nonfiling(title: str, lang: str = "eng") -> tuple[int, str]:
     """
     Check for manual nonfiling indicator (@@) & returns its position + extracts it from title string
     if no manual indication, check for nonfiling words according to language of title"""
@@ -1459,13 +1551,13 @@ def apply_marc_logic(record: Record) -> list[Field]:
         (build_245, True),
         (build_264, True),
         (build_300, True),
-        (build_490, False), # series statement
+        (build_490, False),  # series statement
         (build_876, True),
-        (build_020, False), # isbn
-        (build_024, False), # sales code
-        (build_041, False), # language if not monolingual
-        (build_246, False), # parallel title
-        (build_500, False), # general notes
+        (build_020, False),  # isbn
+        (build_024, False),  # sales code
+        (build_041, False),  # language if not monolingual
+        (build_246, False),  # parallel title
+        (build_500, False),  # general notes
     )
     for builder, is_mandatory in fields_to_deploy:
         field = check_if_mandatory(builder(record), is_mandatory)
@@ -1480,7 +1572,7 @@ def apply_marc_logic(record: Record) -> list[Field]:
     return marc_record
 
 
-def write_mrk_files(data: list[list[str]], file_name: str="output.mrk") -> None:
+def write_mrk_files(data: list[list[str]], file_name: str = "output.mrk") -> None:
     out_file = output_file_dir / file_name
     with open(out_file, "w", encoding="utf-8") as f:
         # print(f">>>> entries: {len(data)}")
@@ -1492,7 +1584,7 @@ def write_mrk_files(data: list[list[str]], file_name: str="output.mrk") -> None:
                 f.write("\n")
 
 
-def write_mrc_binaries(data: list[list[Field]], file_name: str="output.mrc") -> None:
+def write_mrc_binaries(data: list[list[Field]], file_name: str = "output.mrc") -> None:
     out_file = output_file_dir / file_name
     flat_records = make_binary(data)
     with open(out_file, "wb") as f:
@@ -1518,30 +1610,66 @@ def make_binary(data: list[list[Field]]) -> list[bytes]:
             # contents = field.to_mrc()
             contents = field.serialize("mrc")
             line_length_with_final_record_separator = len(contents.encode("utf-8"))
-            fields.append((tag, contents, line_length_with_final_record_separator, current_start_position))
+            fields.append(
+                (
+                    tag,
+                    contents,
+                    line_length_with_final_record_separator,
+                    current_start_position,
+                )
+            )
             current_start_position += line_length_with_final_record_separator
         # tmp.append((leader.to_mrc(), fields))
         tmp.append((leader.serialize("mrc"), fields))
 
         directory = [(f[0], f[2], f[3]) for f in fields]
         # leader_length = int(24)
-        leader_length:int = 24
-        directory_length:int = (12 * len(directory)) + 1
-        base_address_of_data:int = leader_length + directory_length
-        logical_record_length:int = base_address_of_data + directory[-1][2]
+        leader_length: int = 24
+        directory_length: int = (12 * len(directory)) + 1
+        base_address_of_data: int = leader_length + directory_length
+        logical_record_length: int = base_address_of_data + directory[-1][2]
         leader_mrc = f"{str(logical_record_length).zfill(5)}nam a22{str(base_address_of_data).zfill(5)}3i 4500"
-        directory_mrc = "".join([f"{str(f[0]).zfill(3)}{str(f[1]).zfill(4)}{str(f[2]).zfill(5)}" for f in directory]) + RS
+        directory_mrc = (
+            "".join(
+                [
+                    f"{str(f[0]).zfill(3)}{str(f[1]).zfill(4)}{str(f[2]).zfill(5)}"
+                    for f in directory
+                ]
+            )
+            + RS
+        )
         fields_mrc = "".join([f[1] for f in fields])
         binary_line = f"{leader_mrc}{directory_mrc}{fields_mrc}{GS}".encode("utf-8")
         output.append(binary_line)
     return output
 
 
-def parse_excel_into_rows(excel_file_address: Path) -> tuple[list[str], list[worksheet_row]]:
-    excel_file_name = str(excel_file_address.resolve())
-    worksheet = load_workbook(filename=excel_file_name).active
-    headers, raw_rows = extract_from_excel(worksheet)
+def parse_file_into_rows(
+    file_path: Path,
+) -> tuple[list[str], list[worksheet_row]]:
+    is_excel_file = file_path.suffix.startswith(".xl")
+    if is_excel_file:
+        excel_file_name = str(file_path.resolve())
+        worksheet = load_workbook(filename=excel_file_name).active
+        headers, raw_rows = extract_from_excel(worksheet)
+    else:
+        headers, raw_rows = extract_from_csv(file_path)
     return (headers, raw_rows)
+
+
+def extract_from_csv(file_address: Path) -> tuple[list[str], list[worksheet_row]]:
+    sheet = []
+    headers = []
+    delimiter = "," if file_address.suffix == ".csv" else "\t"
+    with open(file_address.resolve(), mode="r") as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=delimiter)
+        for i, row in enumerate(csv_reader):
+            row = normalize_row(row)
+            if i == 0 and settings.first_row_is_header:
+                headers = row
+            else:
+                sheet.append(row)
+    return (headers, sheet)
 
 
 def flatten_fields_to_strings(input: list[marc_record]) -> list[list[str]]:
@@ -1552,19 +1680,32 @@ def flatten_fields_to_strings(input: list[marc_record]) -> list[list[str]]:
     return output
 
 
-def write_marc_files(records:list[marc_record], excel_file_address: Path) -> None:
-    # records_with_string_fields = flatten_fields_to_strings(records)
+def write_marc_files(records: list[marc_record], excel_file_address: Path) -> None:
     records_with_string_fields = flatten_fields_to_strings(records)
     print(f"Writing {len(records)} record(s)...")
-    write_mrk_files(records_with_string_fields, f"{excel_file_address.stem}.paul.mrk")
-    write_mrc_binaries(records, f"{excel_file_address.stem}.paul.mrc")
+    write_mrk_files(records_with_string_fields, f"{excel_file_address.stem}.mrk")
+    write_mrc_binaries(records, f"{excel_file_address.stem}.mrc")
 
 
 def run() -> None:
-    for file in Path(excel_file_path).glob("*.xls[xm]"):
+    # for file in Path(settings.data_dir).glob("*.xls[xm]"):
+    extensions = ["*.xlsx", "*.xlsm", "*.csv", "*.tsv"]
+    file_list: list[Path] = []
+    for ext in extensions:
+        file_list.extend(Path(settings.data_dir).glob(ext))
+
+    print(f"There {len(file_list)} files to process.")
+    for file in file_list:
+        # is_excel_file = file.suffix.startswith(".xl")
         logger.info(f"\n>>>>> processing: {file.name}")
-        print(f">>>>> processing: {file.name}")
-        headers, raw_rows = parse_excel_into_rows(file)
+        print(
+            f">>>>> now processing: {file}>{file.name} ({file.suffix})"
+        )
+        headers, raw_rows = parse_file_into_rows(file)
+        # if is_excel_file:
+        #     headers, raw_rows = parse_file_into_rows(file)
+        # else:
+        #     headers, raw_rows = extract_from_csv(file)
         records = parse_rows_into_records(raw_rows)
         del headers
         del raw_rows
@@ -1575,6 +1716,7 @@ def run() -> None:
 
 def main() -> None:
     run()
+
 
 if __name__ == "__main__":
     logger = logging.getLogger(__name__)
