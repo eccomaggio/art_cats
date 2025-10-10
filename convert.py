@@ -1661,7 +1661,7 @@ def extract_from_csv(file_address: Path) -> tuple[list[str], list[worksheet_row]
     sheet = []
     headers = []
     delimiter = "," if file_address.suffix == ".csv" else "\t"
-    with open(file_address.resolve(), mode="r") as csv_file:
+    with open(file_address.resolve(), mode="r", encoding="utf-8") as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=delimiter)
         for i, row in enumerate(csv_reader):
             row = normalize_row(row)

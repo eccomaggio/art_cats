@@ -178,6 +178,7 @@ settings.flavour = {
         COL.sale_dates,
         COL.copyright,
         COL.sale_dates,
+        COL.sales_code,
     ],
 }
 
@@ -469,7 +470,7 @@ class MainWindow(QMainWindow):
             if not pubdate.text():
                 year_of_pub = sender.text().strip()[:4]
                 # print(f">>>>>>>>> {year_of_pub}")
-                pubdate.setText(year_of_pub)
+                pubdate.setText(f"{year_of_pub}?")
         else:
             print("Can't access salecode or pubdate fields...")
 
@@ -703,7 +704,7 @@ def create_max_lengths(rows: list[list[str]]) -> list[int]:
 
 def write_to_csv(file_name: str, data: list[list[str]], headers: list[str]) -> None:
     out_file = Path(settings.output_dir) / Path(file_name)
-    with open(out_file, "w", newline="") as f:
+    with open(out_file, "w", newline="", encoding="utf-8") as f:
         csvwriter = csv.writer(f)
         csvwriter.writerow(headers)
         csvwriter.writerows(data)
