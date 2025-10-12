@@ -17,7 +17,7 @@ import logging
 # from pydantic_extra_types.isbn import ISBN
 
 
-def make_directory(directory_path):
+def make_directory(directory_path:str) -> Path:
     directory = Path(directory_path)
     if not directory.is_dir():
         directory.mkdir()
@@ -39,15 +39,20 @@ class Settings:
     in_file = ""
     out_file = ""
     default_output_filename = "output"
-    data_dir = "excel_files"
-    output_dir = "marc21_files"
+    # data_dir = "excel_files"
+    # output_dir = "marc21_files"
+    app_dir = "app"
+    data_dir = "input_files"
+    output_dir = "output_files"
     use_default_layout = True
     is_existing_file = True
     layout_template: tuple = ()
     first_row_is_header = True
     flavour: dict[str, Any] = field(default_factory=dict)
+    help_file = ""
 
 
+logger = logging.getLogger(__name__)
 settings = Settings()
 excel_file_dir = make_directory(settings.data_dir)
 output_file_dir = make_directory(settings.output_dir)
@@ -1719,5 +1724,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    logger = logging.getLogger(__name__)
+    # logger = logging.getLogger(__name__)
     main()

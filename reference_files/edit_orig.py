@@ -1,18 +1,17 @@
-"""
-GUI to replace excel files in the excel file cataloguing workflow. I wanted to avoid excel files as the automatic user input form is inadequate and coding a custom one is painful.
-This can create a file from scratch or load a suitable (i.e. contains the correct number of fields in the correct order) csv or excel file. After adding and amending records, the result can be saved as a .csv file and / or marc 21 files (.mrk & .mrc files)
-It builds on a script that converts excel files into markdown; in fact, the current script imports this script and utilises it to open files and create internal representations ("Records").
-"""
-from app import convert as shared
+# from tempfile import template
+import convert as shared
 from dataclasses import dataclass
 import argparse
 from pathlib import Path
-# from pprint import pprint
+from pprint import pprint
 from enum import Enum, auto
 import sys
 import csv
+
+# from PySide6.QtCore import QSize, Qt, Slot
 from PySide6.QtWidgets import (
     QApplication,
+    QMainWindow,
     QPushButton,
     QGridLayout,
     QLabel,
@@ -25,61 +24,10 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFileDialog,
     QMessageBox,
-    QSizePolicy,
-    QTextBrowser,
 )
-from PySide6.QtCore import Qt, QUrl, QTimer
 
-class COL(Enum):
-    sublib = 0
-    langs = auto()
-    isbn = auto()
-    title = auto()
-    tr_title = auto()
-    subtitle = auto()
-    tr_subtitle = auto()
-    parallel_title = auto()
-    tr_parallel_title = auto()
-    parallel_subtitle = auto()
-    tr_parallel_subtitle = auto()
-    country_name = auto()
-    state = auto()
-    place = auto()
-    publisher = auto()
-    pub_year = auto()
-    copyright = auto()
-    extent = auto()
-    size = auto()
-    series_title = auto()
-    series_enum = auto()
-    volume = auto()
-    notes = auto()
-    sales_code = auto()
-    sale_dates = auto()
-    hol_notes = auto()
-    donation = auto()
-    barcode = auto()
-    start = 0
+settings = shared.settings
 
-
-shared.settings.help_file = "help.html"
-shared.settings.flavour = {
-    "title": "art_catalogue",
-    "fields_to_clear": [
-        COL.barcode,
-        COL.hol_notes,
-        COL.extent,
-        COL.pub_year,
-        COL.sale_dates,
-        COL.copyright,
-        COL.sale_dates,
-        COL.sales_code,
-    ],
-}
-
-LABELS = {
-    "help" : {"show": "Show help", "hide": "Hide help"}
-}
 
 @dataclass
 class Brick:
@@ -139,6 +87,38 @@ brick_lookup = {
 }
 
 
+class COL(Enum):
+    sublib = 0
+    langs = auto()
+    isbn = auto()
+    title = auto()
+    tr_title = auto()
+    subtitle = auto()
+    tr_subtitle = auto()
+    parallel_title = auto()
+    tr_parallel_title = auto()
+    parallel_subtitle = auto()
+    tr_parallel_subtitle = auto()
+    country_name = auto()
+    state = auto()
+    place = auto()
+    publisher = auto()
+    pub_year = auto()
+    copyright = auto()
+    extent = auto()
+    size = auto()
+    series_title = auto()
+    series_enum = auto()
+    volume = auto()
+    notes = auto()
+    sales_code = auto()
+    sale_dates = auto()
+    hol_notes = auto()
+    donation = auto()
+    barcode = auto()
+    start = 0
+
+
 def select_brick_by_content_length(length: int) -> BRICK:
     if length < 50:
         return BRICK.oneone
@@ -187,6 +167,20 @@ default_hint = (
     ("Donor note", "1:4", 16, 0),
     ("Barcode ", "1:2", 16, 4),
 )
+
+settings.flavour = {
+    "title": "art_catalogue",
+    "fields_to_clear": [
+        COL.barcode,
+        COL.hol_notes,
+        COL.extent,
+        COL.pub_year,
+        COL.sale_dates,
+        COL.copyright,
+        COL.sale_dates,
+        COL.sales_code,
+    ],
+}
 
 
 class Grid:
@@ -303,182 +297,22 @@ class Grid:
                 self.rows[row_i][col_i] = brick_id
 
 
-class WindowWithRightTogglePanel(QWidget):
-    saved_editor_width = 0
-    GRID_BUFFER = 3  # Buffer for layout margins/spacing
-
-    def __init__(self, grid:Grid, rows:list[list[str]], settings:shared.Settings ):
+class MainWindow(QMainWindow):
+    def __init__(self, grid: Grid, excel_rows: list[list[str]], file_name: str):
         super().__init__()
-
-        self.main_grid = QGridLayout(self)
-        self.main_grid.setContentsMargins(0, 0, 0, 0)
-        # self.main_grid.setSpacing(3)
-        self.main_grid.setSpacing(self.GRID_BUFFER)
-
-        self.EDIT_PANEL_INITIAL_WIDTH = 800
-        self.HELP_PANEL_WIDTH = 350
-
-        # --- 1. Main Editor Setup (Column 0, Expanding) ---
-        self.edit_panel_widget = Editor(grid, rows, settings.in_file, self, settings)
-        self.edit_panel_widget.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        )
-
-        # --- 2. Help Panel Setup (Column 1, Fixed Width) ---
-        self.help_widget = QTextBrowser()
-        ## NB pyside6 does not natively implement internal links in markdown (hence the use of html)
-        html_path = Path.cwd() / settings.app_dir / settings.help_file
-        html_content = load_text_from_file(str(html_path))
-        self.help_widget.setHtml(html_content)
-        self.help_widget.anchorClicked.connect(self.handle_internal_link)
-        self.help_widget.setReadOnly(True)
-        self.help_widget.setFixedWidth(self.HELP_PANEL_WIDTH)
-
-        # Add panes to the main grid layout
-        self.main_grid.addWidget(self.edit_panel_widget, 0, 0)
-        self.main_grid.addWidget(self.help_widget, 0, 1)
-
-        # Set Column Stretch Factors for the 2-column layout:
-        self.main_grid.setColumnStretch(0, 10)  # Editor column (Expands)
-        self.main_grid.setColumnStretch(1, 0)  # Help panel column (Fixed)
-        self.setLayout(self.main_grid)
-
-        # Initial layout sizing
-        self.adjustSize()
-
-        # Capture the correct initial size after layout setup
-        self.saved_editor_width = self.edit_panel_widget.width()
-        self.centre_window_in_display()
-
-    def centre_window_in_display(self) -> None:
-        screen_geometry = QApplication.primaryScreen().geometry()
-        window_frame = self.frameGeometry()
-        center_point = screen_geometry.center()
-        window_frame.moveCenter(center_point)
-        self.move(window_frame.topLeft())
-
-    def resizeEvent(self, event):
-        """
-        Handles manual resizing when the help panel is closed by restoring the
-        editor's Expanding policy so it can fill the window.
-        """
-        super().resizeEvent(event)
-
-        # If the help panel is hidden, the user wants the editor to absorb the resize space.
-        if not self.help_widget.isVisible():
-            # Check if the policy is currently Fixed (i.e., we need to restore it)
-            if (
-                self.edit_panel_widget.sizePolicy().horizontalPolicy()
-                == QSizePolicy.Policy.Fixed
-            ):
-
-                # 1. Restore the Expanding policy
-                self.edit_panel_widget.setSizePolicy(
-                    QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-                )
-
-                # 2. Remove the fixed width constraint
-                self.edit_panel_widget.setFixedWidth(16777215)  # QWIDGETSIZE_MAX
-
-                # 3. Force a layout update to make the editor stretch immediately
-                self.layout().invalidate()
-                self.update()
-
-    def toggle_help_panel(self):
-        """
-        Toggles the help panel visibility while managing the editor's size policy
-        to achieve the sticky width and correct window resizing on all toggles.
-        """
-
-        is_visible = self.help_widget.isVisible()
-
-        if is_visible:
-            # --- Hiding Panel (Shrinking Window) ---
-
-            # # 1. Save the current width (the user's preferred size)
-            # self.saved_editor_width = self.edit_panel_widget.width()
-
-            # # 2. Temporarily set the editor's horizontal policy to Fixed
-            # self.edit_panel_widget.setSizePolicy(
-            #     QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding
-            # )
-            # self.edit_panel_widget.setFixedWidth(self.saved_editor_width)
-
-            # # 3. Hide the panel.
-            # self.help_widget.setVisible(False)
-
-            # # 4. Calculate new width (saved editor width + buffer)
-            # new_width = self.saved_editor_width + self.GRID_BUFFER
-            # # self.edit_panel_widget.help_btn.setText("Show Help Panel")
-            # self.edit_panel_widget.help_btn.setText(LABELS["help"]["show"])
-
-            # # 5. Delay the resize to let the Fixed policy take effect
-            # QTimer.singleShot(1, lambda: self.resize(new_width, self.height()))
-
-            # 1. Save the current editor width
-            self.saved_editor_width = self.edit_panel_widget.width()
-
-            # 2. Temporarily set the editor's policy to Fixed and constrain its width
-            self.edit_panel_widget.setSizePolicy(
-                QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding
-            )
-            self.edit_panel_widget.setFixedWidth(self.saved_editor_width)
-
-            # 3. Hide the help panel.
-            self.help_widget.setVisible(False)
-
-            # 4. CRITICAL FIX: Tell the window to adjust to the new minimum size.
-            # This is more reliable than self.resize() for layouts.
-            self.adjustSize()
-
-            # 5. Update button text
-            self.edit_panel_widget.help_btn.setText(LABELS["help"]["show"])
-
-        else:
-            # --- Showing Panel (Expanding Window) ---
-            self.saved_editor_width = self.edit_panel_widget.width()
-            # 2. Restore the editor's policy to Expanding
-            self.edit_panel_widget.setFixedWidth(16777215)
-            self.edit_panel_widget.setSizePolicy(
-                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-            )
-            self.help_widget.setVisible(True)
-            # 4. Calculate the full width needed (New Editor Width + Help Panel Width + buffer)
-            new_width = (
-                self.saved_editor_width + self.HELP_PANEL_WIDTH + self.GRID_BUFFER
-            )
-            # self.edit_panel_widget.help_btn.setText("Hide Help Panel")
-            self.edit_panel_widget.help_btn.setText(LABELS["help"]["hide"])
-            self.resize(new_width, self.height())
-
-    def handle_internal_link(self, url: QUrl):
-        """Scrolls the QTextBrowser to the target anchor within the document."""
-        anchor_name = url.toString().split("#")[-1]
-        if anchor_name:
-            self.help_widget.scrollToAnchor(anchor_name)
-
-class Editor(QWidget):
-    def __init__(self, grid: Grid, excel_rows: list[list[str]], file_name: str, caller:WindowWithRightTogglePanel, settings:shared.Settings):
-        super().__init__()
-        self.setWindowTitle("Editor")
-        self.setGeometry(100, 100, 1200, 800)
-
-        self.master_layout = QVBoxLayout()
-        self.caller = caller
-        self.settings = settings
-        inputs_layout = QGridLayout()
-        nav_grid = QGridLayout()
-        self.nav_grouped_layout = QGroupBox("Navigation")
-        # self.fieldset.setStyleSheet(
-        #    "QGroupBox {background-color: lightgrey;}"
-        # )
-
         self.grid = grid
         self.excel_rows = excel_rows
         self.col_count = len(excel_rows[0])
         self.file_name = file_name
         self.short_file_name = self.get_filename_only(settings.in_file)
         self.current_row = len(excel_rows) - 1
+        master_layout = QVBoxLayout()
+        inputs_layout = QGridLayout()
+        nav_layout = QGridLayout()
+        self.fieldset = QGroupBox("Navigation")
+        # self.fieldset.setStyleSheet(
+        #    "QGroupBox {background-color: lightgrey;}"
+        # )
         self.has_unsaved_text = False
 
         self.style_for_default_input = "border: 2px solid lightgrey;"
@@ -491,10 +325,6 @@ class Editor(QWidget):
 
         self.close_btn = QPushButton("Close")
         self.close_btn.clicked.connect(self.handle_close)
-        # self.help_btn = QPushButton("Hide Help Panel")
-        self.help_btn = QPushButton(LABELS["help"]["hide"])
-        self.help_btn.clicked.connect(caller.toggle_help_panel)
-        # self.help_btn.clicked.connect(self.window.toggle_help_panel)
         self.load_file_btn = QPushButton("Load file")
         self.load_file_btn.clicked.connect(self.open_file_dialog)
 
@@ -513,8 +343,10 @@ class Editor(QWidget):
         self.new_btn.clicked.connect(self.start_new_record)
         self.save_btn = QPushButton("Export as .csv file")
         self.save_btn.clicked.connect(self.save_as_csv)
+        # self.save_btn.setEnabled(False)
         self.marc_btn = QPushButton("Export as MARC")
         self.marc_btn.clicked.connect(self.save_as_marc)
+        # self.marc_btn.setEnabled(False)
 
         self.inputs = []
         self.labels = []
@@ -526,12 +358,14 @@ class Editor(QWidget):
 
             tmp_wrapper = QVBoxLayout()
             tmp_label = QLabel(title)
+            # tmp_label.setStyleSheet(self.style_for_labels)
             font = tmp_label.font()
             font.setBold(True)
             tmp_label.setFont(font)
             self.labels.append(tmp_label)
 
             tmp_wrapper.addWidget(tmp_label)
+            # tmp_wrapper.addWidget(QLabel(title))
             tmp_wrapper.addWidget(tmp_input)
             if isinstance(tmp_input, QLineEdit):
                 tmp_wrapper.addStretch(1)
@@ -544,31 +378,33 @@ class Editor(QWidget):
         last_id = list(grid.widget_info.keys())[-1]
         last_widget = grid.widget_info[last_id]
         last_row = last_widget[0] + last_widget[2].height
-        nav_grid.addWidget(self.first_btn, last_row, 0, 1, 1)
-        nav_grid.addWidget(self.prev_btn, last_row, 1, 1, 1)
-        nav_grid.addWidget(self.next_btn, last_row, 2, 1, 1)
-        nav_grid.addWidget(self.last_btn, last_row, 3, 1, 1)
+        nav_layout.addWidget(self.first_btn, last_row, 0, 1, 1)
+        nav_layout.addWidget(self.prev_btn, last_row, 1, 1, 1)
+        nav_layout.addWidget(self.next_btn, last_row, 2, 1, 1)
+        nav_layout.addWidget(self.last_btn, last_row, 3, 1, 1)
         last_row += 1
-        nav_grid.addWidget(self.new_btn, last_row, 0, 1, 1)
-        nav_grid.addWidget(self.submit_btn, last_row, 1, 1, 2)
-        nav_grid.addWidget(self.clear_btn, last_row, 3, 1, 1)
+        nav_layout.addWidget(self.new_btn, last_row, 0, 1, 1)
+        nav_layout.addWidget(self.submit_btn, last_row, 1, 1, 2)
+        nav_layout.addWidget(self.clear_btn, last_row, 3, 1, 1)
         last_row += 1
-        nav_grid.addWidget(self.load_file_btn, last_row, 0, 1, 1)
-        nav_grid.addWidget(self.save_btn, last_row, 1, 1, 1)
-        nav_grid.addWidget(self.marc_btn, last_row, 2, 1, 1)
-        # nav_grid.addWidget(self.close_btn, last_row, 3, 1, 1)
-        nav_grid.addWidget(self.help_btn, last_row, 3, 1, 1)
-        self.nav_grouped_layout.setLayout(nav_grid)
+        nav_layout.addWidget(self.load_file_btn, last_row, 0, 1, 1)
+        nav_layout.addWidget(self.save_btn, last_row, 1, 1, 1)
+        nav_layout.addWidget(self.marc_btn, last_row, 2, 1, 1)
+        nav_layout.addWidget(self.close_btn, last_row, 3, 1, 1)
 
-        self.master_layout.addLayout(inputs_layout)
-        self.master_layout.addWidget(self.nav_grouped_layout)
-        # self.master_layout.addStretch(1)
-        self.setLayout(self.master_layout)
+        master_layout.addLayout(inputs_layout)
+        # master_layout.addLayout(nav_layout)
+        self.fieldset.setLayout(nav_layout)
+        master_layout.addWidget(self.fieldset)
+        master_layout.addStretch(1)
+        widget = QWidget()
+        widget.setLayout(master_layout)
+        self.setCentralWidget(widget)
         self.update_current_position("last")
         self.add_custom_behaviour()
 
     def add_custom_behaviour(self) -> None:
-        if self.settings.flavour["title"] == "art_catalogue":
+        if settings.flavour["title"] == "art_catalogue":
             sale_dates = self.inputs[COL.sale_dates.value]
             if isinstance(sale_dates, QLineEdit):
                 sale_dates.editingFinished.connect(self.saledates_action)
@@ -641,7 +477,7 @@ class Editor(QWidget):
     def update_title_with_record_number(self, text="", prefix="Record no. "):
         text = text if text else str(self.current_row)
         # self.setWindowTitle(f"[{self.short_file_name}]: {prefix}{text}")
-        self.caller.setWindowTitle(f"[{self.settings.in_file}]: {prefix}{text}")
+        self.setWindowTitle(f"[{settings.in_file}]: {prefix}{text}")
         self.update_input_styles()
 
     def update_input_styles(self, mode="default"):
@@ -698,8 +534,8 @@ class Editor(QWidget):
     def start_new_record(self) -> None:
         # print("new record")
         self.current_row = -1
-        if self.settings.flavour["title"] == "art_catalogue":
-            for field in self.settings.flavour["fields_to_clear"]:
+        if settings.flavour["title"] == "art_catalogue":
+            for field in settings.flavour["fields_to_clear"]:
                 self.inputs[field.value].setText("")
             self.inputs[COL.sublib.value].setText("ARTBL")
         # fields_to_clear = [COL.barcode, COL.hol_notes, COL.extent, COL.pub_year, COL.sale_dates, COL.copyright, COL.sale_dates]
@@ -752,13 +588,13 @@ class Editor(QWidget):
     def save_as_csv(self) -> None:
         headers = [el[3] for el in self.grid.widget_info.values()]
         file_name = (
-            f"{self.settings.out_file}.csv"
-            if self.settings.out_file
-            else self.settings.default_output_filename
+            f"{settings.out_file}.csv"
+            if settings.out_file
+            else settings.default_output_filename
         )
         write_to_csv(file_name, self.excel_rows, headers)
-        msg = f"The {len(self.excel_rows)} records in {self.settings.in_file} have been successfully saved as {file_name}."
-        shared.logger.info(msg)
+        msg = f"The {len(self.excel_rows)} records in {settings.in_file} have been successfully saved as {file_name}."
+        logger.info(msg)
         msg_box = QMessageBox()
         msg_box.setText(msg)
         msg_box.exec()
@@ -769,14 +605,14 @@ class Editor(QWidget):
             shared.parse_rows_into_records(self.excel_rows)
         )
         file_name = (
-            self.settings.out_file
-            if self.settings.out_file
-            else self.settings.default_output_filename
+            settings.out_file
+            if settings.out_file
+            else settings.default_output_filename
         )
         # print(f">>>>>>> out_file = {file_name}")
         shared.write_marc_files(marc_records, Path(file_name))
-        msg = f"The {len(self.excel_rows)} records in {self.settings.in_file} have been successfully saved as {file_name}.mrk/.mrc in {self.settings.output_dir}."
-        shared.logger.info(msg)
+        msg = f"The {len(self.excel_rows)} records in {settings.in_file} have been successfully saved as {file_name}.mrk/.mrc in {settings.output_dir}."
+        logger.info(msg)
         msg_box = QMessageBox()
         msg_box.setText(msg)
         msg_box.exec()
@@ -804,23 +640,22 @@ class Editor(QWidget):
         file_path, _ = file_dialog.getOpenFileName(
             parent=self,  # The parent widget (for centering)
             caption="Select a file.",
-            # dir="./excel_files",
-            dir=f"./{self.settings.data_dir}",
+            dir="./excel_files",
             filter="Database Files (*.xls *.xlsx *.xlsm *.csv *.tsv)",
         )
         if file_path:
             # self.short_file_name = self.get_filename_only(file_path)
-            self.settings.in_file_full = file_path
-            self.settings.in_file = self.get_filename_only(file_path)
-            self.settings.out_file = self.settings.in_file
-            print(f"File Selected: {self.settings.in_file} ({file_path})")
+            settings.in_file_full = file_path
+            settings.in_file = self.get_filename_only(file_path)
+            settings.out_file = settings.in_file
+            print(f"File Selected: {settings.in_file} ({file_path})")
             # headers, self.excel_rows = shared.parse_file_into_rows(Path(file_path))
             headers, self.excel_rows = shared.parse_file_into_rows(Path(file_path))
-            if not self.settings.use_default_layout:
+            if not settings.use_default_layout:
                 print("Haven't coded for non-default layout yet!")
                 ## TODO: code for change of layout on file loading (i.e. make a standalone: 'load file and update grid' function)
             self.update_current_position("last")
-            shared.logger.info(f"Just opened {file_path} containing {len(self.excel_rows)} records.")
+            logger.info(f"Just opened {file_path}")
         else:
             print("Selection cancelled.")
 
@@ -852,11 +687,11 @@ class DialogueOkCancel(QDialog):
         self.setLayout(layout)
 
 
-# def launch_gui(grid: Grid, excel_rows: list[list[str]], file_name: str) -> None:
-#     app = QApplication(sys.argv)
-#     window = Editor(grid, excel_rows, file_name)
-#     window.show()
-#     app.exec()
+def launch_gui(grid: Grid, excel_rows: list[list[str]], file_name: str) -> None:
+    app = QApplication(sys.argv)
+    window = MainWindow(grid, excel_rows, file_name)
+    window.show()
+    app.exec()
 
 
 def create_max_lengths(rows: list[list[str]]) -> list[int]:
@@ -868,29 +703,17 @@ def create_max_lengths(rows: list[list[str]]) -> list[int]:
 
 
 def write_to_csv(file_name: str, data: list[list[str]], headers: list[str]) -> None:
-    out_file = Path(shared.settings.output_dir) / Path(file_name)
+    out_file = Path(settings.output_dir) / Path(file_name)
     with open(out_file, "w", newline="", encoding="utf-8") as f:
         csvwriter = csv.writer(f)
         csvwriter.writerow(headers)
         csvwriter.writerows(data)
 
 
-def load_text_from_file(file_name: str) -> str:
-    """Reads the content of the specified file, returning a default message on error."""
-    path = Path(file_name)
-    if path.exists():
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                return f.read()
-        except IOError as e:
-            return f"<h1>Error loading help content!</h1><p>Could not read file: {path}. Error: {e}</p>"
-    else:
-        return f"<h1>Help File Not Found</h1><p>Please create a file named '<b>{file_name}</b>' in the current directory.</p>"
-
-
 def read_cli_into_settings() -> None:
     parser = argparse.ArgumentParser()
 
+    # parser.add_argument("--file", "-f", type=str, required=True)
     parser.add_argument(
         "--file",
         "-f",
@@ -905,40 +728,55 @@ def read_cli_into_settings() -> None:
     #     required=False,
     #     help="name to give saved file",)
     args = parser.parse_args()
-    shared.settings.in_file = args.file
+    settings.in_file = args.file
     if file := args.file:
-        shared.settings.in_file = file
+        settings.in_file = file
     else:
-        shared.settings.is_existing_file = False
-        shared.settings.in_file = shared.settings.default_output_filename
-    shared.settings.layout_template = default_hint
+        settings.is_existing_file = False
+        settings.in_file = settings.default_output_filename
+    settings.layout_template = default_hint
 
 
-def get_settings():
+def main():
     read_cli_into_settings()
     grid = Grid()
-    if shared.settings.is_existing_file:
-        print(f"processing file: {shared.settings.in_file}")
-        headers, rows = shared.parse_file_into_rows(Path(shared.settings.in_file))
-        if shared.settings.use_default_layout:
-            grid.add_bricks_by_template(shared.settings.layout_template)
+    if settings.is_existing_file:
+        print(f"processing file: {settings.in_file}")
+        headers, rows = shared.parse_file_into_rows(Path(settings.in_file))
+        if settings.use_default_layout:
+            grid.add_bricks_by_template(settings.layout_template)
         else:
+            # print(f"no. of rows = {len(rows[0])}")
             max_lengths = create_max_lengths(rows)
             layout = [select_brick_by_content_length(length) for length in max_lengths]
+            # layout = [BRICK.oneone, BRICK.twotwo, BRICK.oneone, BRICK.onetwo, BRICK.onetwo, BRICK.fourtwo, BRICK.twotwo, BRICK.twotwo, BRICK.twotwo]
+            # layout = [BRICK.onetwo, BRICK.onetwo, BRICK.onefour, BRICK.fourfour]
+            # layout = [BRICK.twothree, BRICK.onetwo, BRICK.threethree, BRICK.fourfour]
+            # layout = [BRICK.oneone, BRICK.onetwo, BRICK.onethree, BRICK.onefour, BRICK.twoone,BRICK.twotwo, BRICK.twothree, BRICK.twofour, BRICK.threeone, BRICK.threetwo, BRICK.threethree, BRICK.threefour, BRICK.fourone, BRICK.fourtwo, BRICK.fourthree, BRICK.fourfour]
+            # headers = [f"col {i}" for i in range(len(layout))]
+            # print(headers)
+            # print(max_lengths)
+            # print(layout)
+
+            # pprint(list(zip(headers, max_lengths, layout)))
+            # print("\n\n")
+            # pprint(grid.rows)
             for id, brick_enum in enumerate(layout):
                 brick = brick_enum.value
                 grid.add_brick_algorithmically(id, brick, headers[id])
     else:
         print("creating new file")
-        template = shared.settings.layout_template
+        template = settings.layout_template
         rows = [["" for _ in range(len(template))]]
         grid.add_bricks_by_template(template)
-    return (grid, rows)
+
+    # pprint(grid.rows)
+    # pprint(grid.widget_info)
+
+    launch_gui(grid, rows, settings.in_file)
 
 
 if __name__ == "__main__":
-    grid, rows = get_settings()
-    app = QApplication(sys.argv)
-    window = WindowWithRightTogglePanel(grid, rows, shared.settings)
-    window.show()
-    sys.exit(app.exec())
+    logger = shared.logging.getLogger(__name__)
+    shared.logger = shared.logging.getLogger(__name__)
+    main()

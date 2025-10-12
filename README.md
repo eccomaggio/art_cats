@@ -22,6 +22,7 @@
 9. DONE - integrate more closely with art_cats.py
 10. DONE - add in file explorer to open a new file
 11. DONE - add the custom validation etc. to a 'custom_extensions' function
+12. DONE - add a toggle-able help pane
 
 if filename given at commandline:
   open file [as currently]
