@@ -1,1 +1,11 @@
 .DS_Store
+# Ignore Python bytecode
+__pycache__/
+
+# Ignore VS Code settings directory
+.vscode/
+
+# You should also include other common generated files:
+*.pyc
+venv/
+.env
