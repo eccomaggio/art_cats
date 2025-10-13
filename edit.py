@@ -27,6 +27,8 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QSizePolicy,
     QTextBrowser,
+    QSpacerItem,
+    # QHBoxLayout,
 )
 from PySide6.QtCore import Qt, QUrl, QTimer
 
@@ -337,6 +339,7 @@ class WindowWithRightTogglePanel(QWidget):
         # Add panes to the main grid layout
         self.main_grid.addWidget(self.edit_panel_widget, 0, 0)
         self.main_grid.addWidget(self.help_widget, 0, 1)
+        self.saved_height = self.height()
 
         # Set Column Stretch Factors for the 2-column layout:
         self.main_grid.setColumnStretch(0, 10)  # Editor column (Expands)
@@ -391,31 +394,10 @@ class WindowWithRightTogglePanel(QWidget):
         """
 
         is_visible = self.help_widget.isVisible()
+        self.saved_height = self.height()
 
         if is_visible:
             # --- Hiding Panel (Shrinking Window) ---
-
-            # # 1. Save the current width (the user's preferred size)
-            # self.saved_editor_width = self.edit_panel_widget.width()
-
-            # # 2. Temporarily set the editor's horizontal policy to Fixed
-            # self.edit_panel_widget.setSizePolicy(
-            #     QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding
-            # )
-            # self.edit_panel_widget.setFixedWidth(self.saved_editor_width)
-
-            # # 3. Hide the panel.
-            # self.help_widget.setVisible(False)
-
-            # # 4. Calculate new width (saved editor width + buffer)
-            # new_width = self.saved_editor_width + self.GRID_BUFFER
-            # # self.edit_panel_widget.help_btn.setText("Show Help Panel")
-            # self.edit_panel_widget.help_btn.setText(LABELS["help"]["show"])
-
-            # # 5. Delay the resize to let the Fixed policy take effect
-            # QTimer.singleShot(1, lambda: self.resize(new_width, self.height()))
-
-            # 1. Save the current editor width
             self.saved_editor_width = self.edit_panel_widget.width()
 
             # 2. Temporarily set the editor's policy to Fixed and constrain its width
@@ -427,9 +409,10 @@ class WindowWithRightTogglePanel(QWidget):
             # 3. Hide the help panel.
             self.help_widget.setVisible(False)
 
-            # 4. CRITICAL FIX: Tell the window to adjust to the new minimum size.
+            # 4. Tell the window to adjust to the new minimum size.
             # This is more reliable than self.resize() for layouts.
             self.adjustSize()
+            self.resize(self.width(), self.saved_height)
 
             # 5. Update button text
             self.edit_panel_widget.help_btn.setText(LABELS["help"]["show"])
@@ -449,7 +432,8 @@ class WindowWithRightTogglePanel(QWidget):
             )
             # self.edit_panel_widget.help_btn.setText("Hide Help Panel")
             self.edit_panel_widget.help_btn.setText(LABELS["help"]["hide"])
-            self.resize(new_width, self.height())
+            # self.resize(new_width, self.height())
+            self.resize(new_width, self.saved_height)
 
     def handle_internal_link(self, url: QUrl):
         """Scrolls the QTextBrowser to the target anchor within the document."""
@@ -522,6 +506,11 @@ class Editor(QWidget):
             row_span, col_span = brick.height, brick.width
             tmp_input: QLineEdit | QTextEdit
             tmp_input = QLineEdit() if row_span == 1 else QTextEdit()
+            tmp_input.setStyleSheet("background-color: white;")
+            # tmp_input.setSizePolicy(
+            #     QSizePolicy.Policy.Expanding,
+            #     QSizePolicy.Policy.Expanding,  # Or QSizePolicy.Policy.Minimum, for vertical if preferred
+            # )
             self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
@@ -540,6 +529,24 @@ class Editor(QWidget):
                 tmp_wrapper, start_row, start_col, row_span, col_span
             )
         self.add_signal_to_fire_on_text_change()
+        # ## Fix to make columns align vertically
+        # data_col_count = self.col_count
+        # for col in range(data_col_count):
+        #     # Give all 6 data columns an equal, minimal stretch (e.g., 1).This forces them to share space equally.
+        #     inputs_layout.setColumnStretch(col, 1)
+        # inputs_layout.setColumnStretch(self.col_count, 100)
+        # # Add an invisible spacer to the dummy column (column 6, or self.col_count)
+        # inputs_layout.addItem(
+        #     QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum),
+        #     0, # Row 0 (it will stretch vertically to cover the whole grid)
+        #     self.col_count # Column 6 (the dummy column)
+        # )
+        # # inputs_wrapper_layout = QHBoxLayout()
+        # # inputs_wrapper_layout.addLayout(inputs_layout)
+        # # inputs_wrapper_layout.addItem(
+        # #     QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        # # )
+        # ## Fix ends
 
         last_id = list(grid.widget_info.keys())[-1]
         last_widget = grid.widget_info[last_id]
@@ -561,9 +568,15 @@ class Editor(QWidget):
         self.nav_grouped_layout.setLayout(nav_grid)
 
         self.master_layout.addLayout(inputs_layout)
+        # self.master_layout.addLayout(inputs_wrapper_layout)
         self.master_layout.addWidget(self.nav_grouped_layout)
         # self.master_layout.addStretch(1)
         self.setLayout(self.master_layout)
+        ## Fix to align columns vertically
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding,  # Or QSizePolicy.Policy.Minimum, as you prefer the height
+        )
         self.update_current_position("last")
         self.add_custom_behaviour()
 
@@ -583,10 +596,12 @@ class Editor(QWidget):
     def current_record_is_new(self):
         return self.current_row == -1
 
-    def handle_submit(self):
+    def handle_submit(self) -> None:
         ## TODO add request for confirmation (as this could be destructive)
         # log_text = ""
         data = []
+        if not self.data_is_valid():
+            return
         for i, el in enumerate(self.inputs):
             if isinstance(el, QLineEdit):
                 data.append(el.text())
@@ -608,7 +623,37 @@ class Editor(QWidget):
         self.has_unsaved_text = False
         self.update_input_styles()
         self.add_signal_to_fire_on_text_change()
+        self.save_as_csv("backup.bak")
         # print(f"Submitted record no. {self.current_row}: {log_text}")
+
+    def data_is_valid(self) -> bool:
+        fields_to_validate: list[tuple[COL, str]] = [(COL.langs, "language"), (COL.title, "title"), (COL.country_name, "country of publication"), (COL.place, "city of publication"), (COL.publisher, "publisher"), (COL.size, "size (height) of the item"), (COL.extent, "number of pages"), (COL.pub_year, "year of publication"), (COL.barcode, "barcode")]
+        msg = []
+        tmp = []
+        barcode = self.inputs[COL.barcode.value].text().strip()
+        if barcode == "*dummy*":
+            return True
+        for field, description in fields_to_validate:
+            input_box: QLineEdit | QTextEdit = self.inputs[field.value]
+            content = input_box.text() if isinstance(input_box, QLineEdit) else input_box.toPlainText()
+            if not content:
+                tmp.append(description)
+        if tmp:
+            msg.append(f"The following fields are missing: {", ".join(tmp)}")
+        if not self.inputs[COL.donation.value]:
+            self.inputs[COL.donation.value].setText("Anonymous donation")
+        if len(barcode) != 9:
+            msg.append("barcode needs to be 9 digits long")
+        print(f">>>>>> {barcode}->{barcode[0] if barcode else "empty"}")
+        if barcode and barcode[0] not in "367":
+            msg.append("barcode needs to start with 3, 6, or 9")
+        if msg:
+            output = "; ".join(msg)
+            msg_box = QMessageBox()
+            msg_box.setText(f"The data in this record has the following issue(s): {output}")
+            msg_box.exec()
+            return False
+        return True
 
     def handle_close(self) -> None:
         self.close()
@@ -749,14 +794,18 @@ class Editor(QWidget):
         # self.load_record_into_gui()
         self.update_input_styles()
 
-    def save_as_csv(self) -> None:
+    def save_as_csv(self, file_name="") -> None:
+        is_backup_file = bool(file_name)
         headers = [el[3] for el in self.grid.widget_info.values()]
-        file_name = (
-            f"{self.settings.out_file}.csv"
-            if self.settings.out_file
-            else self.settings.default_output_filename
-        )
+        if not file_name:
+            file_name = (
+                f"{self.settings.out_file}.csv"
+                if self.settings.out_file
+                else self.settings.default_output_filename
+            )
         write_to_csv(file_name, self.excel_rows, headers)
+        if is_backup_file:
+            return
         msg = f"The {len(self.excel_rows)} records in {self.settings.in_file} have been successfully saved as {file_name}."
         shared.logger.info(msg)
         msg_box = QMessageBox()

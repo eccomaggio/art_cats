@@ -24,6 +24,19 @@
 11. DONE - add the custom validation etc. to a 'custom_extensions' function
 12. DONE - add a toggle-able help pane
 
+
+## New todo:
+
+1. OK (i think) - Ensure that the background of all input fields is white (not the case for QTextBox on windows
+2. DONE - Ensure the window’s height is retained when the help pane is toggled
+3. TOO DIFFICULT / ABANDONED - Make sure the column lines are respected (some look a bit wobbly…) – maybe an issue with horizontal alignment of the widget inside?
+4. OK - Add in validation e.g. warning if no barcode or pagination or title etc.
+5. OK - Save backup file on each submit (save to backup.bak)
+
+
+
+
+
 if filename given at commandline:
   open file [as currently]
 

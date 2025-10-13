@@ -50,6 +50,7 @@ class Settings:
     first_row_is_header = True
     flavour: dict[str, Any] = field(default_factory=dict)
     help_file = ""
+    backup_file = "backup.bak"
 
 
 logger = logging.getLogger(__name__)
