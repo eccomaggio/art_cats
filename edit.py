@@ -465,8 +465,10 @@ class Editor(QWidget):
         self.current_row = len(excel_rows) - 1
         self.has_unsaved_text = False
 
-        self.style_for_default_input = "border: 2px solid lightgrey;"
-        self.style_if_text_changed = "border: 2px solid red;"
+        self.style_for_default_input = (
+            "border: 2px solid lightgrey; background-color: white;"
+        )
+        self.style_if_text_changed = "border: 2px solid red; background-color: white;"
         self.style_for_labels = "font-weight: bold;"
 
         self.submit_btn = QPushButton("Submit")
@@ -506,7 +508,7 @@ class Editor(QWidget):
             row_span, col_span = brick.height, brick.width
             tmp_input: QLineEdit | QTextEdit
             tmp_input = QLineEdit() if row_span == 1 else QTextEdit()
-            tmp_input.setStyleSheet("background-color: white;")
+            tmp_input.setStyleSheet(self.style_for_default_input)
             # tmp_input.setSizePolicy(
             #     QSizePolicy.Policy.Expanding,
             #     QSizePolicy.Policy.Expanding,  # Or QSizePolicy.Policy.Minimum, for vertical if preferred

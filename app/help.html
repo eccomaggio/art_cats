@@ -1,94 +1,191 @@
-<h1>Notes for spreadsheet cataloguing</h1>
-<p>Please enter the bibliographic information according to the following rules:</p>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <title>Page Title</title>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <style type="text/css">
+body {
+  color: #333;
+  font-family: helvetica, arial, sans-serif;
+  line-height: 1.5;
+  margin: 3px;
+  max-width: 40em;
+  padding: 0 0em;
+}
+h1, h2, h3, h4, h5, h6 {
+  margin: 1.25em 0 0.2em 0;
+  line-height: 1.2;
+  color:burlywood;
+}
+a:link {
+  color: #00e;
+}
+a:visited {
+  color: #518;
+}
+a:focus, a:hover {
+  color: #03f;
+}
+a:active {
+  color: #e00;
+}
+h1 a:empty:before, h2 a:empty:before, h3 a:empty:before,
+h4 a:empty:before, h5 a:empty:before, h6 a:empty:before {
+  content: "#";
+}
+h1 a:empty, h2 a:empty, h3 a:empty, h4 a:empty, h5 a:empty, h6 a:empty {
+  visibility: hidden;
+  padding-left: 0.25em;
+}
+h1:hover a:empty, h2:hover a:empty, h3:hover a:empty,
+h4:hover a:empty, h5:hover a:empty, h6:hover a:empty {
+  visibility: visible;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 1em 0;
+  text-align: center;
+}
+figcaption {
+  font-size: small;
+}
+pre, code, samp, kbd {
+  font-family: monospace;
+}
+pre, code, kbd {
+  color: #050;
+}
+samp {
+  color: #730;
+}
+pre, blockquote {
+  background: #eee;
+  padding: 0.5em;
+}
+pre {
+  overflow: auto;
+}
+blockquote {
+  border-left: medium solid #ccc;
+  margin: 1em 0;
+}
+blockquote :first-child {
+  margin-top: 0;
+}
+blockquote :last-child {
+  margin-bottom: 0;
+}
+table {
+  border-collapse: collapse;
+}
+th, td {
+  border: thin solid #999;
+  padding: 0.3em 0.4em;
+  text-align: left;
+}
+  </style>
+</head>
+<body>
 
-<h2>First, CHECK TITLE AGAINST SOLO!!!</h2>
-<p>This is essential to avoid creating duplicate records. If a record already exists, do not enter the details on the spreadsheet.
-<p></p>NB. It may be more efficient to check a number of titles against SOLO and then switch to enter the details into the spreadsheet, rather than jumping between SOLO and Excel each time.</p>
+  <h1>Notes for spreadsheet cataloguing</h1>
+  <p>Please enter the bibliographic information according to the following rules:</p>
 
-<h2>Capitalisation</h2>
-<p>Data is generally entered in sentence case, even if it is all in capital letters on the resource. Unless there is a reason for it to be capitalised, e.g. an acronym. </p>
+  <h2>First, check title against SOLO!!!</h2>
+  <p>This is essential to avoid creating duplicate records. If a record already exists, do not enter the details on the spreadsheet.
+  <p>NB. It may be more efficient to check a number of titles against SOLO and then switch to enter the details into the spreadsheet, rather than jumping between SOLO and Excel each time.</p>
 
-<h2>Sublibrary</h2>
-<p>Enter the sublibrary which the materials belong to (<code>BODBL, RSLBL, ARTBL</code> or similar). Team Leaders can advise.</p>
+  <h2>Capitalisation</h2>
+  <p>Data is generally entered in sentence case, even if it is all in capital letters on the resource. Unless there is a reason for it to be capitalised, e.g. an acronym. </p>
 
-<h2>Language of resource</h2>
-<p>This is required in order to sort the records at a later stage in the process. Enter the language in which the resource is written (e.g. English or French). If the item has multiple languages, this should be entered as, e.g. <code>English/German</code>.</p>
+  <h2>Sublibrary</h2>
+  <p>Enter the sublibrary which the materials belong to (<code>BODBL, RSLBL, ARTBL</code> or similar). Team Leaders can advise.</p>
 
-<h2>ISBN(s)</h2>
-<p>Enter if applicable.</p>
+  <h2>Language of resource</h2>
+  <p>This is required in order to sort the records at a later stage in the process. Enter the language in which the resource is written (e.g. English or French). If the item has multiple languages, this should be entered as, e.g. <code>English/German</code>.</p>
 
-<h2>Title</h2>
-<p>Transcribe the title, including any initial article (e.g. <code>The, A, La, Der</code>)</p>
+  <h2>ISBN(s)</h2>
+  <p>Enter if applicable.</p>
 
-<h2>Subtitle</h2>
-<p>Transcribe the subtitle. Begin with a lower-case letter (unless the first word of the subtitle requires a capital letter e.g. a proper noun in English or a German noun.)</p>
+  <h2>Title</h2>
+  <p>Transcribe the title, including any initial article (e.g. <code>The, A, La, Der</code>)</p>
 
-<h2>Parallel title (For dual language items only)</h2>
-<p>Transcribe the parallel title, omitting any initial article. Begin with a capital letter.</p>
+  <h2>Subtitle</h2>
+  <p>Transcribe the subtitle. Begin with a lower-case letter (unless the first word of the subtitle requires a capital letter e.g. a proper noun in English or a German noun.)</p>
 
-<h2>Transliteration</h2>
-<p>Only for all languages with non-Latin scripts. Make sure you follow the relevant Library of Congress transcription guidelines for each language.</p>
+  <h2>Parallel title</h2>
+  </p><i>(For dual language items only)</i></p>
+  <p>Transcribe the parallel title, omitting any initial article. Begin with a capital letter.</p>
 
-<h2>Statement of responsibility</h2>
-<p>Transcribe in full exactly as it is written. This may just be the author's name or may include e.g. edited by...</p>
+  <h2>Transliteration</h2>
+  <p>Only for all languages with non-Latin scripts. Make sure you follow the relevant Library of Congress transcription guidelines for each language.</p>
 
-<h2>Parallel subtitle (For dual language items only)</h2>
-<p>Transcribe the parallel subtitle. Begin with a lower-case letter unless the first word of the subtitle requires a capital letter (as for Subtitle)</p>
+  <!-- <h2>Statement of responsibility</h2>
+  <p>Transcribe in full exactly as it is written. This may just be the author's name or may include e.g. edited by...</p> -->
 
-<h2>Edition statement</h2>
-<p>Transcribe if applicable.</p>
+  <h2>Parallel subtitle</h2>
+  </p><i>(For dual language items only)</i></p>
+  <p>Transcribe the parallel subtitle. Begin with a lower-case letter unless the first word of the subtitle requires a capital letter (as for Subtitle)</p>
 
-<h2>Country of publication</h2>
-<p>Enter the country of publication.
-<p></p>NB. If the resource was published in a place which is now in a different country, enter the present-day name of that country (e.g. Bratislava is now in Slovakia although at time of publication it was in Czechoslovakia)</p>
+  <h2>Edition statement</h2>
+  <p>Transcribe if applicable.</p>
 
-<h2>State</h2>
-<p>This is needed only for states that have a 3-letter country code: The USA, the UK, Canada & Australia. Transcribe from the resource. NB. In the case of the UK, this means simply specifying <code>Northern Ireland, England, Scotland</code> or <code>Wales</code>.</p>
+  <h2>Country of publication</h2>
+  <p>Enter the country of publication.
+  <p>NB. If the resource was published in a place which is now in a different country, enter the present-day name of that country (e.g. Bratislava is now in Slovakia although at time of publication it was in Czechoslovakia)</p>
 
-<h2>Place of publication</h2>
-<p>Transcribe from the resource.</p>
+  <h2>State</h2>
+  <p>This is needed only for states that have a 3-letter country code: The USA, the UK, Canada & Australia. Transcribe from the resource. NB. In the case of the UK, this means simply specifying <code>Northern Ireland, England, Scotland</code> or <code>Wales</code>.</p>
 
-<h2>Publisher name</h2>
-<p>Transcribe from the resource.</p>
+  <h2>Place of publication</h2>
+  <p>Transcribe from the resource.</p>
 
-<h2>Date of publication</h2>
-<p>Enter the year of publication ONLY from the resource.
-<p>Do not record day/month.</p>
-Add a question mark for conjectured dates [i.e. <code>2015?</code>]</p>
+  <h2>Publisher name</h2>
+  <p>Transcribe from the resource.</p>
 
-<h2>Copyright date</h2>
-<p>If the resource has a copyright date, input the date (without the © symbol: this will be inserted automatically). </p>
+  <h2>Date of publication</h2>
+  <p>Enter the year of publication ONLY from the resource.
+  <p>Do not record day/month.</p>
+  <p>Add a question mark for conjectured dates [i.e. <code>2015?</code>]</p>
 
-<h2>Pagination</h2>
-<p>Enter the number of pages, e.g. vii, 504. Do not add the words pages / pp., etc.</p>
-<p>If the number of pages is not given explicitly, add a question mark after your guesstimation / count [i.e. <code>175?</code>]</p>
-<p>Do not record illustrations, maps etc.</p>
+  <h2>Copyright date</h2>
+  <p>If the resource has a copyright date, input the date (without the © symbol: this will be inserted automatically). </p>
 
-<h2>Size</h2>
-<p>Measure height of book and round up to nearest centimetre but do not include <code>cm / cms / centimeters</code>, etc., as this will be added automatically] i.e, 22 cm</p>
+  <h2>Pagination</h2>
+  <p>Enter the number of pages, e.g. vii, 504. Do not add the words <code>pages / pp.</code>, etc.</p>
+  <p>If the number of pages is not given explicitly, add a question mark after your guesstimation / count, i.e. <code>175?</code>.</p>
+  <p>Do not record illustrations, maps etc.</p>
 
-<h2>Series title</h2>
-<p>Transcribe from the resource.</p>
+  <h2>Size</h2>
+  <p>Measure height of book and round up to nearest centimetre but do not include <code>cm / cms / centimeters</code>, etc., as this will be added automatically] i.e, 22 cm</p>
 
-<h2>Series enumeration</h2>
-<p>Transcribe from the resource.</p>
+  <h2>Series title</h2>
+  <p>Transcribe from the resource.</p>
 
-<h2>Note</h2>
-<p>Add notes for anything unusual or relevant about the book, e.g. Title from cover or listings on the title page in the case of art catalogues, if it helps to differentiate resources with very similar titles.</p>
+  <h2>Series enumeration</h2>
+  <p>Transcribe from the resource.</p>
 
-<h2>Sale code</h2>
-<p>(Additional field for Auction Catalogues)
-<p>This is a numeric or alphanumeric code assigned to a sale, usually found on the catalogue's title page but sometimes further in. Be wary of numbers found on the spine, which are sometimes incomplete.</p>
-<p>If there are multiple sale codes, these should be entered as, e.g. <code>ORCHID27, LILY35</code></p>
-<p>Where they are already included in the title, that is enough. Think of the Sale code as being something someone might search for to find the item on the catalogue so e.g. <code>38A230503</code> might be helpful (although it is only the auction number and date) but just <code>27A</code> isn't that useful. The Sotheby catalogues show how distinctive some of them are. </p>
+  <h2>Note</h2>
+  <p>Add notes for anything unusual or relevant about the book, e.g. Title from cover or listings on the title page in the case of art catalogues, if it helps to differentiate resources with very similar titles.</p>
 
-<h2>Date of sale</h2>
-<p>(Additional field for Auction Catalogues)</p>
-<p>Use the format YYYYMMDD for a single date. If the date is incomplete, record as much of the date as is known and use hyphens for the missing digits.</p>
-<p>If there are multiple dates, these should be entered as, e.g. <code>20210724, 20210731</code></p>
+  <h2>Sale code</h2>
+  <p>(Additional field for Auction Catalogues)
+  <p>This is a numeric or alphanumeric code assigned to a sale, usually found on the catalogue's title page but sometimes further in. Be wary of numbers found on the spine, which are sometimes incomplete.</p>
+  <p>If there are multiple sale codes, these should be entered as, e.g. <code>ORCHID27, LILY35</code></p>
+  <p>Where they are already included in the title, that is enough. Think of the Sale code as being something someone might search for to find the item on the catalogue so e.g. <code>38A230503</code> might be helpful (although it is only the auction number and date) but just <code>27A</code> isn't that useful. The Sotheby catalogues show how distinctive some of them are. </p>
 
-<h2>HOL notes</h2>
-<p>Add notes pertaining to the copy in your hand, e.g.<code>a donor notei</code>; <code>Missing pages 4-5</code>.</p>
+  <h2>Date of sale</h2>
+  <p>(Additional field for Auction Catalogues)</p>
+  <p>Use the format YYYYMMDD for a single date. If the date is incomplete, record as much of the date as is known and use hyphens for the missing digits.</p>
+  <p>If there are multiple dates, these should be entered as, e.g. <code>20210724, 20210731</code></p>
 
-<h2>Barcode</h2>
-<p>Attach the barcode onto the item in the top left-hand corner of the front cover and scan the barcode into the field. </p>
+  <h2>HOL notes</h2>
+  <p>Add notes pertaining to the copy in your hand, e.g.<code>a donor note</code>; <code>Missing pages 4-5</code>.</p>
+
+  <h2>Barcode</h2>
+  <p>Attach the barcode onto the item in the top left-hand corner of the front cover and scan the barcode into the field. </p>
+
+</body>
+</html>
