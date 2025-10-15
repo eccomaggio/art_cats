@@ -466,7 +466,7 @@ class Editor(QWidget):
         self.has_unsaved_text = False
 
         self.style_for_default_input = (
-            "border: 2px solid lightgrey; background-color: white;"
+            "border: 1px solid lightgrey; background-color: white;"
         )
         self.style_if_text_changed = "border: 2px solid red; background-color: white;"
         self.style_for_labels = "font-weight: bold;"
