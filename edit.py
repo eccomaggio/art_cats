@@ -460,6 +460,7 @@ class Editor(QWidget):
         self.grid = grid
         self.excel_rows = excel_rows
         self.col_count = len(excel_rows[0])
+        self.is_empty_on_startup = not bool(len(excel_rows) and "".join(excel_rows[0]))
         self.file_name = file_name
         self.short_file_name = self.get_filename_only(settings.in_file)
         self.current_row = len(excel_rows) - 1
@@ -501,6 +502,9 @@ class Editor(QWidget):
         self.save_btn.clicked.connect(self.save_as_csv)
         self.marc_btn = QPushButton("Export as MARC")
         self.marc_btn.clicked.connect(self.save_as_marc)
+        self.unlock_btn = QPushButton("Unlock")
+        self.unlock_btn.clicked.connect(self.handle_unlock)
+        self.unlock_btn.setEnabled(False)
 
         self.inputs = []
         self.labels = []
@@ -531,24 +535,6 @@ class Editor(QWidget):
                 tmp_wrapper, start_row, start_col, row_span, col_span
             )
         self.add_signal_to_fire_on_text_change()
-        # ## Fix to make columns align vertically
-        # data_col_count = self.col_count
-        # for col in range(data_col_count):
-        #     # Give all 6 data columns an equal, minimal stretch (e.g., 1).This forces them to share space equally.
-        #     inputs_layout.setColumnStretch(col, 1)
-        # inputs_layout.setColumnStretch(self.col_count, 100)
-        # # Add an invisible spacer to the dummy column (column 6, or self.col_count)
-        # inputs_layout.addItem(
-        #     QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum),
-        #     0, # Row 0 (it will stretch vertically to cover the whole grid)
-        #     self.col_count # Column 6 (the dummy column)
-        # )
-        # # inputs_wrapper_layout = QHBoxLayout()
-        # # inputs_wrapper_layout.addLayout(inputs_layout)
-        # # inputs_wrapper_layout.addItem(
-        # #     QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        # # )
-        # ## Fix ends
 
         last_id = list(grid.widget_info.keys())[-1]
         last_widget = grid.widget_info[last_id]
@@ -557,6 +543,7 @@ class Editor(QWidget):
         nav_grid.addWidget(self.prev_btn, last_row, 1, 1, 1)
         nav_grid.addWidget(self.next_btn, last_row, 2, 1, 1)
         nav_grid.addWidget(self.last_btn, last_row, 3, 1, 1)
+        nav_grid.addWidget(self.unlock_btn, last_row, 4, 1, 1)
         last_row += 1
         nav_grid.addWidget(self.new_btn, last_row, 0, 1, 1)
         nav_grid.addWidget(self.submit_btn, last_row, 1, 1, 2)
@@ -570,15 +557,13 @@ class Editor(QWidget):
         self.nav_grouped_layout.setLayout(nav_grid)
 
         self.master_layout.addLayout(inputs_layout)
-        # self.master_layout.addLayout(inputs_wrapper_layout)
         self.master_layout.addWidget(self.nav_grouped_layout)
-        # self.master_layout.addStretch(1)
         self.setLayout(self.master_layout)
-        ## Fix to align columns vertically
-        self.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Expanding,  # Or QSizePolicy.Policy.Minimum, as you prefer the height
-        )
+        # ## Fix to align columns vertically
+        # self.setSizePolicy(
+        #     QSizePolicy.Policy.Expanding,
+        #     QSizePolicy.Policy.Expanding,  # Or QSizePolicy.Policy.Minimum, as you prefer the height
+        # )
         self.update_current_position("last")
         self.add_custom_behaviour()
 
@@ -593,6 +578,9 @@ class Editor(QWidget):
                     font.setBold(False)
                     font.setItalic(True)
                     label.setFont(font)
+            # for input in self.inputs:
+            #     input.setStyleSheet("color: grey;")
+
 
     @property
     def current_record_is_new(self):
@@ -607,10 +595,8 @@ class Editor(QWidget):
         for i, el in enumerate(self.inputs):
             if isinstance(el, QLineEdit):
                 data.append(el.text())
-                # log_text += f"id:{i}='{el.text()}'"
             elif isinstance(el, QTextEdit):
                 data.append(el.toPlainText())
-                # log_text += f"id:{i}='{el.toPlainText()}'"
             else:
                 print(
                     f"Huston, we have a problem with submitting record no. {self.current_row}"
@@ -619,12 +605,12 @@ class Editor(QWidget):
             self.excel_rows.append(data)
             self.current_row = len(self.excel_rows) - 1
             self.update_title_with_record_number()
-            self.update_input_styles()
         else:
             self.excel_rows[self.current_row] = data
         self.has_unsaved_text = False
         self.update_input_styles()
         self.add_signal_to_fire_on_text_change()
+        self.change_background_color()
         self.save_as_csv("backup.bak")
         # print(f"Submitted record no. {self.current_row}: {log_text}")
 
@@ -646,7 +632,7 @@ class Editor(QWidget):
             self.inputs[COL.donation.value].setText("Anonymous donation")
         if len(barcode) != 9:
             msg.append("barcode needs to be 9 digits long")
-        print(f">>>>>> {barcode}->{barcode[0] if barcode else "empty"}")
+        # print(f">>>>>> {barcode}->{barcode[0] if barcode else "empty"}")
         if barcode and barcode[0] not in "367":
             msg.append("barcode needs to start with 3, 6, or 9")
         if msg:
@@ -730,8 +716,10 @@ class Editor(QWidget):
                 el.setPlainText(data)
             else:
                 print("Huston, we have a problem loading data into the form...")
+        self.change_background_color() ## existing record has default background
         self.update_input_styles()
         self.add_signal_to_fire_on_text_change()
+        self.unlock_btn.setEnabled(True)
         # print(msg)
 
     def clear_form(self) -> None:
@@ -755,8 +743,19 @@ class Editor(QWidget):
         # self.inputs[COL.sublib.value].setText("ARTBL")
         self.has_unsaved_text = True
         self.update_title_with_record_number("[new]")
+        self.change_background_color("new")
+        self.unlock_btn.setEnabled(False)
+
+    def change_background_color(self, mode=""):
+        if mode:
+            stylesheet = "background-color: lightgrey;"
+        else:
+            stylesheet = ""
+        self.window().setStyleSheet(stylesheet)
 
     def update_current_position(self, direction) -> None:
+        print(f">>>{len(self.excel_rows)}, {self.current_row}, {self.current_record_is_new}, {self.is_empty_on_startup=}")
+
         if self.has_unsaved_text and self.abort_on_unsaved_text(self):
             return
         index_of_last_record = len(self.excel_rows) - 1
@@ -795,13 +794,28 @@ class Editor(QWidget):
         self.has_unsaved_text = False
         # self.load_record_into_gui()
         self.update_input_styles()
+        # if self.is_empty_on_startup:
+            # self.update_title_with_record_number("[new]")
+            # self.change_background_color("new")
+            # self.unlock_btn.setEnabled(False)
+
+    def handle_unlock(self) -> None:
+        pass
+        # self.unlock_btn.setEnabled(False)
+        # self.lock_record(False)
+
+    # def lock_record(self, mode=True) -> None:
+    #     if self.has_unsaved_text:
+    #         self.load_record_into_gui(self.current_row)
+    #     for input in self.inputs:
+    #         input.setReadOnly(mode)
 
     def save_as_csv(self, file_name="") -> None:
         is_backup_file = bool(file_name)
         headers = [el[3] for el in self.grid.widget_info.values()]
         if not file_name:
             file_name = (
-                f"{self.settings.out_file}.csv"
+                f"{self.drop_csv_suffix(self.settings.out_file)}.new.csv"
                 if self.settings.out_file
                 else self.settings.default_output_filename
             )
@@ -882,6 +896,16 @@ class Editor(QWidget):
             file_name = file_path
         return file_name
 
+    def drop_csv_suffix(self, name):
+        def trim_csv(name):
+            if name[1] in ["csv", "tsv"]:
+                return trim_csv(name[1:])
+            else:
+                return name[1:]
+        file_name = name.split(".")
+        eman = list(reversed(file_name))
+        out = trim_csv(eman)
+        return ".".join(list(reversed(out)))
 
 class DialogueOkCancel(QDialog):
     def __init__(self, parent, text):

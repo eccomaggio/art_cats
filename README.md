@@ -32,7 +32,24 @@
 3. TOO DIFFICULT / ABANDONED - Make sure the column lines are respected (some look a bit wobbly…) – maybe an issue with horizontal alignment of the widget inside?
 4. OK - Add in validation e.g. warning if no barcode or pagination or title etc.
 5. OK - Save backup file on each submit (save to backup.bak)
+6. ** consider logic of unlock button:
 
+default: records are locked when loaded into gui
+unlock is disabled when unlocked, i.e. must
+EITHER complete and submit
+OR abort [how? - add abort button?? or... ]
+
+7. deal correctly with empty gui [title should read 'new']
+think about this!
+if is empty,
+
+MAYBE instead of changing background colour (coz difficult to do and makes display ugly), change colour of text in input boxes (grey) to show record is locked.
+
+
+so:
+make inputs locked (i.e. readonly + text = grey) by default
+cannot be locked if text has been changed (-> abort button? or change button to 'lock': "this will wipe any changes you have made to this record. Do you want to proceed?" )
+new records are unlocked
 
 
 
