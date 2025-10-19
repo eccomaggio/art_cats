@@ -11,13 +11,17 @@
 
 ## To do:
 
+1. add in delete function (how about: type *del* or *delete* into ISBN field; on save, this will not be saved and will be deleted from the records)
+2. add in search function: results appear as dropdown list = 3 inputs: text input -> 'go' button / 'end search' button -> dropdown list of rows returned
+3. bring convert_pymarc.py up to date
+
 1. DONE: add in layout hints: look for [filename].hint or failing that, any file ending .hint in the source file folder & use this (if heading count fits), else default to algorithmic layout
 2. DONE - enable changes to data
 3. DONE - enable saving changes to csv (or excel)
 4. DONE - allow .csv / .tsv as source file
 5. DONE - OK - enable adding a new record
 6. DONE - make it command line based: edit,py -f data.csv/xls -h hintfile.hint -o output.csv
-7. ?? add in field validation
+7. DONE - ?? add in field validation
 8. DONE - add in smart extras, e.g. automatically add pub date from saledate; erase isbn etc. on 'New'
 9. DONE - integrate more closely with art_cats.py
 10. DONE - add in file explorer to open a new file
@@ -25,21 +29,13 @@
 12. DONE - add a toggle-able help pane
 
 
-## New todo:
-
-1. OK (i think) - Ensure that the background of all input fields is white (not the case for QTextBox on windows
+1. DONE - (i think) - Ensure that the background of all input fields is white (not the case for QTextBox on windows
 2. DONE - Ensure the window’s height is retained when the help pane is toggled
 3. TOO DIFFICULT / ABANDONED - Make sure the column lines are respected (some look a bit wobbly…) – maybe an issue with horizontal alignment of the widget inside?
-4. OK - Add in validation e.g. warning if no barcode or pagination or title etc.
-5. OK - Save backup file on each submit (save to backup.bak)
-6. ** consider logic of unlock button:
-
-default: records are locked when loaded into gui
-unlock is disabled when unlocked, i.e. must
-EITHER complete and submit
-OR abort [how? - add abort button?? or... ]
-
-7. deal correctly with empty gui [title should read 'new']
+4. DONE - Add in validation e.g. warning if no barcode or pagination or title etc.
+5. DONE - Save backup file on each submit (save to backup.bak)
+6. DONE - ** consider logic of unlock button:
+7. DONE - deal correctly with empty gui [title should read 'new']
 think about this!
 
 8. DONE Remove debug print out from barcode check

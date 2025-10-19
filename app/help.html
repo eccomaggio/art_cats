@@ -107,6 +107,25 @@ th, td {
   <h4>Capitalisation</h4>
   <p>Data is generally entered in sentence case, even if it is all in capital letters on the resource. Unless there is a reason for it to be capitalised, e.g. an acronym. </p>
 
+  <h4>Incomplete records</h4>
+  <p>Records must include the following minimum information to be saved:</p>
+    <ul>
+      <li>the language(s)</li>
+      <li>a title</li>
+      <li>a country and place of publication</li>
+      <li>a publisher</li>
+      <li>the height and number of pages</li>
+      <li>a year of publication</li>
+      <li>the barcode</li>
+    </ul>
+  <p>Records must also be complete to be locked.</p>
+
+  <h4>Locking / Editing</h4>
+  <p>By default, complete records are locked for safety. Toggle the <code>unlock</code> button if you want to edit them further.</p>
+
+  <h4>Backups</h4>
+  <p>Everytime a record is submitted, it is backed up to a file called <code>backup.bak</code></p>
+
   <h2>Sublibrary</h2>
   <p>Enter the sublibrary which the materials belong to (<code>BODBL</code>, <code>RSLBL</code>, <code>ARTBL</code> or similar). Team Leaders can advise.</p>
 
@@ -193,6 +212,8 @@ th, td {
 
   <h2>Barcode</h2>
   <p>Attach the barcode onto the item in the top left-hand corner of the front cover and scan the barcode into the field. </p>
+  <p>If you type <code>*dummy*</code> into this field, it will allow you to save an incomplete record.</p>
+  <p>If you type <code>*delete*</code> or <code>*del*</code> into this field, it will be deleted the next time you save the records. [This feature has not yet been implemented.]</p>
 
 </body>
 </html>

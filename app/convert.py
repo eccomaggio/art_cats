@@ -49,6 +49,7 @@ class Settings:
     layout_template: tuple = ()
     first_row_is_header = True
     flavour: dict[str, Any] = field(default_factory=dict)
+    styles: dict[str, str]= field(default_factory=dict)
     help_file = ""
     backup_file = "backup.bak"
 
