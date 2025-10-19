@@ -3,13 +3,9 @@ GUI to replace excel files in the excel file cataloguing workflow. I wanted to a
 This can create a file from scratch or load a suitable (i.e. contains the correct number of fields in the correct order) csv or excel file. After adding and amending records, the result can be saved as a .csv file and / or marc 21 files (.mrk & .mrc files)
 It builds on a script that converts excel files into markdown; in fact, the current script imports this script and utilises it to open files and create internal representations ("Records").
 """
-
-
 from app import convert as shared
 from dataclasses import dataclass
-from collections import namedtuple
 import argparse
-import datetime
 from pathlib import Path
 # from pprint import pprint
 from enum import Enum, auto
@@ -81,9 +77,6 @@ shared.settings.flavour = {
         COL.sale_dates,
         COL.sales_code,
     ],
-    "fields_to_fill": [
-        [COL.sublib, "ARTBL"],
-    ]
 }
 
 LABELS = {
@@ -465,18 +458,12 @@ class Editor(QWidget):
         # )
 
         self.grid = grid
-        if excel_rows:
-            self.excel_rows = excel_rows
-            self.has_no_records = False
-        else:
-            self.excel_rows = [["" for _ in range(len(shared.settings.layout_template))]]
-            self.has_no_records = True
-        self.col_count = len(self.excel_rows[0])
-        self.record_is_locked = True
-
+        self.excel_rows = excel_rows
+        self.col_count = len(excel_rows[0])
+        self.is_empty_on_startup = not bool(len(excel_rows) and "".join(excel_rows[0]))
         self.file_name = file_name
         self.short_file_name = self.get_filename_only(settings.in_file)
-        self.current_row_index = len(excel_rows) - 1
+        self.current_row = len(excel_rows) - 1
         self.has_unsaved_text = False
 
         self.style_for_default_input = (
@@ -496,7 +483,7 @@ class Editor(QWidget):
         self.help_btn.clicked.connect(caller.toggle_help_panel)
         # self.help_btn.clicked.connect(self.window.toggle_help_panel)
         self.load_file_btn = QPushButton("Load file")
-        self.load_file_btn.clicked.connect(self.handle_file_dialog)
+        self.load_file_btn.clicked.connect(self.open_file_dialog)
 
         self.first_btn = QPushButton("First")
         self.first_btn.clicked.connect(self.go_to_first_record)
@@ -510,14 +497,14 @@ class Editor(QWidget):
         self.clear_btn.setStyleSheet("color: red;")
         self.clear_btn.clicked.connect(self.clear_form)
         self.new_btn = QPushButton("New")
-        self.new_btn.clicked.connect(self.handle_new_record)
+        self.new_btn.clicked.connect(self.start_new_record)
         self.save_btn = QPushButton("Export as .csv file")
         self.save_btn.clicked.connect(self.save_as_csv)
         self.marc_btn = QPushButton("Export as MARC")
         self.marc_btn.clicked.connect(self.save_as_marc)
         self.unlock_btn = QPushButton("Unlock")
         self.unlock_btn.clicked.connect(self.handle_unlock)
-        # self.unlock_btn.setEnabled(True)
+        self.unlock_btn.setEnabled(False)
 
         self.inputs = []
         self.labels = []
@@ -572,14 +559,13 @@ class Editor(QWidget):
         self.master_layout.addLayout(inputs_layout)
         self.master_layout.addWidget(self.nav_grouped_layout)
         self.setLayout(self.master_layout)
-
-        # self.update_current_position("last")
+        # ## Fix to align columns vertically
+        # self.setSizePolicy(
+        #     QSizePolicy.Policy.Expanding,
+        #     QSizePolicy.Policy.Expanding,  # Or QSizePolicy.Policy.Minimum, as you prefer the height
+        # )
+        self.update_current_position("last")
         self.add_custom_behaviour()
-        if self.has_no_records:
-            self.handle_new_record()
-        else:
-            self.load_record_into_gui(self.current_row)
-        self.update_nav_buttons()
 
     def add_custom_behaviour(self) -> None:
         if self.settings.flavour["title"] == "art_catalogue":
@@ -592,70 +578,46 @@ class Editor(QWidget):
                     font.setBold(False)
                     font.setItalic(True)
                     label.setFont(font)
+            # for input in self.inputs:
+            #     input.setStyleSheet("color: grey;")
 
 
     @property
-    def current_record_is_new(self) -> int:
-        return self.current_row_index == -1
+    def current_record_is_new(self):
+        return self.current_row == -1
 
-    @property
-    def record_count(self) -> int:
-        return len(self.excel_rows)
-
-    @property
-    def index_of_last_record(self) -> int:
-        return self.record_count - 1
-
-    @property
-    def current_row(self) -> list:
-        return self.excel_rows[self.current_row_index]
-
-    @current_row.setter
-    def current_row(self, row:list) -> None:
-        self.excel_rows[self.current_row_index] = row
-
-    def handle_submit(self, optional_msg="") -> bool:
-        if not optional_msg:
-            optional_msg = ""
+    def handle_submit(self) -> None:
+        ## TODO add request for confirmation (as this could be destructive)
+        # log_text = ""
         data = []
-        if not self.data_is_valid(optional_msg):
-            return False
-        print("OK... data passes as valid for submission...")
-        for el in self.inputs:
+        if not self.data_is_valid():
+            return
+        for i, el in enumerate(self.inputs):
             if isinstance(el, QLineEdit):
                 data.append(el.text())
             elif isinstance(el, QTextEdit):
                 data.append(el.toPlainText())
             else:
                 print(
-                    f"Huston, we have a problem with submitting record no. {self.current_row_index}"
+                    f"Huston, we have a problem with submitting record no. {self.current_row}"
                 )
-        # if self.current_row < 0:
-        if self.current_record_is_new:
-            print(f"***{self.has_no_records=}, record count: {self.record_count} {data=}")
-            if self.has_no_records:
-                self.excel_rows = [data]
-                self.has_no_records = False
-            else:
-                self.excel_rows.append(data)
-            self.current_row_index = self.index_of_last_record
+        if self.current_row < 0:
+            self.excel_rows.append(data)
+            self.current_row = len(self.excel_rows) - 1
             self.update_title_with_record_number()
         else:
-            ## Update existing record
-            # self.excel_rows[self.current_row_index] = data
-            self.current_row = data
+            self.excel_rows[self.current_row] = data
         self.has_unsaved_text = False
+        self.update_input_styles()
+        self.add_signal_to_fire_on_text_change()
+        self.change_background_color()
         self.save_as_csv("backup.bak")
-        self.update_nav_buttons()
-        print(f"::: saving: {self.current_row_index=}, {self.current_row}")
-        # self.load_record_into_gui(self.excel_rows[self.current_row_index])
-        self.load_record_into_gui(self.current_row)
-        return True
+        # print(f"Submitted record no. {self.current_row}: {log_text}")
 
-    def data_is_valid(self, optional_msg="") -> bool:
+    def data_is_valid(self) -> bool:
         fields_to_validate: list[tuple[COL, str]] = [(COL.langs, "language"), (COL.title, "title"), (COL.country_name, "country of publication"), (COL.place, "city of publication"), (COL.publisher, "publisher"), (COL.size, "size (height) of the item"), (COL.extent, "number of pages"), (COL.pub_year, "year of publication"), (COL.barcode, "barcode")]
         msg = []
-        errors = []
+        tmp = []
         barcode = self.inputs[COL.barcode.value].text().strip()
         if barcode == "*dummy*":
             return True
@@ -663,19 +625,20 @@ class Editor(QWidget):
             input_box: QLineEdit | QTextEdit = self.inputs[field.value]
             content = input_box.text() if isinstance(input_box, QLineEdit) else input_box.toPlainText()
             if not content:
-                errors.append(description)
-        if errors:
-            msg.append(f"{optional_msg}The following fields are missing:\n{", ".join(errors)}")
+                tmp.append(description)
+        if tmp:
+            msg.append(f"The following fields are missing: {", ".join(tmp)}")
         if not self.inputs[COL.donation.value]:
             self.inputs[COL.donation.value].setText("Anonymous donation")
         if len(barcode) != 9:
             msg.append("barcode needs to be 9 digits long")
+        # print(f">>>>>> {barcode}->{barcode[0] if barcode else "empty"}")
         if barcode and barcode[0] not in "367":
             msg.append("barcode needs to start with 3, 6, or 9")
         if msg:
             output = "; ".join(msg)
             msg_box = QMessageBox()
-            msg_box.setText(f"The data in this record has the following issue(s):\n\n{output}")
+            msg_box.setText(f"The data in this record has the following issue(s): {output}")
             msg_box.exec()
             return False
         return True
@@ -709,158 +672,112 @@ class Editor(QWidget):
             print("Can't access salecode or pubdate fields...")
 
     def update_title_with_record_number(self, text="", prefix="Record no. "):
-        text = text if text else self.get_human_readable_record_number()
-        text = f"{text} of {self.record_count}"
-        status = " **locked**" if self.record_is_locked else " (editable)"
-        self.caller.setWindowTitle(f"[{self.settings.in_file}]: {prefix}{text}{status}")
-        # self.update_input_styles()
+        text = text if text else str(self.current_row)
+        # self.setWindowTitle(f"[{self.short_file_name}]: {prefix}{text}")
+        self.caller.setWindowTitle(f"[{self.settings.in_file}]: {prefix}{text}")
+        self.update_input_styles()
 
     def update_input_styles(self, mode="default"):
-        if mode == "default":
-            stylesheet = self.style_for_default_input
-        else:
-            stylesheet = self.style_if_text_changed
+        stylesheet = (
+            self.style_for_default_input
+            if mode == "default"
+            else self.style_if_text_changed
+        )
         for input in self.inputs:
             input.setStyleSheet(stylesheet)
 
     def add_signal_to_fire_on_text_change(self):
         for input in self.inputs:
             if isinstance(input, QLineEdit):
-                input.textEdited.connect(self.handle_text_change)
+                input.textEdited.connect(self.alert_on_textchange)
             elif isinstance(input, QTextEdit):
-                input.textChanged.connect(self.handle_text_change)
+                input.textChanged.connect(self.alert_on_textchange)
 
-    def handle_text_change(self) -> None:
-        # print(f"Text changed...{datetime.datetime.now()}")
+    def alert_on_textchange(self) -> None:
         sender = self.sender()
         if isinstance(sender, QLineEdit):
             sender.setStyleSheet(self.style_if_text_changed)
-            sender.textEdited.disconnect(self.handle_text_change)
+            sender.textEdited.disconnect(self.alert_on_textchange)
         elif isinstance(sender, QTextEdit):
             sender.setStyleSheet(self.style_if_text_changed)
-            sender.textChanged.disconnect(self.handle_text_change)
+            sender.textChanged.disconnect(self.alert_on_textchange)
         else:
             print("Huston, we have a problem with text input...")
         self.has_unsaved_text = True
         # print("text changed")
 
-    def load_record_into_gui(self, row_to_load:list | None=None) -> None:
+    def load_record_into_gui(self, excel_row=None) -> None:
         # msg = "record loaded" if excel_row else "record cleared"
         for i, el in enumerate(self.inputs):
-            data = "" if not row_to_load else row_to_load[i]
+            data = "" if not excel_row else excel_row[i]
             if isinstance(el, QLineEdit):
                 el.setText(data)
             elif isinstance(el, QTextEdit):
                 el.setPlainText(data)
             else:
                 print("Huston, we have a problem loading data into the form...")
+        self.change_background_color() ## existing record has default background
         self.update_input_styles()
         self.add_signal_to_fire_on_text_change()
-        self.toggle_record_editable("lock") ## existing record has default background
-        self.has_unsaved_text = False
+        self.unlock_btn.setEnabled(True)
+        # print(msg)
 
     def clear_form(self) -> None:
+        # if self.current_row != -1 and self.abort_on_clearing_existing_record(self):
         if not self.current_record_is_new and self.abort_on_clearing_existing_record(
             self
         ):
             return
         self.load_record_into_gui()
 
-    def handle_new_record(self) -> None:
-        self.current_row_index = -1
+    def start_new_record(self) -> None:
+        # print("new record")
+        self.current_row = -1
         if self.settings.flavour["title"] == "art_catalogue":
             for field in self.settings.flavour["fields_to_clear"]:
                 self.inputs[field.value].setText("")
-            for field, value in self.settings.flavour["fields_to_fill"]:
-                self.inputs[field.value].setText(value)
-        self.has_unsaved_text = False if self.has_no_records else True
-        self.toggle_record_editable("edit")
+            self.inputs[COL.sublib.value].setText("ARTBL")
+        # fields_to_clear = [COL.barcode, COL.hol_notes, COL.extent, COL.pub_year, COL.sale_dates, COL.copyright, COL.sale_dates]
+        # for field in fields_to_clear:
+        #     self.inputs[field.value].setText("")
+        # self.inputs[COL.sublib.value].setText("ARTBL")
+        self.has_unsaved_text = True
         self.update_title_with_record_number("[new]")
-        # self.has_no_records = False
+        self.change_background_color("new")
+        self.unlock_btn.setEnabled(False)
 
-    def handle_unlock(self) -> None:
-        print(f"... handling unlock (currently {self.record_is_locked=})")
-        if self.record_is_locked:
-            self.toggle_record_editable("edit")
+    def change_background_color(self, mode=""):
+        if mode:
+            stylesheet = "background-color: lightgrey;"
         else:
-            if not self.handle_submit("Only completed records can be locked.\n\n"):
-                return
-            self.toggle_record_editable("lock")
-
-    def toggle_record_editable(self, mode="edit") -> None:
-        Option =namedtuple("Option", ["label_style", "input_style", "locked_status", "btn_text"])
-        unlock = Option("color: black;", "background-color: white;", False, "Lock")
-        lock = Option("color: grey;", "background-color: whitesmoke; border: none; padding: 1px 0 1px 0;", True, "Edit")
-        status = unlock if mode == "edit" else lock
-        for label in self.labels:
-            label.setStyleSheet(status.label_style)
-        for input in self.inputs:
-            input.setStyleSheet(status.input_style)
-            input.setReadOnly(status.locked_status)
-        self.unlock_btn.setText(status.btn_text)
-        self.record_is_locked = status.locked_status
+            stylesheet = ""
+        self.window().setStyleSheet(stylesheet)
 
     def update_current_position(self, direction) -> None:
-        print(f">>>{self.record_count=}, {self.current_row_index=}, {self.current_record_is_new=}, {self.has_no_records=} {self.has_unsaved_text=}")
+        print(f">>>{len(self.excel_rows)}, {self.current_row}, {self.current_record_is_new}, {self.is_empty_on_startup=}")
+
         if self.has_unsaved_text and self.abort_on_unsaved_text(self):
             return
-        # index_of_last_record = len(self.excel_rows) - 1
+        index_of_last_record = len(self.excel_rows) - 1
         match direction:
             case "first":
-                self.current_row_index = 0
+                self.current_row = 0
             case "last":
-                self.current_row_index = self.index_of_last_record
+                self.current_row = index_of_last_record
             case "back":
-                if self.current_row_index > 0:
-                    self.current_row_index -= 1
+                if self.current_row > 0:
+                    self.current_row -= 1
             case _:
-                if self.current_row_index < self.index_of_last_record:
-                    self.current_row_index += 1
-        # msg = str(self.current_row)
-        msg = self.get_human_readable_record_number()
-        # if self.record_count == 1:
-        #     self.first_btn.setEnabled(False)
-        #     self.prev_btn.setEnabled(False)
-        #     self.last_btn.setEnabled(False)
-        #     self.next_btn.setEnabled(False)
-        # elif self.current_row == 0:
-        #     msg += " (first)"
-        #     self.first_btn.setEnabled(False)
-        #     self.prev_btn.setEnabled(False)
-        #     self.last_btn.setEnabled(True)
-        #     self.next_btn.setEnabled(True)
-        # elif self.current_row == self.index_of_last_record:
-        #     msg += " (last)"
-        #     self.last_btn.setEnabled(False)
-        #     self.next_btn.setEnabled(False)
-        #     self.first_btn.setEnabled(True)
-        #     self.prev_btn.setEnabled(True)
-        # else:
-        #     self.first_btn.setEnabled(True)
-        #     self.prev_btn.setEnabled(True)
-        #     self.last_btn.setEnabled(True)
-        #     self.next_btn.setEnabled(True)
-        msg += self.update_nav_buttons()
-        self.update_title_with_record_number(msg)
-        # self.load_record_into_gui(self.excel_rows[self.current_row_index])
-        self.load_record_into_gui(self.current_row)
-        self.has_unsaved_text = False
-
-    def update_nav_buttons(self) -> str:
-        print(f"nav status: {self.record_count=}")
-        msg = ""
-        if self.record_count == 1:
-            self.first_btn.setEnabled(False)
-            self.prev_btn.setEnabled(False)
-            self.last_btn.setEnabled(False)
-            self.next_btn.setEnabled(False)
-        elif self.current_row_index == 0:
+                if self.current_row < index_of_last_record:
+                    self.current_row += 1
+        msg = str(self.current_row)
+        if self.current_row == 0:
             msg += " (first)"
             self.first_btn.setEnabled(False)
             self.prev_btn.setEnabled(False)
             self.last_btn.setEnabled(True)
             self.next_btn.setEnabled(True)
-        elif self.current_row_index == self.index_of_last_record:
+        elif self.current_row == index_of_last_record:
             msg += " (last)"
             self.last_btn.setEnabled(False)
             self.next_btn.setEnabled(False)
@@ -871,27 +788,41 @@ class Editor(QWidget):
             self.prev_btn.setEnabled(True)
             self.last_btn.setEnabled(True)
             self.next_btn.setEnabled(True)
-        return msg
 
-    def get_human_readable_record_number(self, number=-100):
-        if number == -100:
-            number = self.current_row_index
-        return str(number + 1)
+        self.update_title_with_record_number(msg)
+        self.load_record_into_gui(self.excel_rows[self.current_row])
+        self.has_unsaved_text = False
+        # self.load_record_into_gui()
+        self.update_input_styles()
+        # if self.is_empty_on_startup:
+            # self.update_title_with_record_number("[new]")
+            # self.change_background_color("new")
+            # self.unlock_btn.setEnabled(False)
+
+    def handle_unlock(self) -> None:
+        pass
+        # self.unlock_btn.setEnabled(False)
+        # self.lock_record(False)
+
+    # def lock_record(self, mode=True) -> None:
+    #     if self.has_unsaved_text:
+    #         self.load_record_into_gui(self.current_row)
+    #     for input in self.inputs:
+    #         input.setReadOnly(mode)
 
     def save_as_csv(self, file_name="") -> None:
         is_backup_file = bool(file_name)
         headers = [el[3] for el in self.grid.widget_info.values()]
         if not file_name:
-            if self.settings.out_file:
-                name = self.drop_csv_suffix(self.settings.out_file)
-            else:
-                name = self.settings.default_output_filename
-            file_name = (f"{name}.new.csv")
+            file_name = (
+                f"{self.drop_csv_suffix(self.settings.out_file)}.new.csv"
+                if self.settings.out_file
+                else self.settings.default_output_filename
+            )
         write_to_csv(file_name, self.excel_rows, headers)
         if is_backup_file:
             return
-        msg = f"The {self.record_count} records in {self.settings.in_file} have been successfully saved as {file_name}."
-        self.has_unsaved_text = False
+        msg = f"The {len(self.excel_rows)} records in {self.settings.in_file} have been successfully saved as {file_name}."
         shared.logger.info(msg)
         msg_box = QMessageBox()
         msg_box.setText(msg)
@@ -909,7 +840,7 @@ class Editor(QWidget):
         )
         # print(f">>>>>>> out_file = {file_name}")
         shared.write_marc_files(marc_records, Path(file_name))
-        msg = f"The {self.record_count} records in {self.settings.in_file} have been successfully saved as {file_name}.mrk/.mrc in {self.settings.output_dir}."
+        msg = f"The {len(self.excel_rows)} records in {self.settings.in_file} have been successfully saved as {file_name}.mrk/.mrc in {self.settings.output_dir}."
         shared.logger.info(msg)
         msg_box = QMessageBox()
         msg_box.setText(msg)
@@ -931,7 +862,7 @@ class Editor(QWidget):
         )
         return dialogue.exec() != 1
 
-    def handle_file_dialog(self):
+    def open_file_dialog(self):
         """Opens the native file selection dialog and processes the result."""
         # This returns a tuple: (file_path, filter_used)
         file_dialog = QFileDialog()
@@ -948,12 +879,13 @@ class Editor(QWidget):
             self.settings.in_file = self.get_filename_only(file_path)
             self.settings.out_file = self.settings.in_file
             print(f"File Selected: {self.settings.in_file} ({file_path})")
+            # headers, self.excel_rows = shared.parse_file_into_rows(Path(file_path))
             headers, self.excel_rows = shared.parse_file_into_rows(Path(file_path))
             if not self.settings.use_default_layout:
                 print("Haven't coded for non-default layout yet!")
                 ## TODO: code for change of layout on file loading (i.e. make a standalone: 'load file and update grid' function)
             self.update_current_position("last")
-            shared.logger.info(f"Just opened {file_path} containing {self.record_count} records.")
+            shared.logger.info(f"Just opened {file_path} containing {len(self.excel_rows)} records.")
         else:
             print("Selection cancelled.")
 
@@ -1073,11 +1005,9 @@ def get_settings():
                 grid.add_brick_algorithmically(id, brick, headers[id])
     else:
         print("creating new file")
-        # rows = [["" for _ in range(len(template))]]
-        rows = []
-        # template = shared.settings.layout_template
-        # grid.add_bricks_by_template(template)
-        grid.add_bricks_by_template(shared.settings.layout_template)
+        template = shared.settings.layout_template
+        rows = [["" for _ in range(len(template))]]
+        grid.add_bricks_by_template(template)
     return (grid, rows)
 
 

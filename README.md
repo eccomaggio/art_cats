@@ -41,8 +41,12 @@ OR abort [how? - add abort button?? or... ]
 
 7. deal correctly with empty gui [title should read 'new']
 think about this!
-if is empty,
 
+8. DONE Remove debug print out from barcode check
+
+9. DONE Grey out ‘NEW’ button when entering a new record?? Or change to  ‘Abort record’ / ‘Abandon record’? and return to the previous record (save this as self.previous_record ?) OR add an ‘unlock’ button when a record comes up (i.e. existing records are default locked until you unlock them… NICE!)
+
+10. DONE Make sure saved .csv doesn’t keep adding ‘.csv.csv’!!
 MAYBE instead of changing background colour (coz difficult to do and makes display ugly), change colour of text in input boxes (grey) to show record is locked.
 
 
@@ -51,6 +55,19 @@ make inputs locked (i.e. readonly + text = grey) by default
 cannot be locked if text has been changed (-> abort button? or change button to 'lock': "this will wipe any changes you have made to this record. Do you want to proceed?" )
 new records are unlocked
 
+UNLOCKING:
+1. simply unlock (no complications)
+
+LOCKING:
+1. save record and lock - if not yet finished, finish or abort [how to abort?]
+
+currently, unlocking behaviour OK but doesn't grey out when first load record.
+Also, make protocols, i.e. what can happen, e.g.:
+- open empty & load file
+- open from command line (really???)
+- lock / unlock with record
+- create new record: lock / unlock... etc.
+test for these!
 
 
 
@@ -58,6 +75,7 @@ if filename given at commandline:
   open file [as currently]
 
 if no file given OR file not found:
+
 
 - load a default, empty record set
 - create a save file option
@@ -67,6 +85,18 @@ Create a .hint file:
 - name of headers + no. of columns
 - default layout
 
+********* CURRENT CRISIS:
+fucked up the loading of records :S
+
+buttons:
+__navigation__ -> load record (+ reset styles), lock
+__new record__ -> reset styles, unlock
+__submit record__ -> validate, reset styles, lock
+__clear__ -> unlock
+__load file__ ->
+__export as .csv__
+__export as marc21__
+__lock__ -> validate
 
 
 
