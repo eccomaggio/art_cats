@@ -709,7 +709,8 @@ class Editor(QWidget):
         else:
             print("Can't access salecode or pubdate fields...")
 
-    def update_title_with_record_number(self, text="", prefix="Record no. "):
+    # def update_title_with_record_number(self, text="", prefix="Record no. "):
+    def update_title_with_record_number(self, prefix="Record no. "):
         # text = text if text else self.get_human_readable_record_number()
         text = self.get_human_readable_record_number()
         text = f"{text} of {self.record_count}"
@@ -758,8 +759,9 @@ class Editor(QWidget):
                 print("Huston, we have a problem loading data into the form...")
         self.update_input_styles()
         self.add_signal_to_fire_on_text_change()
-        self.toggle_record_editable("lock") ## existing record has default background
-        # self.update_title_with_record_number(str(self.current_row_index))
+        mode = "lock" if row_to_load else "edit"
+        self.toggle_record_editable(mode)
+        # self.toggle_record_editable("lock")
         self.all_text_is_saved = True
 
     def clear_form(self) -> None:
@@ -768,7 +770,7 @@ class Editor(QWidget):
         ):
             return
         self.load_record_into_gui()
-        self.toggle_record_editable("edit")
+        # self.toggle_record_editable("edit")
 
     def handle_new_record(self) -> None:
         self.current_row_index = -1
