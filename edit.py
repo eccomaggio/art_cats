@@ -476,24 +476,17 @@ class Editor(QWidget):
         self.grid = grid
         if excel_rows:
             self.excel_rows = excel_rows
-            self.has_no_records = False
+            self.has_records = True
         else:
             self.excel_rows = [["" for _ in range(len(shared.settings.layout_template))]]
-            self.has_no_records = True
+            self.has_records = False
         self.col_count = len(self.excel_rows[0])
-        self.record_is_locked = True
 
         self.file_name = file_name
         self.short_file_name = self.get_filename_only(settings.in_file)
         self.current_row_index = len(excel_rows) - 1
-        self.has_unsaved_text = False
-        self.all_records_have_been_saved = False
-
-        # self.style_for_default_input = (
-        #     "border: 1px solid lightgrey; background-color: white;"
-        # )
-        # self.style_if_text_changed = "border: 2px solid red; background-color: white;"
-        # self.style_for_labels = "font-weight: bold;"
+        self.record_is_locked = True
+        self.all_text_is_saved = True
 
         self.submit_btn = QPushButton("Submit")
         self.submit_btn.setStyleSheet("font-weight: bold;")
@@ -522,7 +515,9 @@ class Editor(QWidget):
         self.new_btn = QPushButton("New")
         self.new_btn.clicked.connect(self.handle_new_record)
         self.save_btn = QPushButton("Export as .csv file")
-        self.save_btn.clicked.connect(self.save_as_csv)
+        # self.save_btn.clicked.connect(self.save_as_csv)
+        self.save_btn.setEnabled(False) ## TODO: remove it coz auto save on submit
+        ## if save disabled, then self.all_records_are_saved is redundant because they are always saved; only need self.all_text_is_saved
         self.marc_btn = QPushButton("Export as MARC")
         self.marc_btn.clicked.connect(self.save_as_marc)
         self.unlock_btn = QPushButton("Unlock")
@@ -536,11 +531,6 @@ class Editor(QWidget):
             tmp_input: QLineEdit | QTextEdit
             tmp_input = QLineEdit() if row_span == 1 else QTextEdit()
             tmp_input.setStyleSheet(self.settings.styles["default_input"])
-            # tmp_input.setStyleSheet(self.style_for_default_input)
-            # tmp_input.setSizePolicy(
-            #     QSizePolicy.Policy.Expanding,
-            #     QSizePolicy.Policy.Expanding,  # Or QSizePolicy.Policy.Minimum, for vertical if preferred
-            # )
             self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
@@ -558,6 +548,7 @@ class Editor(QWidget):
             inputs_layout.addLayout(
                 tmp_wrapper, start_row, start_col, row_span, col_span
             )
+        ## TODO: work out why HOL_notes does react to changed text!!
         self.add_signal_to_fire_on_text_change()
 
         last_id = list(grid.widget_info.keys())[-1]
@@ -586,10 +577,10 @@ class Editor(QWidget):
 
         # self.update_current_position("last")
         self.add_custom_behaviour()
-        if self.has_no_records:
-            self.handle_new_record()
-        else:
+        if self.has_records:
             self.load_record_into_gui(self.current_row)
+        else:
+            self.handle_new_record()
         self.update_nav_buttons()
 
     def add_custom_behaviour(self) -> None:
@@ -625,6 +616,9 @@ class Editor(QWidget):
         self.excel_rows[self.current_row_index] = row
 
     def handle_submit(self, optional_msg="") -> bool:
+        """
+        Gather data from form & save it to file
+        """
         if not optional_msg:
             optional_msg = ""
         data = []
@@ -640,24 +634,22 @@ class Editor(QWidget):
                 print(
                     f"Huston, we have a problem with submitting record no. {self.current_row_index}"
                 )
-        # if self.current_row < 0:
         if self.current_record_is_new:
-            print(f"***{self.has_no_records=}, record count: {self.record_count} {data=}")
-            if self.has_no_records:
-                self.excel_rows = [data]
-                self.has_no_records = False
-            else:
+            # print(f"***{self.has_records=}, record count: {self.record_count} {data=}")
+            if self.has_records:
                 self.excel_rows.append(data)
+            else:
+                self.excel_rows = [data]
+                self.has_records = True
             self.current_row_index = self.index_of_last_record
             self.update_title_with_record_number()
         else:
             ## Update existing record
-            # self.excel_rows[self.current_row_index] = data
             self.current_row = data
-        self.has_unsaved_text = False
-        self.save_as_csv("backup.bak")
+        self.save_as_csv()
+        # self.save_as_csv("backup.bak")
+        # self.all_text_is_saved = True
         self.update_nav_buttons()
-        # print(f"::: saving: {self.current_row_index=}, {self.current_row}")
         self.load_record_into_gui(self.current_row)
         return True
 
@@ -746,20 +738,16 @@ class Editor(QWidget):
         # print(f"Text changed...{datetime.datetime.now()}")
         sender = self.sender()
         if isinstance(sender, QLineEdit):
-            # sender.setStyleSheet(self.style_if_text_changed)
             sender.setStyleSheet(self.settings.styles["text_changed"])
             sender.textEdited.disconnect(self.handle_text_change)
         elif isinstance(sender, QTextEdit):
-            # sender.setStyleSheet(self.style_if_text_changed)
             sender.setStyleSheet(self.settings.styles["text_changed"])
             sender.textChanged.disconnect(self.handle_text_change)
         else:
             print("Huston, we have a problem with text input...")
-        self.has_unsaved_text = True
-        # print("text changed")
+        self.all_text_is_saved = False
 
     def load_record_into_gui(self, row_to_load:list | None=None) -> None:
-        # msg = "record loaded" if excel_row else "record cleared"
         for i, el in enumerate(self.inputs):
             data = "" if not row_to_load else row_to_load[i]
             if isinstance(el, QLineEdit):
@@ -772,7 +760,7 @@ class Editor(QWidget):
         self.add_signal_to_fire_on_text_change()
         self.toggle_record_editable("lock") ## existing record has default background
         # self.update_title_with_record_number(str(self.current_row_index))
-        self.has_unsaved_text = False
+        self.all_text_is_saved = True
 
     def clear_form(self) -> None:
         if not self.current_record_is_new and self.abort_on_clearing_existing_record(
@@ -780,6 +768,7 @@ class Editor(QWidget):
         ):
             return
         self.load_record_into_gui()
+        self.toggle_record_editable("edit")
 
     def handle_new_record(self) -> None:
         self.current_row_index = -1
@@ -788,8 +777,9 @@ class Editor(QWidget):
                 self.inputs[field.value].setText("")
             for field, value in self.settings.flavour["fields_to_fill"]:
                 self.inputs[field.value].setText(value)
-        self.has_unsaved_text = False if self.has_no_records else True
-        self.all_records_have_been_saved = False
+        # self.all_text_is_saved = False if self.has_records else True
+        self.all_text_is_saved = True
+        # self.all_records_are_saved = False
         self.toggle_record_editable("edit")
         # self.update_title_with_record_number("[new]")
         # self.has_no_records = False
@@ -827,8 +817,8 @@ class Editor(QWidget):
         self.update_title_with_record_number()
 
     def update_current_position(self, direction) -> None:
-        print(f">>>{self.record_count=}, {self.current_row_index=}, {self.current_record_is_new=}, {self.has_no_records=} {self.has_unsaved_text=}")
-        if self.has_unsaved_text and self.abort_on_unsaved_text(self):
+        # print(f">>>{self.record_count=}, {self.current_row_index=}, {self.current_record_is_new=}, {self.has_records=} {self.all_text_is_saved=}")
+        if not self.all_text_is_saved and self.choose_to_abort_on_unsaved_text():
             return
         # index_of_last_record = len(self.excel_rows) - 1
         match direction:
@@ -848,7 +838,7 @@ class Editor(QWidget):
         self.update_title_with_record_number(msg)
         # self.load_record_into_gui(self.excel_rows[self.current_row_index])
         self.load_record_into_gui(self.current_row)
-        self.has_unsaved_text = False
+        # self.all_text_is_saved = True
 
     def update_nav_buttons(self) -> str:
         # print(f"nav status: {self.record_count=}")
@@ -888,24 +878,26 @@ class Editor(QWidget):
         # return str(number + 1)
 
     def save_as_csv(self, file_name="") -> None:
-        is_backup_file = bool(file_name)
+        # is_backup_file = bool(file_name)
         headers = [el[3] for el in self.grid.widget_info.values()]
         if not file_name:
+            ## TODO: shouldn't need to do this every time: just use 'settings.out_file'
             if self.settings.out_file:
                 name = self.drop_csv_suffix(self.settings.out_file)
             else:
                 name = self.settings.default_output_filename
             file_name = (f"{name}.new.csv")
         write_to_csv(file_name, self.excel_rows, headers)
-        if is_backup_file:
-            return
-        msg = f"The {self.record_count} records in {self.settings.in_file} have been successfully saved as {file_name}."
-        self.has_unsaved_text = False
-        self.all_records_have_been_saved = True
-        shared.logger.info(msg)
-        msg_box = QMessageBox()
-        msg_box.setText(msg)
-        msg_box.exec()
+        self.all_text_is_saved = True
+        # if is_backup_file:
+        #     return
+        # msg = f"The {self.record_count} records in {self.settings.in_file} have been successfully saved as {file_name}."
+        # self.all_text_is_saved = True
+        # self.all_records_are_saved = True
+        # shared.logger.info(msg)
+        # msg_box = QMessageBox()
+        # msg_box.setText(msg)
+        # msg_box.exec()
 
     def save_as_marc(self) -> None:
         # records = shared.parse_rows_into_records(self.excel_rows)
@@ -926,7 +918,7 @@ class Editor(QWidget):
         msg_box.exec()
 
     # def abort_on_unsaved_text(self, s) -> int:
-    def abort_on_unsaved_text(self) -> int:
+    def choose_to_abort_on_unsaved_text(self) -> int:
         # print("unsaved text alert...", s)
         dialogue = DialogueOkCancel(
             self,
@@ -944,15 +936,15 @@ class Editor(QWidget):
 
     def handle_file_dialog(self):
         """Opens the native file selection dialog and processes the result."""
-        print(f">>> {self.all_records_have_been_saved=}")
-        if not self.all_records_have_been_saved:
-            should_abort = self.abort_on_unsaved_text()
-            print(f"   {should_abort=}")
-            if should_abort:
-                # print(f"&&&&&&&&& Should abort!")
-                return
-        # This returns a tuple: (file_path, filter_used)
+        # print(f">>> {self.all_text_is_saved=}")
+        # print(f">>> {self.all_records_are_saved=}")
+        # if not self.all_text_is_saved or not self.all_records_are_saved:
+        # if (not self.has_records and not self.all_text_is_saved) or :
+        if not self.all_text_is_saved and self.choose_to_abort_on_unsaved_text():
+            # print(f"&&&&&&&&& Should abort!")
+            return
         file_dialog = QFileDialog()
+        # This returns a tuple: (file_path, filter_used)
         file_path, _ = file_dialog.getOpenFileName(
             parent=self,  # The parent widget (for centering)
             caption="Select a file.",
@@ -970,8 +962,10 @@ class Editor(QWidget):
             if not self.settings.use_default_layout:
                 print("Haven't coded for non-default layout yet!")
                 ## TODO: code for change of layout on file loading (i.e. make a standalone: 'load file and update grid' function)
+            # self.all_records_are_saved = True
+            self.all_text_is_saved = True
+            self.has_records = True
             self.update_current_position("last")
-            self.all_records_have_been_saved = True
             shared.logger.info(f"Just opened {file_path} containing {self.record_count} records.")
         else:
             print("Selection cancelled.")
@@ -1076,6 +1070,18 @@ def read_cli_into_settings() -> None:
     shared.settings.layout_template = default_hint
 
 
+# def drop_csv_suffix(name:str) -> str:
+#     def trim_csv(name):
+#         if name[1] in ["csv", "tsv"]:
+#             return trim_csv(name[1:])
+#         else:
+#             return name[1:]
+#     file_name = name.split(".")
+#     eman = list(reversed(file_name))
+#     out = trim_csv(eman)
+#     return ".".join(list(reversed(out)))
+
+
 def get_settings():
     read_cli_into_settings()
     grid = Grid()
@@ -1097,6 +1103,10 @@ def get_settings():
         # template = shared.settings.layout_template
         # grid.add_bricks_by_template(template)
         grid.add_bricks_by_template(shared.settings.layout_template)
+    # if shared.settings.out_file:
+    #     drop_csv_suffix(self.settings.out_file)
+    # else:
+    #     name = self.settings.default_output_filename
     return (grid, rows)
 
 
