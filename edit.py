@@ -86,13 +86,12 @@ shared.settings.flavour = {
     ],
 }
 shared.settings.styles = {
-    "default_input": "border: 1px solid lightgrey; background-color: white;",
-    "text_changed": "border: 2px solid red; background-color: white;",
+    "text_changed": "border: 1px solid red; background-color: white;",
     "labels": "font-weight: bold;",
-    "label_active_colour": "color: #7c6241;",
-    "label_locked_colour": "color: grey;",
-    "input_active_colour": "background-color: white;",
-    "input_locked_colour": "background-color: whitesmoke;",
+    "label_active": "color: #7c6241;",
+    "label_locked": "color: darkgrey;",
+    "input_active": "border: 1px solid lightgrey; background-color: white;",
+    "input_locked": "border: 1px solid whitesmoke; background-color: whitesmoke;",
 }
 
 LABELS = {
@@ -530,7 +529,7 @@ class Editor(QWidget):
             row_span, col_span = brick.height, brick.width
             tmp_input: QLineEdit | QTextEdit
             tmp_input = QLineEdit() if row_span == 1 else QTextEdit()
-            tmp_input.setStyleSheet(self.settings.styles["default_input"])
+            tmp_input.setStyleSheet(self.settings.styles["input_active"])
             self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
@@ -711,22 +710,19 @@ class Editor(QWidget):
 
     # def update_title_with_record_number(self, text="", prefix="Record no. "):
     def update_title_with_record_number(self, prefix="Record no. "):
-        # text = text if text else self.get_human_readable_record_number()
-        text = self.get_human_readable_record_number()
-        text = f"{text} of {self.record_count}"
+        text = f"{self.get_human_readable_record_number()} of {self.record_count}"
         status = " **locked**" if self.record_is_locked else " (editable)"
         # print(f"title >>> {self.record_is_locked=}, {status}")
         self.caller.setWindowTitle(f"<file: {self.settings.in_file}.new.csv>: {prefix}{text}{status}")
         # self.update_input_styles()
 
-    def update_input_styles(self, mode="default"):
-        if mode == "default":
-            # stylesheet = self.style_for_default_input
-            stylesheet = self.settings.styles["default_input"]
-        else:
-            stylesheet = self.settings.styles["text_changed"]
-        for input in self.inputs:
-            input.setStyleSheet(stylesheet)
+    # def update_input_styles(self, mode="default"):
+    #     if mode == "default":
+    #         stylesheet = self.settings.styles["input_active"]
+    #     else:
+    #         stylesheet = self.settings.styles["text_changed"]
+    #     for input in self.inputs:
+    #         input.setStyleSheet(stylesheet)
 
     def add_signal_to_fire_on_text_change(self):
         for input in self.inputs:
@@ -757,11 +753,11 @@ class Editor(QWidget):
                 el.setPlainText(data)
             else:
                 print("Huston, we have a problem loading data into the form...")
-        self.update_input_styles()
         self.add_signal_to_fire_on_text_change()
         mode = "lock" if row_to_load else "edit"
         self.toggle_record_editable(mode)
-        # self.toggle_record_editable("lock")
+        # self.update_input_styles("default")
+        # print(f">>>>>{mode=}, {row_to_load=}")
         self.all_text_is_saved = True
 
     def clear_form(self) -> None:
@@ -800,13 +796,15 @@ class Editor(QWidget):
         css = self.settings.styles
         if mode == "edit":
             status = Option(
-                label_style=css["label_active_colour"], input_style=css["input_active_colour"], locked_status=False,
+                label_style=css["label_active"],
+                input_style=css["input_active"],
+                locked_status=False,
                 btn_text="Lock")
             self.record_is_locked = False
         else:
             status = Option(
-                label_style=css["label_locked_colour"],
-                input_style=css["input_locked_colour"],
+                label_style=css["label_locked"],
+                input_style=css["input_locked"],
                 locked_status=True,
                 btn_text="Edit")
             self.record_is_locked = True
@@ -938,10 +936,6 @@ class Editor(QWidget):
 
     def handle_file_dialog(self):
         """Opens the native file selection dialog and processes the result."""
-        # print(f">>> {self.all_text_is_saved=}")
-        # print(f">>> {self.all_records_are_saved=}")
-        # if not self.all_text_is_saved or not self.all_records_are_saved:
-        # if (not self.has_records and not self.all_text_is_saved) or :
         if not self.all_text_is_saved and self.choose_to_abort_on_unsaved_text():
             # print(f"&&&&&&&&& Should abort!")
             return
@@ -981,7 +975,7 @@ class Editor(QWidget):
 
     def drop_csv_suffix(self, name):
         def trim_csv(name):
-            if name[1] in ["csv", "tsv"]:
+            if name[1] in ["csv", "tsv", "new"]:
                 return trim_csv(name[1:])
             else:
                 return name[1:]
