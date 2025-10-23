@@ -529,7 +529,7 @@ class Editor(QWidget):
             row_span, col_span = brick.height, brick.width
             tmp_input: QLineEdit | QTextEdit
             tmp_input = QLineEdit() if row_span == 1 else QTextEdit()
-            tmp_input.setStyleSheet(self.settings.styles["input_active"])
+            # tmp_input.setStyleSheet(self.settings.styles["input_active"])
             self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
@@ -716,16 +716,10 @@ class Editor(QWidget):
         self.caller.setWindowTitle(f"<file: {self.settings.in_file}.new.csv>: {prefix}{text}{status}")
         # self.update_input_styles()
 
-    # def update_input_styles(self, mode="default"):
-    #     if mode == "default":
-    #         stylesheet = self.settings.styles["input_active"]
-    #     else:
-    #         stylesheet = self.settings.styles["text_changed"]
-    #     for input in self.inputs:
-    #         input.setStyleSheet(stylesheet)
-
     def add_signal_to_fire_on_text_change(self):
-        for input in self.inputs:
+        # for input in self.inputs:
+        for i, input in enumerate(self.inputs):
+            print(f">>>> {self.labels[i].text()} {input=}")
             if isinstance(input, QLineEdit):
                 input.textEdited.connect(self.handle_text_change)
             elif isinstance(input, QTextEdit):
@@ -734,11 +728,12 @@ class Editor(QWidget):
     def handle_text_change(self) -> None:
         # print(f"Text changed...{datetime.datetime.now()}")
         sender = self.sender()
+        style = "text_changed"
         if isinstance(sender, QLineEdit):
-            sender.setStyleSheet(self.settings.styles["text_changed"])
+            sender.setStyleSheet(self.settings.styles[style])
             sender.textEdited.disconnect(self.handle_text_change)
         elif isinstance(sender, QTextEdit):
-            sender.setStyleSheet(self.settings.styles["text_changed"])
+            sender.setStyleSheet(self.settings.styles[style])
             sender.textChanged.disconnect(self.handle_text_change)
         else:
             print("Huston, we have a problem with text input...")
@@ -973,16 +968,27 @@ class Editor(QWidget):
             file_name = file_path
         return file_name
 
-    def drop_csv_suffix(self, name):
-        def trim_csv(name):
-            if name[1] in ["csv", "tsv", "new"]:
-                return trim_csv(name[1:])
-            else:
-                return name[1:]
+    # def drop_csv_suffix(self, name):
+    #     def trim_csv(name):
+    #         if name[1] in ["csv", "tsv", "new"]:
+    #             return trim_csv(name[1:])
+    #         else:
+    #             return name[1:]
+    #     file_name = name.split(".")
+    #     eman = list(reversed(file_name))
+    #     out = trim_csv(eman)
+    #     return ".".join(list(reversed(out)))
+
+    def drop_csv_suffix(self, name:str) -> str:
         file_name = name.split(".")
-        eman = list(reversed(file_name))
-        out = trim_csv(eman)
-        return ".".join(list(reversed(out)))
+        index = 0
+        for el in reversed(file_name):
+            if el in ["csv", "tsv", "new"]:
+                index -= 1
+                continue
+            break
+        out = ".".join(file_name[:index])
+        return out
 
 class DialogueOkCancel(QDialog):
     def __init__(self, parent, text):
