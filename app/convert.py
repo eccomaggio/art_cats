@@ -88,6 +88,7 @@ class Punctuation(Serializable):
     """ISBD punctuation used between subfields
     https://www.itsmarc.com/crs/mergedprojects/lcri/lcri/1_0c__lcri.htm
     """
+    contents = ""
 
     def __init__(self, contents: str):
         self.contents = contents
@@ -97,6 +98,15 @@ class Punctuation(Serializable):
 
     def __str__(self):
         return f"<contents='{self.contents}'>"
+
+
+@dataclass
+class Isbd:
+    colon = Punctuation(" : ")
+    period = Punctuation(". ")
+    comma = Punctuation(", ")
+    semicolon = Punctuation(" ; ")
+ISBD = Isbd()
 
 
 class Subfield(Serializable):
@@ -1171,9 +1181,11 @@ def build_245(record: Record) -> Result:
             content.add(linkage)
         content.add(Subfield(title, "a"))
         if subtitle:
-            content.add([Punctuation(" :"), Subfield(subtitle, "b")])
+            # content.add([Punctuation(" :"), Subfield(subtitle, "b")])
+            content.add([ISBD.colon, Subfield(subtitle, "b")])
         if content.can_accept_period():
-            content.add(Punctuation("."))
+            # content.add(Punctuation("."))
+            content.add(ISBD.period)
 
         result = Result(Field(tag, i1, i2, content), error)
     else:
@@ -1191,7 +1203,8 @@ def deal_with_chinese_titles(
 ) -> Subfield:
     chinese_title = Content(Subfield(title_original, "a"))
     if subtitle_original:
-        chinese_title.add([Punctuation(" :"), Subfield(subtitle_original, "b")])
+        # chinese_title.add([Punctuation(" :"), Subfield(subtitle_original, "b")])
+        chinese_title.add([ISBD.colon, Subfield(subtitle_original, "b")])
     if tag == 245 and chinese_title.can_accept_period():
         chinese_title.add(Punctuation("."))
     sequence_number = seq_num(record.sequence_number)
@@ -1218,7 +1231,8 @@ def build_264(record: Record) -> Result:
         tag,
         i1,
         i2,
-        [place, Punctuation(" :"), publisher, Punctuation(","), pub_year],
+        # [place, Punctuation(" :"), publisher, Punctuation(","), pub_year],
+        [place, ISBD.colon, publisher, ISBD.comma, pub_year],
         1,
     )
     if record.copyright:
@@ -1245,7 +1259,8 @@ def build_300(record: Record) -> Result:
         "a",
     )
     size = Subfield(f"{record.size} cm", "c")
-    content = Content([pages, Punctuation(" ;"), size])
+    # content = Content([pages, Punctuation(" ;"), size])
+    content = Content([pages, ISBD.semicolon, size])
     result = Result(Field(tag, i1, i2, content), None)
     return result
 
@@ -1414,7 +1429,8 @@ def build_490(record: Record) -> Result:  ## optional
     series_enum = Subfield(record.series_enum if record.series_enum else "", "v")
     content: Content | None = None
     if record.series_title and record.series_enum:
-        content = Content([series_title, Punctuation(" ;"), series_enum])
+        # content = Content([series_title, Punctuation(" ;"), series_enum])
+        content = Content([series_title, ISBD.semicolon, series_enum])
     elif record.series_title:
         content = Content(series_title)
     elif record.series_enum:
@@ -1436,7 +1452,8 @@ def build_500(record: Record) -> Result:  ##optional
     if record.notes:
         content = Content(Subfield(record.notes, "a"))
         if content.can_accept_period():
-            content.add(Punctuation("."))
+            # content.add(Punctuation("."))
+            content.add(ISBD.period)
         result = Result(Field(tag, i1, i2, content), None)
     else:
         result = Result(None, (tag, ""))
