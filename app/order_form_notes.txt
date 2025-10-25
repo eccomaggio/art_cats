@@ -1,0 +1,34 @@
+Top levels (these are independent of each other):
+
+FUND CODE
+LOCATION CODE
+
+Bottom level (these fields :
+Item to order
+
+
+NB:
+> = conditional on previous
+/ = non-conditional
+
+FUND CODE: 3 fields (drop downs): subject consultant > fund code / type of order
+LOCATION CODE: 3 fields (drop downs): Library > Location / Item policy
+REPORTING CODE: 3 fields (drop downs) :Reporting code 1 / 2 / 3
+NOTES: 3 fields (text boxes): hold for /  notify / additional information
+
+ITEM: variable number? (text boxes) author(s) or eds. / title / citation / subject / type (‘print book’, etc.)
+e.g.
+Title: UL: Four Mapuche Poets
+Author: ed. by Cecilia Vicuña, trans. by John Bierhorst
+Citation: 9780935480993 Latin American Literary Review Press, 1998
+Subject: Literature, Indigenous Languages
+Type: Print Book
+
+
+
+Add in instructions (ideally, click on label & will display the help topic in the side bar)
+
+
+Also:
+Check the feasibility of Microsoft forms
+ 

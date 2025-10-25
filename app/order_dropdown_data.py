@@ -1,3 +1,6 @@
+from collections import namedtuple
+from pprint import pprint
+
 info = {
   "Library" : ["ARTBL_Art_Archaeology_and_Ancient_World_Library", "BJLBL_Bodleian_Japanese_Library", "BODBL_Bodleian_Library", "CCLBL_KB_Chen_China_Centre_Library", "CSFBL_Bodleian_Offsite_Storage", "EFLBL_English_Faculty_Library", "HFLBL_Bodleian_History_Faculty_Library", "HMLBL_Bodleian_History_of_Medicine_Library", "NGLBL_Nizami_Ganjavi_Library", "OFFBL_Bodleian_Offsite_Storage_2", "RSLBL_Radcliffe_Science_Library", "SHEBL_Sherardian_Library", "STFBL_Bodleian_Staff_Library", "TAYBL_Taylor_Institution_Library", "WESBL_Weston_Library"],
 
@@ -17,7 +20,7 @@ info = {
   "TAYBL_Taylor_Institution_Library" : ["TAYBC_Basement_Celtic_LC_Class", "TAYBS_Basement_Slavonic_&_Greek_LC", "TAYBU_Basement_Slavonic_Undergraduate_LC", "TAYGR_Greek_Reading_Room_(Room 10B)", "TAYLA_Teaching_Collection_AudioVisual", "TAYLB_Teaching_Collection_Books", "TAYMS_Main_Stack_LC_Classification", "TAYOFFSC_Taylor_Offsite_Special_Collections_Material"],
   "WESBL_Weston_Library" : ["RS060_Bodleian_DH_Stack", "RS095_Bodleian_Map_Room_M", "RS122_Bodleian_Spec.Coll.", "RS124_Bodleian_Swindon_Music", "WB1CE_Weston_Basement_Level_1_Centre_Compartment", "WB1CN_Weston_Basement_Level_1_Centre_North_Compartment", "WB1CO_Weston_Basement_Level_1_Cold_Store", "WB1CS_Weston_Basement_Level_1_Centre_South_Compartment", "WB1LF_Weston_Basement_Level_1_Large_Format_Store", "WB1NO_Weston_Basement_Level_1_North_Compartment", "WB1SO_Weston_Basement_Level_1_South_Compartment", "WB2CE_Weston_Basement_Level_2_Centre_Compartment", "WB2CN_Weston_Basement_Level_2_Centre_North_Compartment", "WB2CS_Weston_Basement_Level_2_Centre_South_Compartment", "WB2EA_Weston_Basement_Level_2_East_Compartment", "WB2NM_Weston_Basement_Level_2_North_Compartment_Maps", "WB2NO_Weston_Basement_Level_2_North_Compartment", "WB2SO_Weston_Basement_Level_2_South_Compartment", "WB2SR_Weston_Basement_Level_2_Strong_Room", "WB2WE_Weston_Basement_Level_2_West_Compartment", "WB3CE_Weston_Basement_Level_3_Centre_Compartment", "WB3CN_Weston_Basement_Level_3_Centre_North_Compartment", "WB3CS_Weston_Basement_Level_3_Centre_South_Compartment", "WB3EA_Weston_Basement_Level_3_East_Compartment", "WB3NO_Weston_Basement_Level_3_North_Compartment", "WB3SO_Weston_Basement_Level_3_South_Compartment", "WB3SR_Weston_Basement_Level_3_Strong_Room", "WB3WE_Weston_Basement_Level_3_West_Compartment", "WESAM_Offsite_Storage_Archives_&_Manuscripts", "WESCW_Conservation_Workshop", "WESO1_Weston_Mackerras_Open_Shelves", "WESO2_Weston_RBMSS_Open_Shelves", "WESO3_Weston_RBMSS_Reference_Area", "WESO4_Weston_David_Open_Shelves", "WESO5_Weston_David_Reference_Area", "WESO6_Weston_Gallery_Open_Shelves", "WESO7 _Weston_Samsung_Room", "WESOFF_Offsite_Storage_Special_Collections", "WLBHN_Weston_Blackwell_Hall_North", "WLOPM_Weston_RBMSS_Reference_Area_(Opie Microfiches)"],
 
-  "Type_of_order" : ["Electronic_Book_One_Time", "Physical_One_Time", "Print_Book_One_Time"],
+  "Order_type" : ["Electronic_Book_One_Time", "Physical_One_Time", "Print_Book_One_Time"],
 
   "Item_policy" : ["Equipment_Loanable", "Equipment_Use_in_Library_Only", "Fixed_Week_Loan", "Flexible_Loan", "Same_Day_Loan", "Short_Loan", "Use_in_Library_Only", "Use_in_Library_Only_Not_Digitisable"],
 
@@ -25,7 +28,7 @@ info = {
   "Reporting_code_2" : ["FC8007BOOKSERIES_FC8007_Book_series", "FC8007LAWJOURNALS_FC8007_Law_journals", "FC8007LAWREPORTS_FC8007_Law_reports", "FC8007LEGISLATION_FC8007_Legislation", "FC8007LOOSELEAF_FC8007_Looseleaf_works", "FK1010HISTALBANIA_FK1010_History_(Albania) ", "FK8005ANCIENTHIST_FK8005_Ancient History", "FK8005CLASSICALARCH_FK8005_Classical_Archaeology", "FK8005NUMISMATICS_FK8005_Numismatics", "FK8008BRITWEUMEDIEVAL_FK8008_Brit_&_W_EU_Medieval_(500-1500)", "FK8008BRITWEUEARLYMOD_FK8008_Brit_&_W_EU_Early_Modern_(1500-1800)", "FK8008BRITWEUMODERN_FK8008_Brit_&_W_EU_Modern_(1800-)", "FK8008GLOBAL_FK8008_Global", "FK8008HSMT_FK8008_HSMT", "FK8010FILMSTUDIES_FK8010_Film_Studies", "FK8010WOMENGENDER_FK8010_Women_Gender_etc", "FK8011PORTUGUESE_FK8011_Portuguese", "FX8030EASTASIAKOREA_Fx8030_East_Asia_Korea", "FKXXXXSOCSCI_FKxxxx_Social_Sciences_ex_Hums_TFs"],
   "Reporting_code_3" : ["VATDATABASE_VAT_Database", "VATDVD_VAT_DVD", "VATPUBLISH_VAT_Publish costs"],
 
-  "Subject Consultant" : ["Adina_Bradeanu", "Alan_Coates", "Alessandra_Vetrugno", "Alessandro_Bianchi", "Andrea_Del_Corno", "Andrew_Dunning", "Andrew_Kernot", "Ann_Evans", "Barbara_Baj_Wojtowicz", "Cesar_MerchanHamann", "Charles_Manson", "Charlotte_Goodall", "Donald_MacKay ", "Eleanor_Peers", "Emma_Huber", "Emma_Mathieson", "Emma_Sullivan", "Frank_Egerton", "Gillian_Evison", "Helen_Scott", "Helen_Worrell", "Hilla_Wait", "Isabel_Holowaty", "James_Legg", "Janet_Foot", "Joanne_Ferrari", "Johanneke_Sytsema", "Karine_Barker", "Kostas_Skordyles", "Lydia_Wright", "Mamtimyn_Sunuodula", "MariaLuisa_Langella", "Martin_Holmes", "Minh_Chung", "Nick_Hearn", "Nick_Millea", "Niko_Kontovas", "Oliver_Bridle", "Rachel_Scanlon", "Rachel_DArcyBrown", "Sarah_Currant", "Sarah_Rhodes", "Susanne_Woodhouse", "Zsuzsanna_Varga"],
+  "Subject_consultant" : ["Adina_Bradeanu", "Alan_Coates", "Alessandra_Vetrugno", "Alessandro_Bianchi", "Andrea_Del_Corno", "Andrew_Dunning", "Andrew_Kernot", "Ann_Evans", "Barbara_Baj_Wojtowicz", "Cesar_MerchanHamann", "Charles_Manson", "Charlotte_Goodall", "Donald_MacKay ", "Eleanor_Peers", "Emma_Huber", "Emma_Mathieson", "Emma_Sullivan", "Frank_Egerton", "Gillian_Evison", "Helen_Scott", "Helen_Worrell", "Hilla_Wait", "Isabel_Holowaty", "James_Legg", "Janet_Foot", "Joanne_Ferrari", "Johanneke_Sytsema", "Karine_Barker", "Kostas_Skordyles", "Lydia_Wright", "Mamtimyn_Sunuodula", "MariaLuisa_Langella", "Martin_Holmes", "Minh_Chung", "Nick_Hearn", "Nick_Millea", "Niko_Kontovas", "Oliver_Bridle", "Rachel_Scanlon", "Rachel_DArcyBrown", "Sarah_Currant", "Sarah_Rhodes", "Susanne_Woodhouse", "Zsuzsanna_Varga"],
 
   "Adina_Bradeanu" : ["FK8011-xPRAC-A14-OO", "FK0001-B6036-A14-OO", "FC0010-B6036-A14-OO", "FK1010-B1496-A14-OO", "FK1010-B6028-A14-OO"],
   "Alan_Coates" : ["FK8006-xPRAC-H07-OO"],
@@ -72,3 +75,53 @@ info = {
   "Susanne_Woodhouse" : ["FK8030-xPRAC-H04-OO"],
   "Zsuzsanna_Varga" : ["FK8011-xPRAC-A12-OO", "FK0001-B6036-A12-OO", "FC0010-B6036-A12-OO", "FK1010-B6028-A12-OO"],
 }
+
+Dropdown = namedtuple("Dropdown", ["name", "id", "dependent_on", "test"])
+
+# fund_code = {
+#   "subjectConsultants": Dropdown("subjectConsultants", "Subject_consultant", "", ""),
+#   "fundCodes": Dropdown("fundCodes", "Fund", "Subject_consultant", "Eleanor_Peers"),
+#   "orderTypes": Dropdown("orderTypes", "Order_type", "", ""),
+# }
+
+fund_code = (
+  Dropdown("subjectConsultants", "Subject_consultant", "", ""),
+  Dropdown("fundCodes", "Fund", "Subject_consultant", "Eleanor_Peers"),
+  Dropdown("orderTypes", "Order_type", "", ""),
+)
+
+location_code = (
+  Dropdown("libraries", "Library","", ""),
+  Dropdown("locations", "Location", "Library",  "TAYBL_Taylor_Institution_Library"),
+  Dropdown("code1", "Reporting_code_1", "", ""),
+  Dropdown("code2", "Reporting_code_2", "", ""),
+  Dropdown("code3", "Reporting_code_3", "", ""),
+)
+
+# def populate_dropdown(dropdown:Dropdown, info:dict, dependency = "") -> tuple[str, list[str]]:
+#   if dropdown.dependent_on:
+#     content = (dropdown.name, info[dependency if dependency else dropdown.test])
+#   else:
+#     content = (dropdown.name, info[dropdown.id])
+#   return content
+
+def populate_dropdown(dropdown:Dropdown, info:dict, dependency = "") -> list[str]:
+  if dropdown.dependent_on:
+    content = info[dependency if dependency else dropdown.test]
+  else:
+    content = info[dropdown.id]
+  return content
+
+
+funds_drop = {item.name: populate_dropdown(item, info) for item in fund_code}
+
+pprint(funds_drop)
+print("")
+print(funds_drop["orderTypes"])
+
+location_drop = {item.name: populate_dropdown(item, info) for item in location_code}
+
+pprint(location_drop)
+print("")
+sample = location_drop["locations"]
+print(f"locations: {sample}")
