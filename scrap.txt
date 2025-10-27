@@ -1,0 +1,23 @@
+Subject Consultant
+Fund code
+Type of order
+
+Title
+Author
+Citation
+Subject
+Type
+Creator
+Date
+ISBN
+
+Library
+Location
+Item policy
+
+Reporting code 1
+Reporting code 2
+Reporting code 3
+Hold for
+Notify
+Additional information

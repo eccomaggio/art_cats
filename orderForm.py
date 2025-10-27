@@ -1,7 +1,6 @@
 """
-GUI to replace excel files in the excel file cataloguing workflow. I wanted to avoid excel files as the automatic user input form is inadequate and coding a custom one is painful.
-This can create a file from scratch or load a suitable (i.e. contains the correct number of fields in the correct order) csv or excel file. After adding and amending records, the result can be saved as a .csv file and / or marc 21 files (.mrk & .mrc files)
-It builds on a script that converts excel files into markdown; in fact, the current script imports this script and utilises it to open files and create internal representations ("Records").
+Order form for TAY / ART libraries to replace excel-based form.
+Contact: Ross Jones, Osney One
 """
 
 
@@ -10,8 +9,9 @@ from dataclasses import dataclass
 from collections import namedtuple
 import argparse
 import datetime
+import yaml
 from pathlib import Path
-# from pprint import pprint
+from pprint import pprint
 from enum import Enum, auto
 import sys
 import csv
@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QTextEdit,
+    QComboBox,
     QWidget,
     QVBoxLayout,
     QGroupBox,
@@ -35,55 +36,46 @@ from PySide6.QtWidgets import (
     # QHBoxLayout,
 )
 from PySide6.QtCore import Qt, QUrl, QTimer
+from PySide6.QtGui import QDesktopServices
+
 
 class COL(Enum):
-    sublib = 0
-    langs = auto()
-    isbn = auto()
+    subject_consultant = 0
+    fund_code = auto()
+    order_type = auto()
     title = auto()
-    tr_title = auto()
-    subtitle = auto()
-    tr_subtitle = auto()
-    parallel_title = auto()
-    tr_parallel_title = auto()
-    parallel_subtitle = auto()
-    tr_parallel_subtitle = auto()
-    country_name = auto()
-    state = auto()
-    place = auto()
-    publisher = auto()
-    pub_year = auto()
-    copyright = auto()
-    extent = auto()
-    size = auto()
-    series_title = auto()
-    series_enum = auto()
-    volume = auto()
-    notes = auto()
-    sales_code = auto()
-    sale_dates = auto()
-    hol_notes = auto()
-    donation = auto()
-    barcode = auto()
+    author = auto()
+    citation = auto()
+    subject = auto()
+    other = auto()
+    type = auto()
+    creator = auto()
+    date = auto()
+    isbn = auto()
+    library = auto()
+    location = auto()
+    item_policy = auto()
+    reporting_code_1 = auto()
+    reporting_code_2 = auto()
+    reporting_code_3 = auto()
+    hold_for = auto()
+    notify = auto()
+    additional_info = auto()
     start = 0
 
 
-shared.settings.help_file = "help.html"
+shared.settings.out_file = f"one_off_order.{str(datetime.datetime.now())[:19].replace(" ", "_").replace(":", "")}.csv"
+# name = f"one_off_order_form.{timestamp}.csv"
+shared.settings.help_file = "help_orders.html"
 shared.settings.flavour = {
-    "title": "art_catalogue",
+    "title": "order_form",
     "fields_to_clear": [
-        COL.barcode,
-        COL.hol_notes,
-        COL.extent,
-        COL.pub_year,
-        COL.sale_dates,
-        COL.copyright,
-        COL.sale_dates,
-        COL.sales_code,
+        COL.isbn,
     ],
     "fields_to_fill": [
-        [COL.sublib, "ARTBL"],
+        # [COL.sublib, "ARTBL"],
     ],
+    "combo_default_text": " >> Choose <<",
 }
 shared.settings.styles = {
     "text_changed": "border: 1px solid red; background-color: white;",
@@ -118,6 +110,7 @@ class Cell:
 
 
 class BRICK(Enum):
+    ## format: row-column
     oneone = Brick(1, 1)
     onetwo = Brick(1, 2)
     onethree = Brick(1, 3)
@@ -173,36 +166,29 @@ class STATUS(Enum):
     ok = auto()
 
 
-default_hint = (
-    ## non-algorithmic version needs to be: [title, brick-type, start-row, start-col]
-    ("sublibrary", "1:2", 0, 0),
-    ("Language of resource", "1:2", 0, 2),
-    ("ISBN", "1:2", 0, 4),
-    ("Title", "2:3", 1, 0),
-    ("Title transliteration", "2:3", 1, 3),
-    ("Subtitle", "2:3", 3, 0),
-    ("Subtitle transliteration", "2:3", 3, 3),
-    ("Parallel title (dual language only)", "2:3", 5, 0),
-    ("Parallel title transliteration", "2:3", 5, 3),
-    ("Parallel subtitle (dual language only)", "2:3", 7, 0),
-    ("Parallel subtitle transliteration", "2:3", 7, 3),
-    ("Country of publication", "1:2", 13, 0),
-    ("State (US/UK/CN/AU only)", "1:2", 13, 2),
-    ("Place of publication", "1:2", 13, 4),
-    ("Publisher name", "1:4", 14, 0),
-    ("Date of publication", "1:1", 14, 4),
-    ("Copyright date", "1:1", 14, 5),
-    ("Pagination", "1:1", 15, 1),
-    ("Size", "1:1", 15, 0),
-    ("Series title", "1:3", 12, 0),
-    ("Series enumeration", "1:2", 12, 3),
-    ("Volume", "1:1", 12, 5),
-    ("Note", "3:3", 9, 0),
-    ("Sale code", "1:1", 15, 2),
-    ("Date of sale", "1:3", 15, 3),
-    ("HOL notes", "3:3", 9, 3),
-    ("Donor note", "1:4", 16, 0),
-    ("Barcode ", "1:2", 16, 4),
+default_template = (
+    ## non-algorithmic version needs to be: [title, brick-type, start-row, start-col, widget-type=line/area/drop]
+    ("subject Consultant",      "1:2", 0, 0, "combo"),
+    ("Fund code",               "1:2", 1, 0, "combo"),
+    ("Order type",           "1:2", 2, 0, "combo"),
+    ("Title",                   "2:2", 3, 0, "text"),
+    ("Author",                  "2:2", 3, 2, "text"),
+    ("Citation",                "2:2", 3, 4, "text"),
+    ("Subject",                 "1:3", 5, 0, "line"),
+    ("Other",                   "2:3", 5, 3, "text"),
+    ("Type",                    "1:3", 6, 0, "line"),
+    ("Creator",                 "1:2", 7, 0, "line"),
+    ("Date",                    "1:2", 7, 2, "line"),
+    ("ISBN",                    "1:2", 7, 4, "line"),
+    ("Library",                 "1:2", 0, 2, "combo"),
+    ("Location",                "1:2", 1, 2, "combo"),
+    ("Item policy",             "1:2", 2, 2, "combo"),
+    ("Reporting code 1",        "1:2", 0, 4, "combo"),
+    ("Reporting code 2",        "1:2", 1, 4, "combo"),
+    ("Reporting code 3",        "1:2", 2, 4, "combo"),
+    ("Hold for",                "1:2", 8, 0, "line"),
+    ("Notify",                  "1:2", 9, 0, "line"),
+    ("Additional information",  "2:4", 8, 2, "text"),
 )
 
 
@@ -214,9 +200,8 @@ class Grid:
             []
         )  ## each row is a list of brick ids OR -1 to indicate cell is unoccupied
         self.add_a_row()
-        self.widget_info: dict[int, tuple[int, int, Brick, str]] = (
-            {}
-        )  ## dict[id: (start_row, start_col, Brick(height, width), title)]
+        ## dict[id: (start_row, start_col, Brick(height, width), title, widget-type)]
+        self.widget_info: dict[int, tuple[int, int, Brick, str, str]] = ({})
 
     @property
     def total_rows(self) -> int:
@@ -277,7 +262,7 @@ class Grid:
                 if enough_space_across and enough_space_down and no_following_bricks:
                     no_place_found_for_brick = False
                     self.place_brick_in_grid(brick, brick_id, row_i, col_i)
-                    self.widget_info[brick_id] = (row_i, col_i, brick, title)
+                    self.widget_info[brick_id] = (row_i, col_i, brick, title, "")
                     self.current_row = row_i
                     break
             row_i += 1
@@ -288,10 +273,10 @@ class Grid:
         last_brick_height = brick_lookup[last_brick[1]].value.height
         max_row = last_brick_start_col + last_brick_height
         self.rows = [self.make_row() for _ in range(max_row)]
-        for brick_id, (title, type_name, start_row, start_col) in enumerate(template):
-            brick = brick_lookup[type_name].value
+        for brick_id, (title, brick_type, start_row, start_col, widget_type) in enumerate(template):
+            brick = brick_lookup[brick_type].value
             self.place_brick_in_grid(brick, brick_id, start_row, start_col)
-            self.widget_info[brick_id] = (start_row, start_col, brick, title)
+            self.widget_info[brick_id] = (start_row, start_col, brick, title, widget_type)
 
     def count_free_spaces_across(self, row, start_col):
         free_spaces = 0
@@ -347,7 +332,9 @@ class WindowWithRightTogglePanel(QWidget):
         html_path = Path.cwd() / settings.app_dir / settings.help_file
         html_content = load_text_from_file(str(html_path))
         self.help_widget.setHtml(html_content)
-        self.help_widget.anchorClicked.connect(self.handle_internal_link)
+        # self.help_widget.anchorClicked.connect(self.handle_internal_link)
+        self.help_widget.anchorClicked.connect(self.handle_link_click)
+
         self.help_widget.setReadOnly(True)
         self.help_widget.setFixedWidth(self.HELP_PANEL_WIDTH)
 
@@ -407,10 +394,8 @@ class WindowWithRightTogglePanel(QWidget):
         Toggles the help panel visibility while managing the editor's size policy
         to achieve the sticky width and correct window resizing on all toggles.
         """
-
         is_visible = self.help_widget.isVisible()
         self.saved_height = self.height()
-
         if is_visible:
             # --- Hiding Panel (Shrinking Window) ---
             self.saved_editor_width = self.edit_panel_widget.width()
@@ -456,7 +441,33 @@ class WindowWithRightTogglePanel(QWidget):
         if anchor_name:
             self.help_widget.scrollToAnchor(anchor_name)
 
+    def handle_link_click(self, url: QUrl):
+        """
+        Custom slot to decide whether to open the link externally
+        or let QTextBrowser handle it internally.
+        """
+        # A URL is considered "external" if it has a non-empty scheme
+        # (like 'http', 'https', 'ftp', 'mailto', etc.).
+        # Internal anchor links (e.g., "#section") have an empty scheme and no host.
+        scheme = url.scheme()
+        if scheme in ("http", "https", "mailto", "ftp"):
+            # Open external links in the system's default browser
+            QDesktopServices.openUrl(url)
+            self.help_widget.setSource(QUrl())
+            # self.status_label.setText(f"External link opened: {url.toString()}")
+        else:
+            self.handle_internal_link(url)
+            # self.help_widget.setSource(url)
+            # self.status_label.setText(f"Internal link/anchor handled: {url.toString()}")
+
+
 class Editor(QWidget):
+    widget_lookup = {
+        "line": QLineEdit,
+        "text": QTextEdit,
+        "combo": QComboBox,
+        "label": QLabel,
+    }
     def __init__(self, grid: Grid, excel_rows: list[list[str]], file_name: str, caller:WindowWithRightTogglePanel, settings:shared.Settings):
         super().__init__()
         self.setWindowTitle("Editor")
@@ -513,23 +524,41 @@ class Editor(QWidget):
         self.clear_btn.clicked.connect(self.clear_form)
         self.new_btn = QPushButton("New")
         self.new_btn.clicked.connect(self.handle_new_record)
-        self.save_btn = QPushButton("Export as .csv file")
-        # self.save_btn.clicked.connect(self.save_as_csv)
-        self.save_btn.setEnabled(False) ## TODO: remove it coz auto save on submit
-        ## if save disabled, then self.all_records_are_saved is redundant because they are always saved; only need self.all_text_is_saved
-        self.marc_btn = QPushButton("Export as MARC")
-        self.marc_btn.clicked.connect(self.save_as_marc)
+        self.save_btn = QPushButton("Save")
+        self.save_btn.clicked.connect(self.save_as_csv)
+        self.save_btn.setEnabled(True)
+        # self.marc_btn = QPushButton("Export as MARC")
+        # self.marc_btn.clicked.connect(self.save_as_marc)
+        self.close_btn = QPushButton("Close")
+        self.close_btn.clicked.connect(self.handle_close)
         self.unlock_btn = QPushButton("Unlock")
         self.unlock_btn.clicked.connect(self.handle_unlock)
         # self.unlock_btn.setEnabled(True)
 
         self.inputs = []
         self.labels = []
-        for id, (start_row, start_col, brick, title) in self.grid.widget_info.items():
+        self.tied_inputs:dict[str, QComboBox] = {
+            "fund": None,
+            "location": None
+        }
+        style_sheet = """QComboBox QAbstractItemView {
+    selection-background-color: #3B82F6;
+    selection-color: white;
+}
+"""
+        for id, (start_row, start_col, brick, title, widget_type) in self.grid.widget_info.items():
             row_span, col_span = brick.height, brick.width
-            tmp_input: QLineEdit | QTextEdit
-            tmp_input = QLineEdit() if row_span == 1 else QTextEdit()
-            # tmp_input.setStyleSheet(self.settings.styles["input_active"])
+            # tmp_input: QLineEdit | QTextEdit
+            tmp_input: QWidget = self.widget_lookup[widget_type]()
+            if isinstance(tmp_input, QComboBox):
+                tmp_input.setObjectName(make_snake_name(title))
+                if title == "Fund code":
+                    self.tied_inputs["fund"] = tmp_input
+                elif title == "Location":
+                    self.tied_inputs["location"] = tmp_input
+                # tmp_input.addItems(["Option A", "Option B", "Option C"])
+                tmp_input.currentTextChanged.connect(self.handle_combos)
+                tmp_input.setStyleSheet(style_sheet)
             self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
@@ -565,8 +594,8 @@ class Editor(QWidget):
         last_row += 1
         nav_grid.addWidget(self.load_file_btn, last_row, 0, 1, 1)
         nav_grid.addWidget(self.save_btn, last_row, 1, 1, 1)
-        nav_grid.addWidget(self.marc_btn, last_row, 2, 1, 1)
-        # nav_grid.addWidget(self.close_btn, last_row, 3, 1, 1)
+        # nav_grid.addWidget(self.marc_btn, last_row, 2, 1, 1)
+        nav_grid.addWidget(self.close_btn, last_row, 2, 1, 1)
         nav_grid.addWidget(self.help_btn, last_row, 3, 1, 1)
         self.nav_grouped_layout.setLayout(nav_grid)
 
@@ -583,16 +612,36 @@ class Editor(QWidget):
         self.update_nav_buttons()
 
     def add_custom_behaviour(self) -> None:
-        if self.settings.flavour["title"] == "art_catalogue":
-            sale_dates = self.inputs[COL.sale_dates.value]
-            if isinstance(sale_dates, QLineEdit):
-                sale_dates.editingFinished.connect(self.saledates_action)
-            for label in self.labels:
-                if "transliteration" in label.text():
-                    font = label.font()
-                    font.setBold(False)
-                    font.setItalic(True)
-                    label.setFont(font)
+        if self.settings.flavour["title"] == "order_form":
+            for input in self.inputs:
+                if isinstance(input, QComboBox):
+                    name = input.objectName()
+                    if name in ["subject_consultant", "order_type", "library", "item_policy", "reporting_code_1", "reporting_code_2", "reporting_code_3"]:
+                        # input.addItems(info[name.capitalize()])
+                        input.addItems(self.load_options(name.capitalize()))
+
+    def handle_combos(self, new_text:str) -> None:
+        sender = self.sender()
+        name = sender.objectName()
+        print(f"... {sender.objectName()}'s selection changed to:{new_text}...")
+        if name == "subject_consultant":
+            to_update = self.tied_inputs["fund"]
+            to_update.clear()
+            # to_update.addItems(info[new_text])
+            to_update.addItems(self.load_options(new_text))
+            # print(f">>>> {self.tied_inputs}")
+        elif name == "library":
+            to_update = self.tied_inputs["location"]
+            to_update.clear()
+            # to_update.addItems(info[new_text])
+            to_update.addItems(self.load_options(new_text))
+
+    def load_options(self, key:str) -> list:
+        options = info[key]
+        output = [self.settings.flavour["combo_default_text"], *options]
+        # output:list = ["..."].extend(options)
+        return output
+
 
     @property
     def current_record_is_new(self) -> int:
@@ -629,6 +678,8 @@ class Editor(QWidget):
                 data.append(el.text())
             elif isinstance(el, QTextEdit):
                 data.append(el.toPlainText())
+            elif isinstance(el, QComboBox):
+                data.append(el.currentText())
             else:
                 print(
                     f"Huston, we have a problem with submitting record no. {self.current_row_index}"
@@ -653,35 +704,36 @@ class Editor(QWidget):
         return True
 
     def data_is_valid(self, optional_msg="") -> bool:
-        fields_to_validate: list[tuple[COL, str]] = [(COL.langs, "language"), (COL.title, "title"), (COL.country_name, "country of publication"), (COL.place, "city of publication"), (COL.publisher, "publisher"), (COL.size, "size (height) of the item"), (COL.extent, "number of pages"), (COL.pub_year, "year of publication"), (COL.barcode, "barcode")]
-        msg = []
-        errors = []
-        barcode = self.inputs[COL.barcode.value].text().strip()
-        if barcode == "*dummy*":
-            return True
-        for field, description in fields_to_validate:
-            input_box: QLineEdit | QTextEdit = self.inputs[field.value]
-            content = input_box.text() if isinstance(input_box, QLineEdit) else input_box.toPlainText()
-            if not content:
-                errors.append(description)
-        if errors:
-            msg.append(f"{optional_msg}The following fields are missing:\n{", ".join(errors)}")
-        if not self.inputs[COL.donation.value]:
-            self.inputs[COL.donation.value].setText("Anonymous donation")
-        if len(barcode) != 9:
-            msg.append("barcode needs to be 9 digits long")
-        if barcode and barcode[0] not in "367":
-            msg.append("barcode needs to start with 3, 6, or 9")
-        if msg:
-            output = "; ".join(msg)
-            msg_box = QMessageBox()
-            msg_box.setText(f"The data in this record has the following issue(s):\n\n{output}")
-            msg_box.exec()
-            return False
+        # fields_to_validate: list[tuple[COL, str]] = [(COL.langs, "language"), (COL.title, "title"), (COL.country_name, "country of publication"), (COL.place, "city of publication"), (COL.publisher, "publisher"), (COL.size, "size (height) of the item"), (COL.extent, "number of pages"), (COL.pub_year, "year of publication"), (COL.barcode, "barcode")]
+        # msg = []
+        # errors = []
+        # barcode = self.inputs[COL.barcode.value].text().strip()
+        # if barcode == "*dummy*":
+        #     return True
+        # for field, description in fields_to_validate:
+        #     input_box: QLineEdit | QTextEdit = self.inputs[field.value]
+        #     content = input_box.text() if isinstance(input_box, QLineEdit) else input_box.toPlainText()
+        #     if not content:
+        #         errors.append(description)
+        # if errors:
+        #     msg.append(f"{optional_msg}The following fields are missing:\n{", ".join(errors)}")
+        # if not self.inputs[COL.donation.value]:
+        #     self.inputs[COL.donation.value].setText("Anonymous donation")
+        # if len(barcode) != 9:
+        #     msg.append("barcode needs to be 9 digits long")
+        # if barcode and barcode[0] not in "367":
+        #     msg.append("barcode needs to start with 3, 6, or 9")
+        # if msg:
+        #     output = "; ".join(msg)
+        #     msg_box = QMessageBox()
+        #     msg_box.setText(f"The data in this record has the following issue(s):\n\n{output}")
+        #     msg_box.exec()
+        #     return False
         return True
 
     def handle_close(self) -> None:
-        self.close()
+        # self.close()
+        app.quit()
 
     def go_to_first_record(self) -> None:
         self.update_current_position("first")
@@ -695,18 +747,18 @@ class Editor(QWidget):
     def go_to_next_record(self) -> None:
         self.update_current_position("forwards")
 
-    def saledates_action(self) -> None:
-        # print("sales_date filled in!!")
-        sender = self.sender()
-        # sender = self.inputs[COL.sale_dates.value]
-        pubdate = self.inputs[COL.pub_year.value]
-        if isinstance(sender, QLineEdit) and isinstance(pubdate, QLineEdit):
-            if not pubdate.text():
-                year_of_pub = sender.text().strip()[:4]
-                # print(f">>>>>>>>> {year_of_pub}")
-                pubdate.setText(f"{year_of_pub}?")
-        else:
-            print("Can't access salecode or pubdate fields...")
+    # def saledates_action(self) -> None:
+    #     # print("sales_date filled in!!")
+    #     sender = self.sender()
+    #     # sender = self.inputs[COL.sale_dates.value]
+    #     pubdate = self.inputs[COL.pub_year.value]
+    #     if isinstance(sender, QLineEdit) and isinstance(pubdate, QLineEdit):
+    #         if not pubdate.text():
+    #             year_of_pub = sender.text().strip()[:4]
+    #             # print(f">>>>>>>>> {year_of_pub}")
+    #             pubdate.setText(f"{year_of_pub}?")
+    #     else:
+    #         print("Can't access salecode or pubdate fields...")
 
     # def update_title_with_record_number(self, text="", prefix="Record no. "):
     def update_title_with_record_number(self, prefix="Record no. "):
@@ -746,6 +798,15 @@ class Editor(QWidget):
                 el.setText(data)
             elif isinstance(el, QTextEdit):
                 el.setPlainText(data)
+            elif isinstance(el, QComboBox) and row_to_load:
+                if el.objectName() == "fund_code":
+                    options = info[row_to_load[0]] # subject_consultant
+                elif el.objectName() == "location":
+                    options = info[row_to_load[12]] # library
+                else:
+                    options = info[el.objectName().capitalize()]
+                self.load_combo_record(el, data, options)
+                ## TODO work out how to enter selection...
             else:
                 print("Huston, we have a problem loading data into the form...")
         self.add_signal_to_fire_on_text_change()
@@ -764,18 +825,34 @@ class Editor(QWidget):
         # self.toggle_record_editable("edit")
 
     def handle_new_record(self) -> None:
+        ## TODO: should i add in a routine to save the previous record here?
         self.current_row_index = -1
-        if self.settings.flavour["title"] == "art_catalogue":
+        if self.settings.flavour["title"] == "order_form":
+            ## TODO: make the following work with combo boxes
             for field in self.settings.flavour["fields_to_clear"]:
                 self.inputs[field.value].setText("")
-            for field, value in self.settings.flavour["fields_to_fill"]:
-                self.inputs[field.value].setText(value)
+            # for field, value in self.settings.flavour["fields_to_fill"]:
+            #     self.inputs[field.value].setText(value)
         # self.all_text_is_saved = False if self.has_records else True
         self.all_text_is_saved = True
         # self.all_records_are_saved = False
         self.toggle_record_editable("edit")
         # self.update_title_with_record_number("[new]")
         # self.has_no_records = False
+
+    def load_combo_record(self, combo_box:QComboBox, value:str, options:list[str]) -> None:
+        if value.strip().startswith("-"):
+            value = ""
+        if value:
+            index = options.index(value)
+        else:
+            index = -1 # the default index if no selection
+        combo_box.clear()
+        combo_box.addItems(options)
+        combo_box.setCurrentIndex(index)
+
+
+
 
     def handle_unlock(self) -> None:
         # print(f"... handling unlock (currently {self.record_is_locked=})")
@@ -807,7 +884,8 @@ class Editor(QWidget):
             label.setStyleSheet(status.label_style)
         for input in self.inputs:
             input.setStyleSheet(status.input_style)
-            input.setReadOnly(status.locked_status)
+            # input.setReadOnly(status.locked_status)
+            input.setEnabled(not status.locked_status)
         self.unlock_btn.setText(status.btn_text)
         self.submit_btn.setEnabled(not status.locked_status)
         self.update_title_with_record_number()
@@ -876,42 +954,27 @@ class Editor(QWidget):
     def save_as_csv(self, file_name="") -> None:
         # is_backup_file = bool(file_name)
         headers = [el[3] for el in self.grid.widget_info.values()]
-        if not file_name:
-            ## TODO: shouldn't need to do this every time: just use 'settings.out_file'
-            if self.settings.out_file:
-                name = self.drop_csv_suffix(self.settings.out_file)
-            else:
-                name = self.settings.default_output_filename
-            file_name = (f"{name}.new.csv")
-        write_to_csv(file_name, self.excel_rows, headers)
+        write_to_csv(self.settings.out_file, self.excel_rows, headers)
         self.all_text_is_saved = True
-        # if is_backup_file:
-        #     return
-        # msg = f"The {self.record_count} records in {self.settings.in_file} have been successfully saved as {file_name}."
-        # self.all_text_is_saved = True
-        # self.all_records_are_saved = True
-        # shared.logger.info(msg)
-        # msg_box = QMessageBox()
-        # msg_box.setText(msg)
-        # msg_box.exec()
+        print(f"... records saved as {self.settings.out_file}")
 
-    def save_as_marc(self) -> None:
-        # records = shared.parse_rows_into_records(self.excel_rows)
-        marc_records = shared.build_marc_records(
-            shared.parse_rows_into_records(self.excel_rows)
-        )
-        file_name = (
-            self.settings.out_file
-            if self.settings.out_file
-            else self.settings.default_output_filename
-        )
-        # print(f">>>>>>> out_file = {file_name}")
-        shared.write_marc_files(marc_records, Path(file_name))
-        msg = f"The {self.record_count} records in {self.settings.in_file} have been successfully saved as {file_name}.mrk/.mrc in {self.settings.output_dir}."
-        shared.logger.info(msg)
-        msg_box = QMessageBox()
-        msg_box.setText(msg)
-        msg_box.exec()
+    # def save_as_marc(self) -> None:
+    #     # records = shared.parse_rows_into_records(self.excel_rows)
+    #     marc_records = shared.build_marc_records(
+    #         shared.parse_rows_into_records(self.excel_rows)
+    #     )
+    #     file_name = (
+    #         self.settings.out_file
+    #         if self.settings.out_file
+    #         else self.settings.default_output_filename
+    #     )
+    #     # print(f">>>>>>> out_file = {file_name}")
+    #     shared.write_marc_files(marc_records, Path(file_name))
+    #     msg = f"The {self.record_count} records in {self.settings.in_file} have been successfully saved as {file_name}.mrk/.mrc in {self.settings.output_dir}."
+    #     shared.logger.info(msg)
+    #     msg_box = QMessageBox()
+    #     msg_box.setText(msg)
+    #     msg_box.exec()
 
     # def abort_on_unsaved_text(self, s) -> int:
     def choose_to_abort_on_unsaved_text(self) -> int:
@@ -1070,7 +1133,7 @@ def read_cli_into_settings() -> None:
     else:
         shared.settings.is_existing_file = False
         shared.settings.in_file = shared.settings.default_output_filename
-    shared.settings.layout_template = default_hint
+    shared.settings.layout_template = default_template
 
 
 # def drop_csv_suffix(name:str) -> str:
@@ -1084,6 +1147,17 @@ def read_cli_into_settings() -> None:
 #     out = trim_csv(eman)
 #     return ".".join(list(reversed(out)))
 
+def save_as_yaml(file:str, data) -> None:
+    with open(file, mode="wt", encoding="utf-8") as f:
+        yaml.dump(data, f, sort_keys=False)
+
+def open_yaml_file(file:str):
+  with open(file, mode="rt", encoding="utf-8") as f:
+    return yaml.safe_load(f)
+
+
+def make_snake_name(text:str):
+    return text.lower().replace(" ", "_")
 
 def get_settings():
     read_cli_into_settings()
@@ -1114,8 +1188,15 @@ def get_settings():
 
 
 if __name__ == "__main__":
+    info = open_yaml_file("./app/bodleian.yaml")
+    # print(info)
     grid, rows = get_settings()
     app = QApplication(sys.argv)
+#     app.setStyleSheet(
+#         """QComboBox QAbstractItemView {
+#     selection-background-color: #3B82F6;
+#     selection-color: white;
+# } """)
     window = WindowWithRightTogglePanel(grid, rows, shared.settings)
     window.show()
     sys.exit(app.exec())

@@ -1,0 +1,446 @@
+Library:
+- ARTBL_Art_Archaeology_and_Ancient_World_Library
+- BJLBL_Bodleian_Japanese_Library
+- BODBL_Bodleian_Library
+- CCLBL_KB_Chen_China_Centre_Library
+- CSFBL_Bodleian_Offsite_Storage
+- EFLBL_English_Faculty_Library
+- HFLBL_Bodleian_History_Faculty_Library
+- HMLBL_Bodleian_History_of_Medicine_Library
+- NGLBL_Nizami_Ganjavi_Library
+- OFFBL_Bodleian_Offsite_Storage_2
+- RSLBL_Radcliffe_Science_Library
+- SHEBL_Sherardian_Library
+- STFBL_Bodleian_Staff_Library
+- TAYBL_Taylor_Institution_Library
+- WESBL_Weston_Library
+ARTBL_Art_Archaeology_and_Ancient_World_Library:
+- ART1F_1st_Floor
+- ART1P_1st_Floor_Papyrology
+- ART2F_2nd_Floor
+- ART3F_3rd_Floor
+- ARTCL_Classics_Lending_Library
+- ARTGF_Ground_Floor
+- ARTHA_Haverfield
+- ARTLG_Lower_Ground_Floor
+- ARTRB_Rare_Book_Room
+- ARTWI_Wind_Room
+BJLBL_Bodleian_Japanese_Library:
+- BJLGF_Ground_Floor_Reference
+- BJLLO_Loan_Collection
+- BJLML_Main_Library
+- BJLRF_Reference_Collection
+BODBL_Bodleian_Library:
+- BODDH_Level_2_Duke_Humfreys_Library
+- BODLR_Level_1_Lower_Reading_Room
+- BODUR_Level_2_Upper_Reading_Room
+CCLBL_KB_Chen_China_Centre_Library:
+- CCLCA_Carrel_1_2
+- CCLCB_Carrel_3_4
+- CCLCD_Carrel_7_8
+- CCLCF_Carrel_11_12
+- CCLFS_Folio_Shelf
+- CCLML_Main_Library
+- CCLPE_Periodicals
+- CCLPS_Pamphlets_Shelf
+- CCLRC_Reserve_Collection
+CSFBL_Bodleian_Offsite_Storage:
+- CSFRR_CSF_Swindon
+EFLBL_English_Faculty_Library:
+- EFLAU_Audio
+- EFLCS_Catalogue_Stand
+- EFLDC_DalrympleChampneys_Collection
+- EFLED_Dobson_Collection
+- EFLFF_Faculty_Foyer
+- EFLIH_Inhouse_Classification
+- EFLIR_Icelandic_Room
+- EFLKC_Ker_Collection
+- EFLMC_Meyerstein_Collection
+- EFLML_Main_Library
+- EFLMR_Meyerstein_Room
+- EFLMW_Margaret_Weedon_Collection
+- EFLNC_Napier_Collection
+- EFLNR_Neil_Ripley_Ker_Collection
+- EFLOFFA_EFL_Offsite_Archives_Material
+- EFLOFFSC_EFL_Offsite_Special_Collections_Material
+- EFLOR_Owen_Room
+- EFLRA_Rare_Book_Room
+- EFLTP_TurvillePetre_Collection
+- EFLVD_Film
+- EFLYP_York_Powell_Collection
+HFLBL_Bodleian_History_Faculty_Library:
+- BODGL_Level_M2_Gladstone_Link_(BOD)
+- BODGU_Level_M1_Gladstone_Link_(BOD)
+- BODO2_Level_0_Lower_Camera_(BOD)
+- BODO8_Level_2_Gallery_(BOD)
+- BODO9_Level_1_Upper_Camera_(BOD)
+- BODUO_Level_1_Upper_Camera_Staff_Office_(BOD)
+- BOLPC_Po_Chung_Collection
+- BOUND_Boundwith
+- HFLBS_Basement_Stack
+- HFLO1_Level_1_Upper_Camera
+- HFLO2_Level_1_Upper_Camera_Staff_Office
+- HFLO3_Level_0_Lower_Camera_(HFL)
+- HFLO4_Level_0_Lower_Camera_Circ_Desk
+- HFLO5_Level_M1_Gladstone_Link
+- HFLO6_Level_M2_Gladstone_Link
+- HFLO7_Gladstone_Link_Open_Shelves
+- HFLO8_HFL_LRP
+- HFLPR_Powicke_Room
+- HFLQR_Quick_Reference
+- HFLST_Apply_Staff
+- HFLWG_West_Gallery_Reference
+HMLBL_Bodleian_History_of_Medicine_Library:
+- HMLLC_LCC_Main_Library
+- HMLML_Main_Library
+- HMLQR_Quick_Reference
+NGLBL_Nizami_Ganjavi_Library:
+- NGLAR_Aris_Collection
+- NGLEC_Eastern_Christianity_Library
+- NGLKS_Korean_Studies_Library
+- NGLML_Main_Library
+- NGLRC_Reserve_Collection
+- NGLWS_Window_On_Korea_Seminar_Room
+OFFBL_Bodleian_Offsite_Storage_2:
+- RS085_Bodleian_JJColl
+- RS090_Bodleian_Kemble
+- RS120_Bodleian_SlavAcc
+- RS470_Rhodes_House_Stack
+- RS550_RSL_Stack
+RSLBL_Radcliffe_Science_Library:
+- RSLOS_Open_Shelf
+SHEBL_Sherardian_Library:
+- SHEDH_Daubeny_Herbarium
+- SHEFD_FieldingDruce_Herbarium
+- SHEGR_General_Reading_Room
+- SHEHE_Herbarium_store
+STFBL_Bodleian_Staff_Library:
+- STFML_Main_Library
+TAYBL_Taylor_Institution_Library:
+- TAYBC_Basement_Celtic_LC_Class
+- TAYBS_Basement_Slavonic_&_Greek_LC
+- TAYBU_Basement_Slavonic_Undergraduate_LC
+- TAYGR_Greek_Reading_Room_(Room 10B)
+- TAYLA_Teaching_Collection_AudioVisual
+- TAYLB_Teaching_Collection_Books
+- TAYMS_Main_Stack_LC_Classification
+- TAYOFFSC_Taylor_Offsite_Special_Collections_Material
+WESBL_Weston_Library:
+- RS060_Bodleian_DH_Stack
+- RS095_Bodleian_Map_Room_M
+- RS122_Bodleian_Spec.Coll.
+- RS124_Bodleian_Swindon_Music
+- WB1CE_Weston_Basement_Level_1_Centre_Compartment
+- WB1CN_Weston_Basement_Level_1_Centre_North_Compartment
+- WB1CO_Weston_Basement_Level_1_Cold_Store
+- WB1CS_Weston_Basement_Level_1_Centre_South_Compartment
+- WB1LF_Weston_Basement_Level_1_Large_Format_Store
+- WB1NO_Weston_Basement_Level_1_North_Compartment
+- WB1SO_Weston_Basement_Level_1_South_Compartment
+- WB2CE_Weston_Basement_Level_2_Centre_Compartment
+- WB2CN_Weston_Basement_Level_2_Centre_North_Compartment
+- WB2CS_Weston_Basement_Level_2_Centre_South_Compartment
+- WB2EA_Weston_Basement_Level_2_East_Compartment
+- WB2NM_Weston_Basement_Level_2_North_Compartment_Maps
+- WB2NO_Weston_Basement_Level_2_North_Compartment
+- WB2SO_Weston_Basement_Level_2_South_Compartment
+- WB2SR_Weston_Basement_Level_2_Strong_Room
+- WB2WE_Weston_Basement_Level_2_West_Compartment
+- WB3CE_Weston_Basement_Level_3_Centre_Compartment
+- WB3CN_Weston_Basement_Level_3_Centre_North_Compartment
+- WB3CS_Weston_Basement_Level_3_Centre_South_Compartment
+- WB3EA_Weston_Basement_Level_3_East_Compartment
+- WB3NO_Weston_Basement_Level_3_North_Compartment
+- WB3SO_Weston_Basement_Level_3_South_Compartment
+- WB3SR_Weston_Basement_Level_3_Strong_Room
+- WB3WE_Weston_Basement_Level_3_West_Compartment
+- WESAM_Offsite_Storage_Archives_&_Manuscripts
+- WESCW_Conservation_Workshop
+- WESO1_Weston_Mackerras_Open_Shelves
+- WESO2_Weston_RBMSS_Open_Shelves
+- WESO3_Weston_RBMSS_Reference_Area
+- WESO4_Weston_David_Open_Shelves
+- WESO5_Weston_David_Reference_Area
+- WESO6_Weston_Gallery_Open_Shelves
+- WESO7 _Weston_Samsung_Room
+- WESOFF_Offsite_Storage_Special_Collections
+- WLBHN_Weston_Blackwell_Hall_North
+- WLOPM_Weston_RBMSS_Reference_Area_(Opie Microfiches)
+Order_type:
+- Electronic_Book_One_Time
+- Physical_One_Time
+- Print_Book_One_Time
+Item_policy:
+- Equipment_Loanable
+- Equipment_Use_in_Library_Only
+- Fixed_Week_Loan
+- Flexible_Loan
+- Same_Day_Loan
+- Short_Loan
+- Use_in_Library_Only
+- Use_in_Library_Only_Not_Digitisable
+Reporting_code_1:
+- READING_LIST_Reading_list
+- READING_LISTPGT_Reading_list_PGT_(Hist only)
+- REQUEST_Reader_request
+- NEWED_New_edition_(MPLS/MSD only)
+- REPLACE_LOST_Replacement_for_lost_item
+- REPLACE_DAMAGED_Replacement_for_damaged_item
+- REPLACE_LD_LOST_Replacement_for_lost_legal_deposit_item
+- REPLACE_LD_DAMAGED_Replacement_for_damaged_legal_deposit_item
+- SUBSTITUTE_ELD_Substitute_for_electronic_legal_deposit
+Reporting_code_2:
+- FC8007BOOKSERIES_FC8007_Book_series
+- FC8007LAWJOURNALS_FC8007_Law_journals
+- FC8007LAWREPORTS_FC8007_Law_reports
+- FC8007LEGISLATION_FC8007_Legislation
+- FC8007LOOSELEAF_FC8007_Looseleaf_works
+- "FK1010HISTALBANIA_FK1010_History_(Albania)\_"
+- FK8005ANCIENTHIST_FK8005_Ancient History
+- FK8005CLASSICALARCH_FK8005_Classical_Archaeology
+- FK8005NUMISMATICS_FK8005_Numismatics
+- FK8008BRITWEUMEDIEVAL_FK8008_Brit_&_W_EU_Medieval_(500-1500)
+- FK8008BRITWEUEARLYMOD_FK8008_Brit_&_W_EU_Early_Modern_(1500-1800)
+- FK8008BRITWEUMODERN_FK8008_Brit_&_W_EU_Modern_(1800-)
+- FK8008GLOBAL_FK8008_Global
+- FK8008HSMT_FK8008_HSMT
+- FK8010FILMSTUDIES_FK8010_Film_Studies
+- FK8010WOMENGENDER_FK8010_Women_Gender_etc
+- FK8011PORTUGUESE_FK8011_Portuguese
+- FX8030EASTASIAKOREA_Fx8030_East_Asia_Korea
+- FKXXXXSOCSCI_FKxxxx_Social_Sciences_ex_Hums_TFs
+Reporting_code_3:
+- VATDATABASE_VAT_Database
+- VATDVD_VAT_DVD
+- VATPUBLISH_VAT_Publish costs
+Subject_consultant:
+- Adina_Bradeanu
+- Alan_Coates
+- Alessandra_Vetrugno
+- Alessandro_Bianchi
+- Andrea_Del_Corno
+- Andrew_Dunning
+- Andrew_Kernot
+- Ann_Evans
+- Barbara_Baj_Wojtowicz
+- Cesar_MerchanHamann
+- Charles_Manson
+- Charlotte_Goodall
+- 'Donald_MacKay '
+- Eleanor_Peers
+- Emma_Huber
+- Emma_Mathieson
+- Emma_Sullivan
+- Frank_Egerton
+- Gillian_Evison
+- Helen_Scott
+- Helen_Worrell
+- Hilla_Wait
+- Isabel_Holowaty
+- James_Legg
+- Janet_Foot
+- Joanne_Ferrari
+- Johanneke_Sytsema
+- Karine_Barker
+- Kostas_Skordyles
+- Lydia_Wright
+- Mamtimyn_Sunuodula
+- MariaLuisa_Langella
+- Martin_Holmes
+- Minh_Chung
+- Nick_Hearn
+- Nick_Millea
+- Niko_Kontovas
+- Oliver_Bridle
+- Rachel_Scanlon
+- Rachel_DArcyBrown
+- Sarah_Currant
+- Sarah_Rhodes
+- Susanne_Woodhouse
+- Zsuzsanna_Varga
+Adina_Bradeanu:
+- FK8011-xPRAC-A14-OO
+- FK0001-B6036-A14-OO
+- FC0010-B6036-A14-OO
+- FK1010-B1496-A14-OO
+- FK1010-B6028-A14-OO
+Alan_Coates:
+- FK8006-xPRAC-H07-OO
+Alessandra_Vetrugno:
+- FP8003-xPRAC-M15-OO
+- FP8006-xPRAC-M15-OO
+- FP8011-xPRAC-M15-OO
+- FP8015-xPRAC-M15-OO
+Alessandro_Bianchi:
+- FK8030-xPRAC-A35-OO
+- FC8030-xPRAC-A35-OO
+- FK7211-B6030-A35-OO
+Andrea_Del_Corno:
+- FK1010-B6002-H35-OO
+- FK8011-xPRAC-H35-OO
+- FK1010-B6028-H35-OO
+Andrew_Dunning:
+- FK8000-xPRAC-H02-OO
+- FK8000-xPRAC-H02-SO
+Andrew_Kernot:
+- FC8020-xPRAC-S11-OO
+- FC8016-xPRAC-S11-OO
+- FC8019-xPRAC-S11-OO
+- FC8011-xPRAC-S11-OO
+Ann_Evans:
+- FA0000-SU015-Z05-OO
+Barbara_Baj_Wojtowicz:
+- FK1010-B1280-A13-OO
+- FK1010-B1280-A13-OO
+- FK8011-xPRAC-A13-OO
+- FK0001-B6036-A13-OO
+- FC0010-B6036-A13-OO
+- FK1010-B6028-A13-OO
+Cesar_MerchanHamann:
+- FK8030-xPRAC-A41-OO
+- FK7215-CA036-A41-OO
+Charles_Manson:
+- FK7210-B6008-A49-OO
+Charlotte_Goodall:
+- FK8005-xPRAC-H05-OO
+Donald_MacKay:
+- FP8019-xPRAC-M01-OO
+- FP8000-xPRAC-M01-OO
+Eleanor_Peers:
+- FC8027-xPRAC-A21-OO
+- FK8008-xPRAC-A21-OO
+- FK0001-B6036-A21-OO
+Emma_Huber:
+- FK1010-B1072-H33-OO
+- FK1010-S6261-H33-OO
+- FK1010-S6293-H33-OO
+- FK8011-xPRAC-H33-OO
+- FK1010-B1422-H33-OO
+- FK1010-B6028-H33-OO
+Emma_Mathieson:
+- FK8030-xPRAC-A48-OO
+- FC8030-xPRAC-A48-OO
+- FK7210-B1058-A48-OO
+- FK7210-B6006-A48-OO
+- FK7210-B6008-A48-OO
+Emma_Sullivan:
+- F50300-xPRAC-Z04-OO
+Frank_Egerton:
+- FC8025-xPRAC-A26-OO
+- FK8008-xPRAC-A26-OO
+- M31400-xPRAC-A26-OO
+Gillian_Evison:
+- FK8030-xPRAC-A30-OO
+- FC8030-xPRAC-A30-OO
+- FC8030-xPRAC-A30-SO
+Helen_Scott:
+- FK2010-BC104-H06-OO
+- FK8006-xPRAC-H06-OO
+- FK2010-B1400-H06-OO
+- FK2010-B1149-H06-OO
+- FK2010-B6015-H06-OO
+- FK2010-B1328-H06-OO
+- FK2010-B1346-H06-OO
+- FK2010-B1278-H06-OO
+- FK1010-B6028-H06-OO
+- FK2010-B6023-H06-OO
+- FK8000-xPRAC-H06-OO
+Helen_Worrell:
+- FC8002-xPRAC-A03-OO
+- FK8003-xPRAC-A03-OO
+- FC8003-xPRAC-A03-OO
+- FA8000-xPRAC-A03-OO
+Hilla_Wait:
+- FA8000-xPRAC-H15-OO
+- FK8015-xPRAC-H15-OO
+- FK8016-xPRAC-H15-OO
+Isabel_Holowaty:
+- FK8008-xPRAC-H08-OO
+- FK9010-B1236-H08-OO
+- FK9010-BA025-H08-OO
+- FK9010-B6018-H08-OO
+- FK9010-B6024-H08-OO
+- FK9010-B6037-H08-OO
+James_Legg:
+- FA8000-S6272-H01-OO
+- FK8000-xPRAC-H03-OO
+- FK8000-xPRAC-H01-OO
+- FK0001-B6035-H01-OO
+- FK8010-xPRAC-H10-OO
+- FK0010-B1562-H10-OO
+Janet_Foot:
+- FK8011-xPRAC-H31-OO
+- FK1010-S6217-H31-OO
+- FK1010-B6028-H31-OO
+Joanne_Ferrari:
+- FK1010-S6219-H36-OO
+- FK8011-xPRAC-H11-OO
+- FK8011-xPRAC-H36-OO
+- FK1010-B6028-H36-OO
+- FK1010-B6028-H11-OO
+Johanneke_Sytsema:
+- FK8013-xPRAC-H13-OO
+- FK8011-xPRAC-H13-OO
+Karine_Barker:
+- FP8008-xPRAC-M06-OO
+- FP8014-xPRAC-M06-OO
+Kostas_Skordyles:
+- FK8008-xPRAC-H34-OO
+- FK8011-xPRAC-H34-OO
+- FK1010-B6028-H34-OO
+Lydia_Wright:
+- FK8030-xPRAC-A44-OO
+- FK7210-BA082-A44-OO
+Mamtimyn_Sunuodula:
+- FK8030-xPRAC-A32-OO
+- FC8030-xPRAC-A32-OO
+- FK7214-CB187-A32-OO
+- FK7216-BC044-A32-OO
+- FK7216-BC109-A32-OO
+MariaLuisa_Langella:
+- FC8030-xPRAC-A46-OO
+Martin_Holmes:
+- FW5000-B1012-H14-OO
+- FK5010-B1148-H14-OO
+- FK8014-xPRAC-H14-OO
+Minh_Chung:
+- FK8030-xPRAC-A33-OO
+- FC8030-xPRAC-A33-OO
+Nick_Hearn:
+- FK1010-B1420-H32-OO
+- FK1010-S6247-H32-OO
+- FK8011-xPRAC-H32-OO
+- FK1010-B1484-H32-OO
+- FK1010-B6028-H32-OO
+- FK1010-S6268-H32-OO
+Nick_Millea:
+- FW8002-xPRAC-Z02-OO
+Niko_Kontovas:
+- FK7210-BA083-A45-OO
+Oliver_Bridle:
+- FP8002-xPRAC-M07-OO
+- FP8016-xPRAC-M07-OO
+- FP8018-xPRAC-M07-OO
+Rachel_Scanlon:
+- FP8004-xPRAC-M16-OO
+- FP8005-xPRAC-M16-OO
+- FP8010-xPRAC-M16-OO
+- FP8017-xPRAC-M16-OO
+Rachel_DArcyBrown:
+- FK8008-xPRAC-H09-OO
+Sarah_Currant:
+- FK8000-xPRAC-H06-OO
+- FK8010-xPRAC-H10-OO
+Sarah_Rhodes:
+- FC8021-xPRAC-A29-OO
+- FW9000-C2188-A29-OO
+- FK8008-xPRAC-A29-OO
+- FC8004-xPRAC-A29-OO
+- FW9000-B1487-A29-OO
+Susanne_Woodhouse:
+- FK8030-xPRAC-H04-OO
+Zsuzsanna_Varga:
+- FK8011-xPRAC-A12-OO
+- FK0001-B6036-A12-OO
+- FC0010-B6036-A12-OO
+- FK1010-B6028-A12-OO

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <title>Page Title</title>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <style type="text/css">
+    /* Based on spcss copyright (c) 2020-2022 Susam Pal */
+body {
+  background-color: white;
+  color: #333;
+  font-family: helvetica, arial, sans-serif;
+  line-height: 1.4;
+  margin: 8px 16px 8px 8px;
+  max-width: 40em;
+  padding: 0 0em;
+}
+h1, h2, h3, h4, h5, h6 {
+  margin: 1.25em 0 0.2em 0;
+  line-height: 1.2;
+  color:burlywood;
+}
+h4 { color: black;}
+a:link {
+  color: #00e;
+}
+a:visited {
+  color: #518;
+}
+a:focus, a:hover {
+  color: #03f;
+}
+a:active {
+  color: #e00;
+}
+h1 a:empty:before, h2 a:empty:before, h3 a:empty:before,
+h4 a:empty:before, h5 a:empty:before, h6 a:empty:before {
+  content: "#";
+}
+h1 a:empty, h2 a:empty, h3 a:empty, h4 a:empty, h5 a:empty, h6 a:empty {
+  visibility: hidden;
+  padding-left: 0.25em;
+}
+h1:hover a:empty, h2:hover a:empty, h3:hover a:empty,
+h4:hover a:empty, h5:hover a:empty, h6:hover a:empty {
+  visibility: visible;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 1em 0;
+  text-align: center;
+}
+figcaption {
+  font-size: smaller;
+  /* color: gray; */
+}
+.note {
+  font-size: smaller;
+  font-style: italic;
+  color: gray;
+}
+pre, code, samp, kbd {
+  font-family: monospace;
+}
+pre, code, kbd {
+  color: #050;
+  background-color:#eee;
+}
+samp {
+  color: #730;
+}
+pre, blockquote {
+  background: #eee;
+  padding: 0.5em;
+}
+pre {
+  overflow: auto;
+}
+p {
+  margin: 0 0 8px 8px;
+}
+li {
+  margin: 0 0 4px 0;
+}
+dt {
+  /* color: burlywood; */
+  font-weight: bold;
+  /* margin: 0 0 0 0; */
+}
+dd {
+  margin: 0 0 8px 8px;
+}
+blockquote {
+  border-left: medium solid #ccc;
+  margin: 1em 0;
+}
+blockquote :first-child {
+  margin-top: 0;
+}
+blockquote :last-child {
+  margin-bottom: 0;
+}
+table {
+  border-collapse: collapse;
+}
+th, td {
+  border: thin solid #999;
+  padding: 0.3em 0.4em;
+  text-align: left;
+}
+  </style>
+</head>
+<body>
+  <h1>One-off orders</h1>
+  <h2>Instructions</h2>
+  <ol>
+  <li>This template is for placing one-off orders only.</li>
+  <li>Enter your order column by column, row by row. Mandatory columns are highlighted in bold. Data validation rules apply
+    to blue columns - choose an option from the drop-down menu to proceed.</li>
+  <li>
+    If convenient, all bibliographic information for the order can be pasted into the 'Title' column cell to avoid
+    unnecessary clicking.
+  </li>
+  <li>
+    Columns without row outlines mean that the last value given in a column will apply to all subsequent rows.
+    Information in these columns does not need to be duplicated for each row. The reverse is true of outlined rows.
+  </li>
+  <li>
+    'Additional info' column can be used to provide any additional information about the order, from preferred vendor to
+    the preferred edition of a title.
+  </li>
+  <li>
+    Please share your order as an attachment via email. A quick way to do this is to click 'File', then 'Share'. This
+    will prompt you to open the app version of Outlook, save a copy of the spreadsheet and add it as an attachment giving
+    the file name as the subject line.
+  </li>
+</ol>
+<p>
+  N.B. The options in the <code>Fund code</code> and <code>Location</code> depend on the information provided for the <code>Subject consultant</code> and <code>Library</code> respectively. If you
+  cannot find the budget or location you are looking for, please check first that you have chosen the correct Subject Consultant for that budget, or the correct Library for the location. If any drop down menus need to be
+  updated, please contact <b>acqservices@bodleian.ox.ac.uk</b><!--<a href="mailto:acqservices@bodleian.ox.ac.uk" disabled>acqservices@bodleian.ox.ac.uk</a>-->.
+</p>
+
+<h2>
+  Glossary
+</h2>
+
+<dl>
+  <dt id="fund_code">
+    'Fund code'
+  </dt>
+  <dd>
+      The ALMA fund code assigned to each budget. Fund code mapping from Aleph is available
+      <a href="https://unioxfordnexus.sharepoint.com/:x:/r/sites/BODL-BodleianLibrariesIntranet/_layouts/15/Doc.aspx?sourcedoc=%7B5703E2B9-2562-41A7-819D-F9C46045B5C8%7D&file=bod50fundmapping.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1">here</a>. <span class="note">(Opens in default browser.)</span>
+  </dd>
+  <dt id="hold_for">
+    'Hold for'
+  </dt>
+  <dd>
+    Place a hold request on the item for this person at the earliest opportunity. Separate to 'Notify'.
+  </dd>
+
+  <dt id="item_policy">
+    'Item policy'
+  </dt>
+  <dd>
+    An explanation of ALMA item policies is
+    <a href="https://unioxfordnexus.sharepoint.com/sites/BODL-BodleianLibrariesIntranet/SitePages/OLIS-FF-Bod-Item-Policy-Mapping.aspx">here</a>. <span class="note">(Opens in default browser.)</span>
+  </dd>
+
+  <dt id="library">
+    'Library' and 'location'
+  </dt>
+  <dd>
+    An explanation of the changes from Aleph are available
+    <a href="https://unioxfordnexus.sharepoint.com/sites/BODL-BodleianLibrariesIntranet/SitePages/OLIS-RM-Items-and-Holdings---Differences-to-Aleph.aspx">here</a>. <span class="note">(Opens in default browser.)</span>
+  </dd>
+
+  <dt id="notify">
+    'Notify'
+  </dt>
+  <dd>
+    Notify this person of an item's availability at the earliest opportunity.
+  </dd>
+
+  <dt id="reporting_code">
+    'Reporting code'
+  </dt>
+  <dd>
+    <a href="https://unioxfordnexus.sharepoint.com/sites/BODL-BodleianLibrariesIntranet/SitePages/OLIS-AC-Reporting-Codes.aspx">Here</a>. <span class="note">(Opens in default browser.)</span>
+  </dd>
+
+  <dt id="order_type">
+    'Type of order '
+  </dt>
+  <dd>
+    <code>Electronic_Book_One_Time</code> - for ordering one-off ebooks
+  </dd>
+  <dd>
+    <code>Physical_One_Time</code> - for placing a non-monograph one-off order, e.g. a DVD
+  </dd>
+  <dd>
+    <code>Print_Book_One_Time</code> - for ordering one-off monographs
+  </dl>
+</dd>
+
+</body>
+</html>
