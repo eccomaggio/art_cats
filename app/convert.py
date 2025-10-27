@@ -1,4 +1,6 @@
-from openpyxl import load_workbook  # type: ignore
+from openpyxl import load_workbook, Workbook  # type: ignore
+from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.worksheet.worksheet import Worksheet
 import csv
 from dataclasses import dataclass, fields, field
 from abc import ABC, abstractmethod
@@ -7,7 +9,8 @@ from collections.abc import Callable
 
 # from pprint import pprint
 # import sys
-from datetime import datetime, timezone
+# from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import re
 from pathlib import Path
 import logging
@@ -259,6 +262,7 @@ class Record:
     pub_year_is_approx: bool
     extent_is_approx: bool
     timestamp: datetime
+    # timestamp: date
 
     sequence_number: int
     links: list[Field | None]
@@ -959,6 +963,7 @@ def normalize_row(row: list) -> list:
 
 
 def parse_rows_into_records(sheet: list[worksheet_row]) -> list[Record]:
+    # current_time = datetime.now()
     current_time = datetime.now()
     records = []
     for row in sheet:
@@ -1709,6 +1714,87 @@ def write_marc_files(records: list[marc_record], excel_file_address: Path) -> No
     print(f"Writing {len(records)} record(s)...")
     write_mrk_files(records_with_string_fields, f"{excel_file_address.stem}.mrk")
     write_mrc_binaries(records, f"{excel_file_address.stem}.mrc")
+
+def write_CHU_file(records: list) -> None:
+    """
+    Write out CHU file, including formatting (for the craic)
+    """
+    wb = Workbook()
+    ws:Worksheet = wb.active
+    ws.title = "Recorded data"
+
+    dark_blue = "24069B"
+    lighter_dark_blue = "366092"
+    light_cyan = "D2EEE7"
+
+    # Merge cells for the header title
+    ws.merge_cells('A1:E1')
+    ws['A1'] = "Alma holdings information update form"
+
+    # Style for the header
+    header_font = Font(name = "Arial", size=16, bold=True, color=dark_blue)  # Dark blue
+    header_fill = PatternFill(start_color=light_cyan, end_color=light_cyan, fill_type="solid")  # Light cyan
+    header_alignment = Alignment(horizontal="center", vertical="center")
+
+    cell = ws['A1']
+    cell.font = header_font
+    cell.fill = header_fill
+    cell.alignment = header_alignment
+    ws.row_dimensions[1].height = 45
+
+    # Sub-row details
+    # today = date.today()
+    # today = today.strftime("%d %b %Y")
+    today = date.today().strftime("%d %b %Y")
+    initials = "PTW"
+    email = "paul.wakelin@bodleian.ox.ac.uk"
+    ws['A2'] = f"Date: {today}"
+    ws['C2'] = "Initials:"
+    ws['C2'].alignment= Alignment(horizontal="right")
+    ws['D2'] = initials
+    ws['E2'] = "Contact e-mail:"
+    ws['E2'].alignment= Alignment(horizontal="right")
+    ws['F2'] = email
+    ws['G2'] = "(Always e-mail)"
+    # for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G']:
+    for col in ['A', 'B', 'C', 'D', 'E', 'F']:
+        cell = ws[f"{col}2"]
+        cell.fill = header_fill
+        cell.font = Font(name="Arial", size=8, bold=False, color=lighter_dark_blue)
+        # cell.alignment = Alignment(horizontal="left")
+    ws["F1"].fill = header_fill
+    ws["G2"].fill = PatternFill()
+    ws["G2"].font = Font(name="Arial", size=7, bold=False, color=lighter_dark_blue)
+    ws.row_dimensions[2].height = 10  # Height in points
+
+    # Adjust column widths for better layout
+    ws.column_dimensions['A'].width = 12    # Barcode
+    ws.column_dimensions['B'].width = 10    # Library
+    ws.column_dimensions['C'].width = 20    # Location
+    ws.column_dimensions['D'].width = 12    # Item policy
+    ws.column_dimensions['E'].width = 20    # Process
+    ws.column_dimensions['F'].width = 30    # Shelfmark
+
+    default_row_height = 13
+    headers = ["Barcode", "Library", "Location", "Item Policy", "Process", "Shelfmark"]
+    # Write headers to row 3 (assuming rows 1 and 2 are for the title and sub-header)
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(row=3, column=col, value=header)
+        cell.font = Font(name="Arial", bold=True, size=10)
+        cell.alignment = Alignment(horizontal="left")
+    ws.row_dimensions[3].height = default_row_height  # Height in points
+
+    for row_count, r in enumerate(records, 4):
+        row = [r[27], "", "", "", "Relocating to CSF", ""]
+        for col, value in enumerate(row, 1):
+            cell = ws.cell(row=row_count, column=col, value=value)
+            cell.alignment = Alignment(horizontal="left")
+            cell.font = Font(name="Arial", bold=False, size=10)
+        ws.row_dimensions[row_count].height = default_row_height  # Height in points
+    file_name = str(Path.cwd() / settings.output_dir / "styled_form.xlsx")
+    print(file_name)
+    # wb.save("styled_form.xlsx")
+    wb.save(file_name)
 
 
 def run() -> None:

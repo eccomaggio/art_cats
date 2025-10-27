@@ -35,19 +35,31 @@ from PySide6.QtWidgets import (
     QSpacerItem,
     # QHBoxLayout,
 )
-from PySide6.QtCore import Qt, QUrl, QTimer
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import (
+    Qt,
+    QUrl,
+    QTimer,
+    QEvent,
+    Signal,
+)
+from PySide6.QtGui import (
+    QMouseEvent,
+    QEnterEvent,
+    QDesktopServices,
+)
+# from PySide6.QtCore import Qt, QUrl, QTimer
+# from PySide6.QtGui import QDesktopServices
 
 
 class COL(Enum):
     subject_consultant = 0
     fund_code = auto()
     order_type = auto()
-    title = auto()
-    author = auto()
-    citation = auto()
-    subject = auto()
-    other = auto()
+    bib_info = auto()
+    # author = auto()
+    # citation = auto()
+    # subject = auto()
+    # other = auto()
     type = auto()
     creator = auto()
     date = auto()
@@ -71,6 +83,13 @@ shared.settings.flavour = {
     "title": "order_form",
     "fields_to_clear": [
         COL.isbn,
+        COL.reporting_code_1,
+        COL.reporting_code_2,
+        COL.reporting_code_3,
+        COL.notify,
+        COL.hold_for,
+        COL.bib_info,
+        COL.additional_info
     ],
     "fields_to_fill": [
         # [COL.sublib, "ARTBL"],
@@ -171,11 +190,11 @@ default_template = (
     ("subject Consultant",      "1:2", 0, 0, "combo"),
     ("Fund code",               "1:2", 1, 0, "combo"),
     ("Order type",           "1:2", 2, 0, "combo"),
-    ("Title",                   "2:2", 3, 0, "text"),
-    ("Author",                  "2:2", 3, 2, "text"),
-    ("Citation",                "2:2", 3, 4, "text"),
-    ("Subject",                 "1:3", 5, 0, "line"),
-    ("Other",                   "2:3", 5, 3, "text"),
+    ("Bibliographic information",                   "2:2", 3, 0, "text"),
+    # ("Author",                  "2:2", 3, 2, "text"),
+    # ("Citation",                "2:2", 3, 4, "text"),
+    # ("Subject",                 "1:3", 5, 0, "line"),
+    # ("Other",                   "2:3", 5, 3, "text"),
     ("Type",                    "1:3", 6, 0, "line"),
     ("Creator",                 "1:2", 7, 0, "line"),
     ("Date",                    "1:2", 7, 2, "line"),
@@ -188,7 +207,7 @@ default_template = (
     ("Reporting code 3",        "1:2", 2, 4, "combo"),
     ("Hold for",                "1:2", 8, 0, "line"),
     ("Notify",                  "1:2", 9, 0, "line"),
-    ("Additional information",  "2:4", 8, 2, "text"),
+    ("Additional order information",  "2:4", 8, 2, "text"),
 )
 
 
@@ -461,6 +480,51 @@ class WindowWithRightTogglePanel(QWidget):
             # self.status_label.setText(f"Internal link/anchor handled: {url.toString()}")
 
 
+class ClickableLabel(QLabel):
+    """
+    QLabel subclass: emits signals when clicked and visually reacts to hovering.
+    """
+
+    clicked = Signal()
+
+    def __init__(self, text="Click Me", parent=None):
+        super().__init__(text, parent)
+        self.setMouseTracking(True)
+        self.setCursor(Qt.CursorShape.WhatsThisCursor)
+        # self.default_style = "text-decoration: none;"
+        self.default_style = shared.settings.styles["label_active"]
+        self.hover_style = "text-decoration: underline overline;"
+        self.pressed_style = "font-style: italic;"
+        self.setStyleSheet(self.default_style)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Initialize placeholder for custom property
+        self.help_txt = ""
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.setStyleSheet(self.pressed_style)
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
+            if self.underMouse():
+                self.setStyleSheet(self.hover_style)
+            else:
+                self.setStyleSheet(self.default_style)
+            self.clicked.emit()
+        super().mouseReleaseEvent(event)
+
+    def enterEvent(self, event: QEnterEvent):
+        self.setStyleSheet(self.hover_style)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event: QEvent):
+        self.setStyleSheet(self.default_style)
+        super().leaveEvent(event)
+
+
+
 class Editor(QWidget):
     widget_lookup = {
         "line": QLineEdit,
@@ -498,7 +562,7 @@ class Editor(QWidget):
         self.record_is_locked = True
         self.all_text_is_saved = True
 
-        self.submit_btn = QPushButton("Submit")
+        self.submit_btn = QPushButton("Save item")
         self.submit_btn.setStyleSheet("font-weight: bold;")
         self.submit_btn.clicked.connect(self.handle_submit)
 
@@ -525,8 +589,8 @@ class Editor(QWidget):
         self.new_btn = QPushButton("New")
         self.new_btn.clicked.connect(self.handle_new_record)
         self.save_btn = QPushButton("Save")
-        self.save_btn.clicked.connect(self.save_as_csv)
-        self.save_btn.setEnabled(True)
+        # self.save_btn.clicked.connect(self.save_as_csv)
+        self.save_btn.setEnabled(False)
         # self.marc_btn = QPushButton("Export as MARC")
         # self.marc_btn.clicked.connect(self.save_as_marc)
         self.close_btn = QPushButton("Close")
@@ -562,7 +626,10 @@ class Editor(QWidget):
             self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
-            tmp_label = QLabel(title)
+            # tmp_label = QLabel(title)
+            tmp_label = ClickableLabel(title)
+            tmp_label.help_txt = title.lower().replace(" ", "_")
+            tmp_label.clicked.connect(lambda checked=False, l=tmp_label: self.show_help_topic(l))
             font = tmp_label.font()
             font.setBold(True)
             tmp_label.setFont(font)
@@ -635,6 +702,13 @@ class Editor(QWidget):
             to_update.clear()
             # to_update.addItems(info[new_text])
             to_update.addItems(self.load_options(new_text))
+
+    def show_help_topic(self, sender_label: ClickableLabel):
+        """Slot runs when label is clicked, accessing custom property."""
+        link = sender_label.help_txt
+        self.caller.handle_internal_link(QUrl(f"#{link}"))
+        # self.display.setText(link)
+        print(f"... the link is: #{link}")
 
     def load_options(self, key:str) -> list:
         options = info[key]
@@ -830,7 +904,11 @@ class Editor(QWidget):
         if self.settings.flavour["title"] == "order_form":
             ## TODO: make the following work with combo boxes
             for field in self.settings.flavour["fields_to_clear"]:
-                self.inputs[field.value].setText("")
+                if isinstance(field, QComboBox):
+                    ## TODO: sort out how to give 'default' combo boxes
+                    pass
+                else:
+                    self.inputs[field.value].setText("")
             # for field, value in self.settings.flavour["fields_to_fill"]:
             #     self.inputs[field.value].setText(value)
         # self.all_text_is_saved = False if self.has_records else True

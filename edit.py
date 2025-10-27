@@ -6,7 +6,7 @@ It builds on a script that converts excel files into markdown; in fact, the curr
 
 
 import argparse
-import datetime
+from datetime import datetime
 import sys
 import csv
 from enum import Enum, auto
@@ -961,6 +961,7 @@ class Editor(QWidget):
 
     def save_as_marc(self) -> None:
         # records = shared.parse_rows_into_records(self.excel_rows)
+        shared.write_CHU_file(self.excel_rows)
         marc_records = shared.build_marc_records(
             shared.parse_rows_into_records(self.excel_rows)
         )
