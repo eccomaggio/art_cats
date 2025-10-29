@@ -9,9 +9,29 @@
 5. **fields** contain: subfields, or blanks or punctuation; bare strings are coded as subfields with no subcode
 6. **marc_record** = list[Field]
 
+orderForm:
+
+to make a combo box:
+
+load_record()
+ ->> load_combo_box()
+load_combo_box()
+ ->> get_raw_combo_options()
+ ->> get_normalized_combo_list()
+
+*** load_combo_box() -> PERMUTATIONS:
+A) leader:
+ has record -> list matches name + set index to VALUE
+ empty -> list matches to name
+B) follower:
+ has record -> list matches to leader's currentText + set index to VALUE
+ empty -> list matches to leader's currentText
+
 
 To do in order form:
-1. implement fields to clear
+1. DONE - implement fields to clear
+2. implement QTableView to show records already entered (overview): click to amend
+
 
 
 List of things that work:
