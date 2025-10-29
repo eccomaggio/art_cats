@@ -1,0 +1,4 @@
+Subject consultant,Fund code,Order type,Bibliographic information,Creator,Date,ISBN,Library,Location,Item policy,Reporting code 1,Reporting code 2,Reporting code 3,Hold for,Notify,Additional order information
+Ann_Evans,FA0000-SU015-Z05-OO,Physical_One_Time,book 1,xx,yy,dd,ARTBL_Art_Archaeology_and_Ancient_World_Library,ART1F_1st_Floor,Equipment_Loanable,READING_LIST_Reading_list,FC8007BOOKSERIES_FC8007_Book_series,VATDATABASE_VAT_Database,1,2,333
+Charles_Manson,,Physical_One_Time,a tibetan book: 42 vols,xx,yy,,TAYBL_Taylor_Institution_Library,TAYMS_Main_Stack_LC_Classification,Equipment_Loanable,READING_LIST_Reading_list,FC8007BOOKSERIES_FC8007_Book_series,VATPUBLISH_VAT_Publish costs,,,??
+Charles_Manson,,Physical_One_Time,another tibetan book,xx,yy,,NGLBL_Nizami_Ganjavi_Library,NGLAR_Aris_Collection,Equipment_Loanable,READING_LIST_Reading_list,FC8007BOOKSERIES_FC8007_Book_series,VATPUBLISH_VAT_Publish costs,,,??

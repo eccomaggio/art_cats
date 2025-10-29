@@ -9,11 +9,27 @@
 5. **fields** contain: subfields, or blanks or punctuation; bare strings are coded as subfields with no subcode
 6. **marc_record** = list[Field]
 
+
+To do in order form:
+1. implement fields to clear
+
+
+List of things that work:
+1. correctly loads records from file
+2. correctly updates records
+3. correctly saves records
+
+
+List of things that don't:
+
+
+
 ## To do:
 
 1. add in delete function (how about: type *del* or *delete* into ISBN field; on save, this will not be saved and will be deleted from the records)
 2. add in search function: results appear as dropdown list = 3 inputs: text input -> 'go' button / 'end search' button -> dropdown list of rows returned
 3. bring convert_pymarc.py up to date
+4. harmonize edit.py & orderForm.py
 
 1. DONE: add in layout hints: look for [filename].hint or failing that, any file ending .hint in the source file folder & use this (if heading count fits), else default to algorithmic layout
 2. DONE - enable changes to data
