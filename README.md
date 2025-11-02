@@ -11,6 +11,28 @@
 
 orderForm:
 
+Things i've done:
+- fixed combo box drop down selection
+- made record lock toggle-able
+
+To do:
+
+- fix bug: 'first select xxx' is being added twice to follower combos
+- what does 'date' mean? is it the date of the book? should i use QDateEdit with setCalendarPopup(True) or should i just add in the current date, or is it just the year of publication of the item being ordered??
+- DONE: "text changed": add to comboBoxes -> just add to .currentTextChanged.connect()
+- "text changed": fix so doesn't appear when loading new record
+- table view should read 'add a record...'
+- add in validation (but how to deal with jumping between records?)
+- make window title reflect name of the actual file being saved to
+
+- DONE: deal with 'custom_behaviour()' - probably not needed; ensure clear load on startup
+- DONE: make an explicit lookup linking name of widget to option list in settings file (yaml)
+- DONE: remove 'locked' sign from window title if locking disabled
+- DONE: remove / deactivate 'lock' button if locking disabled
+- DONE: highlight current record in table view
+- DONE: highlight current record in table view IF has records on first load
+
+
 to make a combo box:
 
 load_record()
