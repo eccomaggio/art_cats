@@ -12,25 +12,25 @@
 orderForm:
 
 Things i've done:
-- fixed combo box drop down selection
-- made record lock toggle-able
 
 To do:
 
-- fix bug: 'first select xxx' is being added twice to follower combos
 - what does 'date' mean? is it the date of the book? should i use QDateEdit with setCalendarPopup(True) or should i just add in the current date, or is it just the year of publication of the item being ordered??
-- DONE: "text changed": add to comboBoxes -> just add to .currentTextChanged.connect()
-- "text changed": fix so doesn't appear when loading new record
-- table view should read 'add a record...'
-- add in validation (but how to deal with jumping between records?)
-- make window title reflect name of the actual file being saved to
+- add in validation (but how to deal with jumping between records?): ">> Choose" / isbn / notify / hold for /
 
+- DONE: fix double "first select..." in follower inputs
+- DONE: table view should read 'add a record...'
+- DONE: make window title reflect name of the actual file being saved to
+- DONE: "text changed": add to comboBoxes -> just add to .currentTextChanged.connect()
+- DONE: "text changed": fix so doesn't appear when loading new record
 - DONE: deal with 'custom_behaviour()' - probably not needed; ensure clear load on startup
 - DONE: make an explicit lookup linking name of widget to option list in settings file (yaml)
 - DONE: remove 'locked' sign from window title if locking disabled
 - DONE: remove / deactivate 'lock' button if locking disabled
 - DONE: highlight current record in table view
 - DONE: highlight current record in table view IF has records on first load
+- DONE: fixed combo box drop down selection
+- DONE: made record lock toggle-able
 
 
 to make a combo box:
@@ -53,18 +53,6 @@ B) follower:
 To do in order form:
 1. DONE - implement fields to clear
 2. implement QTableView to show records already entered (overview): click to amend
-
-
-
-List of things that work:
-1. correctly loads records from file
-2. correctly updates records
-3. correctly saves records
-
-
-List of things that don't:
-
-
 
 ## To do:
 
