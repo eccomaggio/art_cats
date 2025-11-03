@@ -601,10 +601,11 @@ class Editor(QWidget):
         self.setLayout(self.master_layout)
 
         self.add_custom_behaviour()
-        if self.has_records:
-            self.load_record_into_gui(self.current_row)
-        else:
-            self.handle_new_record()
+        self.update_title_with_record_number()
+        # if self.has_records:
+        #     self.load_record_into_gui(self.current_row)
+        # else:
+        #     self.handle_new_record()
         self.update_nav_buttons()
         self.add_signal_to_fire_on_text_change()
 
@@ -717,20 +718,26 @@ class Editor(QWidget):
         self.nav_grouped_layout.setLayout(nav_grid)
 
     def add_custom_behaviour(self) -> None:
-        ## Currently, this only updates combo boxes: IS THIS CORRECT??
         if self.settings.flavour["title"] == "order_form":
             ## set up lists of leaders & followers & populate drop down lists for leaders
             independent_inputs = ["subject_consultant", "order_type", "library", "item_policy", "reporting_code_1", "reporting_code_2", "reporting_code_3"]
             for input_widget in [widget for widget in self.inputs if isinstance(widget, QComboBox)]:
+                # name = input_widget.objectName()
+                # if name in self.settings.flavour["leaders"]:
+                #     input_widget.currentTextChanged.connect(self.handle_update_follower)
                 name = input_widget.objectName()
                 if name in independent_inputs:
+                    # print(f" ======= {name} is independent")
                     raw_options = self.get_raw_combo_options(self.transform_into_yaml_lookup(name))
                     options, _ = self.get_normalized_combo_list(raw_options)
-                    if name in self.settings.flavour["leaders"]:
-                        ## TODO: ensure that the connection isn't disturbing regular loading of data
-                        input_widget.currentTextChanged.connect(self.handle_update_follower)
+                    # if name in self.settings.flavour["leaders"]:
+                    #     print(f" ======= {name} is independent & a leader")
+                    #     input_widget.currentTextChanged.connect(self.handle_update_follower)
                 else:
-                    name = self.settings.flavour["dictByFollower"][name]
+                    leader_name = self.settings.flavour["dictByFollower"][name]
+                    leader_widget = self.leader_inputs[leader_name]
+                    # print(f" ======= {name} is a follower -> {leader_name}")
+                    leader_widget.currentTextChanged.connect(self.handle_update_follower)
                     source = self.get_combo_options_source(input_widget)
                     raw_options = self.get_raw_combo_options(source)
                     options, _ = self.get_normalized_combo_list(raw_options)
