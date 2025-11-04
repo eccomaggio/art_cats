@@ -110,16 +110,23 @@ shared.settings.flavour = {
         # [COL.sublib, "ARTBL"],
     ],
     "combo_default_text": " >> Choose <<",
+    "combo_following_default_text": " (first select ",
     "leaders": ["subject_consultant", "library"],
     "followers": ["fund_code", "location"],
     "headers": ["Subject consultant", "Fund code", "Order type", "Bibliographic information", "Creator", "Date", "ISBN", "Library", "Location", "Item policy", "Reporting code 1", "Reporting code 2", "Reporting code 3", "Hold for", "Notify", "Additional order information", "Items"],
-    "required": "subject_consultant, fund_code, order_type, library, location, bib_info",
+    # "required": "subject_consultant, fund_code, order_type, library, location, bib_info",
+    "required_fields": [COL.subject_consultant.name, COL.fund_code.name, COL.order_type.name, COL.bib_info.name, COL.library.name, COL.location.name, COL.item_policy.name, COL.bib_info.name],
+    "validate_always": [],
+    "validate_if_present": [COL.isbn.name, COL.hold_for.name, COL.notify.name],
+    "validation_skip": (COL.additional_info.name, "*dummy*"),
     "locking_is_enabled": False,
 }
-shared.settings.flavour["listByLeader"] = list(zip(shared.settings.flavour["leaders"], shared.settings.flavour["followers"]))
-shared.settings.flavour["listByFollower"] = list(zip(shared.settings.flavour["followers"], shared.settings.flavour["leaders"]))
-shared.settings.flavour["dictByLeader"] = dict(shared.settings.flavour["listByLeader"])
-shared.settings.flavour["dictByFollower"] = dict(shared.settings.flavour["listByFollower"])
+# shared.settings.flavour["listByLeader"] = list(zip(shared.settings.flavour["leaders"], shared.settings.flavour["followers"]))
+# shared.settings.flavour["listByFollower"] = list(zip(shared.settings.flavour["followers"], shared.settings.flavour["leaders"]))
+# shared.settings.flavour["dictByLeader"] = dict(shared.settings.flavour["listByLeader"])
+# shared.settings.flavour["dictByFollower"] = dict(shared.settings.flavour["listByFollower"])
+shared.settings.flavour["dictByLeader"] = dict(zip(shared.settings.flavour["leaders"], shared.settings.flavour["followers"]))
+shared.settings.flavour["dictByFollower"] = dict(zip(shared.settings.flavour["followers"], shared.settings.flavour["leaders"]))
 
 shared.settings.styles = {
     "text_changed": "border: 1px solid red; background-color: white;",
@@ -220,7 +227,7 @@ default_template = (
     ("Subject consultant", "subject_consultant", "1:2", 0, 0, "combo"),
     ("Fund code", "fund_code", "1:2", 1, 0, "combo"),
     ("Order type", "order_type", "1:2", 2, 0, "combo"),
-    ("Bibliographic information", "biblio_info", "2:6", 3, 0, "text"),
+    ("Bibliographic information", "bib_info", "2:6", 3, 0, "text"),
     ("Creator", "creator", "1:2", 7, 0, "line"),
     ("Publishing date", "date", "1:2", 7, 2, "line"),
     ("ISBN", "isbn", "1:2", 7, 4, "line"),
@@ -595,6 +602,7 @@ class Editor(QWidget):
         self.nav_grouped_layout = QGroupBox("Navigation")
 
         self.grid = grid
+        self.headers_backup = headers
         if excel_rows:
             self.excel_rows = excel_rows
             self.headers = headers
@@ -636,9 +644,8 @@ class Editor(QWidget):
         for id, (start_row, start_col, brick, title, name, widget_type) in self.grid.widget_info.items():
             row_span, col_span = brick.height, brick.width
             # widget_name = make_snake_name(title)
-            widget_name = name
             tmp_input: QWidget = self.widget_lookup[widget_type]()
-            tmp_input.setObjectName(widget_name)
+            tmp_input.setObjectName(name)
             if isinstance(tmp_input, QComboBox):
                 # name = make_snake_name(title)
                 ## TODO: continue moving derived titles over to 'name'
@@ -656,6 +663,9 @@ class Editor(QWidget):
 
             tmp_wrapper = QVBoxLayout()
             # tmp_label = QLabel(title)
+            if name in shared.settings.flavour["required_fields"]:
+                title = f"*{title}*"
+            # print(f" >>>> {name}-> {title}")
             tmp_label = ClickableLabel(title)
             tmp_label.help_txt = title.lower().replace(" ", "_")
             tmp_label.clicked.connect(lambda checked=False, l=tmp_label: self.show_help_topic(l))
@@ -793,7 +803,8 @@ class Editor(QWidget):
     def get_raw_combo_options(self, key:str) -> list:
         if key:
             if key.startswith("*!*"):
-                raw_options = [f" (first select {key.split(":")[1]}) "]
+                # raw_options = [f" (first select {key.split(":")[1]}) "]
+                raw_options = [f"{self.settings.flavour["combo_following_default_text"]}{key.split(":")[1]}) "]
             else:
                 options = self.settings.flavour["combo_data"]
                 raw_options = options.get(key, [])
@@ -893,18 +904,23 @@ class Editor(QWidget):
         if not optional_msg:
             optional_msg = ""
         data = []
-        if not self.data_is_valid(optional_msg):
+        data_are_valid = self.data_is_valid(optional_msg)
+        # if not self.data_is_valid(optional_msg):
+        print(f">>>>>>>>>> {data_are_valid=}")
+        if not data_are_valid:
             return False
         # print("OK... data passes as valid for submission...")
         for input_widget in self.inputs:
-            data.append(self.get_input_data(input_widget))
+            # data.append(self.get_input_data(input_widget))
+            data.append(self.get_content(input_widget))
         if self.current_record_is_new:
             # print(f"***{self.has_records=}, record count: {self.record_count} {data=}")
             if self.has_records:
                 self.excel_rows.append(data)
             else:
                 self.excel_rows = [data]
-                self.headers = []
+                # self.headers = []
+                self.headers = self.headers_backup
                 self.has_records = True
             self.current_row_index = self.index_of_last_record
             self.update_title_with_record_number()
@@ -917,34 +933,74 @@ class Editor(QWidget):
         return True
 
     def data_is_valid(self, optional_msg="") -> bool:
-        required_fields: list[COL] = [COL.subject_consultant, COL.fund_code, COL.order_type, COL.bib_info, COL.library, COL.location, COL.item_policy]
-
-        msg = []
+        missing = []
+        invalid = []
         errors = []
-        barcode = self.inputs[COL.barcode.value].text().strip()
-        if barcode == "*dummy*":
+        msg = optional_msg
+        # errors = []
+        # barcode = self.inputs[COL.barcode.value].text().strip()
+        # if barcode == "*dummy*":
+        #     return True
+        rules = self.settings.flavour
+        skip_validation_field, skip_validation_text = rules["validation_skip"]
+        if skip_validation_field == skip_validation_text:
             return True
-        for field in required_fields:
-            pass
-        #     input_box: QLineEdit | QTextEdit = self.inputs[field.value]
-        #     content = input_box.text() if isinstance(input_box, QLineEdit) else input_box.toPlainText()
-        #     if not content:
-        #         errors.append(description)
-        # if errors:
-        #     msg.append(f"{optional_msg}The following fields are missing:\n{", ".join(errors)}")
-        # if not self.inputs[COL.donation.value]:
-        #     self.inputs[COL.donation.value].setText("Anonymous donation")
-        # if len(barcode) != 9:
-        #     msg.append("barcode needs to be 9 digits long")
-        # if barcode and barcode[0] not in "367":
-        #     msg.append("barcode needs to start with 3, 6, or 9")
-        # if msg:
-        #     output = "; ".join(msg)
-        #     msg_box = QMessageBox()
-        #     msg_box.setText(f"The data in this record has the following issue(s):\n\n{output}")
-        #     msg_box.exec()
-        #     return False
+        for widget in self.inputs:
+            name = widget.objectName()
+            # print(f"....{name} in {rules["required_fields"]}-> {name in rules['required_fields']}")
+            if name in rules["required_fields"]:
+                if not self.get_content(widget):
+                    missing.append(name)
+                    continue
+            if name in rules["validate_always"] or name in rules["validate_if_present"]:
+                if (error_msg := self.validate_input(widget)) :
+                    invalid.append(f"{name}: {error_msg}")
+            # elif name in rules["validate_if_present"]:
+            #     if (error_msg := self.validate_input(widget)) :
+            #         invalid.append(f"{name}: {error_msg}")
+        if missing:
+            errors.append(f"The following fields are missing: {', '.join(missing)}")
+        if invalid:
+            errors.append(f"Please correct the following problem(s): {'; '.join(invalid)}")
+        msg = "\n".join(errors)
+        if msg:
+            alert = QMessageBox()
+            alert.setText(msg)
+            alert.exec()
+            return False
+        print(f"%%% {msg}")
         return True
+
+    def validate_input(self, widget:QWidget) -> str:
+        ## Valid = empty string
+        # error_msg = ""
+        match widget.objectName():
+            case "hold_for" | "notify":
+                uni_number = self.get_content(widget)
+                if uni_number and (len(uni_number) != 7 or int(uni_number[0]) in [1, 3, 6, 7]):
+                    return "This is not a valid University number."
+            case "isbn":
+                isbn = self.get_content(widget)
+                if 10 > len(isbn) > 13:
+                    return "The ISBN is not valid."
+        return ""
+
+
+    def get_content(self, widget:QWidget) -> str:
+        content = ""
+        if isinstance(widget, QLineEdit):
+            content = widget.text()
+        elif isinstance(widget, QTextEdit):
+            content = widget.toPlainText()
+        elif isinstance(widget, QComboBox):
+            content = widget.currentText()
+            if content == self.settings.flavour["combo_default_text"] or content.startswith(self.settings.flavour["combo_following_default_text"]):
+                content = ""
+        else:
+            msg = f"No reader set up for {widget}!"
+            print(msg)
+            # logging.critical(msg)
+        return content.strip()
 
     def handle_close(self) -> None:
         # self.close()
@@ -1062,7 +1118,7 @@ class Editor(QWidget):
         mode = "lock" if row_to_load else "edit"
         self.toggle_record_editable(mode)
         self.update_title_with_record_number()
-        # print(f">>>>>{mode=}, {row_to_load=}")
+        print(f">>>>>{mode=}, {row_to_load=} {self.has_records=}, {self.headers}, {self.headers_backup}")
         self.all_text_is_saved = True
 
     def clear_form(self) -> None:
@@ -1150,19 +1206,19 @@ class Editor(QWidget):
         # self.inputs[input_widget.value].setText(value)
         input_widget.setPlainText(value)
 
-    def get_input_data(self, input_widget:QWidget) -> str:
-        data = ""
-        if isinstance(input_widget, QLineEdit):
-            data = input_widget.text()
-        elif isinstance(input_widget, QTextEdit):
-            data = input_widget.toPlainText()
-        elif isinstance(input_widget, QComboBox):
-            data = input_widget.currentText()
-        else:
-            print(
-                f"Huston, we have a problem with submitting record no. {self.current_row_index}"
-            )
-        return data
+    # def get_input_data(self, input_widget:QWidget) -> str:
+    #     data = ""
+    #     if isinstance(input_widget, QLineEdit):
+    #         data = input_widget.text()
+    #     elif isinstance(input_widget, QTextEdit):
+    #         data = input_widget.toPlainText()
+    #     elif isinstance(input_widget, QComboBox):
+    #         data = input_widget.currentText()
+    #     else:
+    #         print(
+    #             f"Huston, we have a problem with submitting record no. {self.current_row_index}"
+    #         )
+    #     return data
 
     def handle_unlock(self) -> None:
         # print(f"... handling unlock (currently {self.record_is_locked=})")

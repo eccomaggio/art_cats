@@ -15,8 +15,10 @@ Things i've done:
 
 To do:
 
-- add in validation (but how to deal with jumping between records?): ">> Choose" / isbn / notify / hold for /
+- fix headers when you add first record
+- add fixed min lengths to input boxes so they don't jump around when filled with long records
 
+- DONE - add in validation (but how to deal with jumping between records?): ">> Choose" / isbn / notify / hold for /
 - DONE: fix double "first select..." in follower inputs
 - DONE: table view should read 'add a record...'
 - DONE: make window title reflect name of the actual file being saved to
