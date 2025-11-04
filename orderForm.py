@@ -3,7 +3,6 @@ Order form for TAY / ART libraries to replace excel-based form.
 Contact: Ross Jones, Osney One
 """
 
-from dbm.ndbm import library
 import inspect  ## for debugging only
 from app import convert as shared
 from dataclasses import dataclass
@@ -79,7 +78,7 @@ class COL(Enum):
     hold_for = auto()
     notify = auto()
     additional_info = auto()
-    start = 0
+    # start = 0
 
 
 combo_lookup = {
@@ -114,6 +113,7 @@ shared.settings.flavour = {
     "leaders": ["subject_consultant", "library"],
     "followers": ["fund_code", "location"],
     "headers": ["Subject consultant", "Fund code", "Order type", "Bibliographic information", "Creator", "Date", "ISBN", "Library", "Location", "Item policy", "Reporting code 1", "Reporting code 2", "Reporting code 3", "Hold for", "Notify", "Additional order information", "Items"],
+    "required": "subject_consultant, fund_code, order_type, library, location, bib_info",
     "locking_is_enabled": False,
 }
 shared.settings.flavour["listByLeader"] = list(zip(shared.settings.flavour["leaders"], shared.settings.flavour["followers"]))
@@ -217,25 +217,26 @@ class STATUS(Enum):
 
 default_template = (
     ## non-algorithmic version needs to be: [title, brick-type, start-row, start-col, widget-type=line/area/drop]
-    ("Subject consultant", "1:2", 0, 0, "combo"),
-    ("Fund code", "1:2", 1, 0, "combo"),
-    ("Order type", "1:2", 2, 0, "combo"),
-    ("Bibliographic information", "2:6", 3, 0, "text"),
-    ("Creator", "1:2", 7, 0, "line"),
-    ("Date", "1:2", 7, 2, "line"),
-    ("ISBN", "1:2", 7, 4, "line"),
-    ("Library", "1:2", 0, 2, "combo"),
-    ("Location", "1:2", 1, 2, "combo"),
-    ("Item policy", "1:2", 2, 2, "combo"),
-    ("Reporting code 1", "1:2", 0, 4, "combo"),
-    ("Reporting code 2", "1:2", 1, 4, "combo"),
-    ("Reporting code 3", "1:2", 2, 4, "combo"),
-    ("Hold for", "1:2", 8, 0, "line"),
-    ("Notify", "1:2", 9, 0, "line"),
-    ("Additional order information", "2:4", 8, 2, "text"),
+    ("Subject consultant", "subject_consultant", "1:2", 0, 0, "combo"),
+    ("Fund code", "fund_code", "1:2", 1, 0, "combo"),
+    ("Order type", "order_type", "1:2", 2, 0, "combo"),
+    ("Bibliographic information", "biblio_info", "2:6", 3, 0, "text"),
+    ("Creator", "creator", "1:2", 7, 0, "line"),
+    ("Publishing date", "date", "1:2", 7, 2, "line"),
+    ("ISBN", "isbn", "1:2", 7, 4, "line"),
+    ("Library", "library", "1:2", 0, 2, "combo"),
+    ("Location", "location", "1:2", 1, 2, "combo"),
+    ("Item policy", "item_policy", "1:2", 2, 2, "combo"),
+    ("Reporting code 1", "reporting_code_1", "1:2", 0, 4, "combo"),
+    ("Reporting code 2", "reporting_code_2", "1:2", 1, 4, "combo"),
+    ("Reporting code 3", "reporting_code_3", "1:2", 2, 4, "combo"),
+    ("Hold for", "hold_for", "1:2", 8, 0, "line"),
+    ("Notify", "notify", "1:2", 9, 0, "line"),
+    ("Additional order instructions", "extra_info", "2:4", 8, 2, "text"),
     # ("Items",                           "4:6", 10, 0, "table"),
     (
         "Items added to order (click on one to jump to it if you need to amend)",
+        "table_view",
         "4:6",
         10,
         0,
@@ -252,8 +253,8 @@ class Grid:
             []
         )  ## each row is a list of brick ids OR -1 to indicate cell is unoccupied
         self.add_a_row()
-        ## dict[id: (start_row, start_col, Brick(height, width), title, widget-type)]
-        self.widget_info: dict[int, tuple[int, int, Brick, str, str]] = ({})
+        ## dict[id: (start_row, start_col, Brick(height, width), title, name, widget-type)]
+        self.widget_info: dict[int, tuple[int, int, Brick, str, str, str]] = ({})
 
     @property
     def total_rows(self) -> int:
@@ -276,7 +277,7 @@ class Grid:
         return [-1 for _ in range(self.grid_width)]
 
     def add_brick_algorithmically(
-        self, brick_id: int, brick: Brick, title: str = ""
+        self, brick_id: int, brick: Brick, title: str = "", name=""
     ) -> None:
         """
         algorithm:
@@ -314,21 +315,36 @@ class Grid:
                 if enough_space_across and enough_space_down and no_following_bricks:
                     no_place_found_for_brick = False
                     self.place_brick_in_grid(brick, brick_id, row_i, col_i)
-                    self.widget_info[brick_id] = (row_i, col_i, brick, title, "")
+                    self.widget_info[brick_id] = (row_i, col_i, brick, title, name, "")
                     self.current_row = row_i
                     break
             row_i += 1
 
     def add_bricks_by_template(self, template: tuple) -> None:
         last_brick = template[-1]
-        last_brick_start_col = last_brick[2]
-        last_brick_height = brick_lookup[last_brick[1]].value.height
-        max_row = last_brick_start_col + last_brick_height
+        lb_title, lb_name, lb_brick_type, lb_start_row, lb_start_col, lb_widget_type = last_brick
+        # lb_start_col = last_brick[2]
+        lb_height = brick_lookup[lb_brick_type].value.height
+        # max_row = lb_start_col + lb_height
+        max_row = lb_start_row + lb_height
+        # print(f"@@@ {lb_height=}, {lb_start_row} -> {max_row=}")
         self.rows = [self.make_row() for _ in range(max_row)]
-        for brick_id, (title, brick_type, start_row, start_col, widget_type) in enumerate(template):
+        for brick_id, (title, name, brick_type, start_row, start_col, widget_type) in enumerate(template):
             brick = brick_lookup[brick_type].value
             self.place_brick_in_grid(brick, brick_id, start_row, start_col)
-            self.widget_info[brick_id] = (start_row, start_col, brick, title, widget_type)
+            self.widget_info[brick_id] = (start_row, start_col, brick, title, name, widget_type)
+
+
+    # def add_bricks_by_template(self, template: tuple) -> None:
+    #     last_brick = template[-1]
+    #     last_brick_start_col = last_brick[2]
+    #     last_brick_height = brick_lookup[last_brick[1]].value.height
+    #     max_row = last_brick_start_col + last_brick_height
+    #     self.rows = [self.make_row() for _ in range(max_row)]
+    #     for brick_id, (title, name, brick_type, start_row, start_col, widget_type) in enumerate(template):
+    #         brick = brick_lookup[brick_type].value
+    #         self.place_brick_in_grid(brick, brick_id, start_row, start_col)
+    #         self.widget_info[brick_id] = (start_row, start_col, brick, title, name, widget_type)
 
     def count_free_spaces_across(self, row, start_col):
         free_spaces = 0
@@ -354,6 +370,7 @@ class Grid:
     ) -> None:
         for row_i in range(start_row, start_row + brick.height):
             for col_i in range(start_col, start_col + brick.width):
+                # print(f">>> {brick_id}: {row_i=}, {col_i=} {self.rows=}")
                 self.rows[row_i][col_i] = brick_id
 
 
@@ -616,13 +633,15 @@ class Editor(QWidget):
         self.follower_inputs:dict[str, QComboBox] = {}
         self.leader_inputs:dict[str, QComboBox] = {}
         self.tableView:QTableWidget
-        for id, (start_row, start_col, brick, title, widget_type) in self.grid.widget_info.items():
+        for id, (start_row, start_col, brick, title, name, widget_type) in self.grid.widget_info.items():
             row_span, col_span = brick.height, brick.width
-            widget_name = make_snake_name(title)
+            # widget_name = make_snake_name(title)
+            widget_name = name
             tmp_input: QWidget = self.widget_lookup[widget_type]()
             tmp_input.setObjectName(widget_name)
             if isinstance(tmp_input, QComboBox):
-                name = make_snake_name(title)
+                # name = make_snake_name(title)
+                ## TODO: continue moving derived titles over to 'name'
                 if name in self.settings.flavour["followers"]:
                     self.follower_inputs[name] = tmp_input
                 elif name in self.settings.flavour["leaders"]:
@@ -722,17 +741,11 @@ class Editor(QWidget):
             ## set up lists of leaders & followers & populate drop down lists for leaders
             independent_inputs = ["subject_consultant", "order_type", "library", "item_policy", "reporting_code_1", "reporting_code_2", "reporting_code_3"]
             for input_widget in [widget for widget in self.inputs if isinstance(widget, QComboBox)]:
-                # name = input_widget.objectName()
-                # if name in self.settings.flavour["leaders"]:
-                #     input_widget.currentTextChanged.connect(self.handle_update_follower)
                 name = input_widget.objectName()
                 if name in independent_inputs:
                     # print(f" ======= {name} is independent")
                     raw_options = self.get_raw_combo_options(self.transform_into_yaml_lookup(name))
                     options, _ = self.get_normalized_combo_list(raw_options)
-                    # if name in self.settings.flavour["leaders"]:
-                    #     print(f" ======= {name} is independent & a leader")
-                    #     input_widget.currentTextChanged.connect(self.handle_update_follower)
                 else:
                     leader_name = self.settings.flavour["dictByFollower"][name]
                     leader_widget = self.leader_inputs[leader_name]
@@ -749,7 +762,6 @@ class Editor(QWidget):
 
     def handle_update_follower(self) -> None:
         leader:QComboBox = self.sender()
-        # leader_name = leader.objectName()
         follower_name = self.settings.flavour["dictByLeader"][leader.objectName()]
         # print(f"%%%  handle_update_follower: {leader.objectName()} -> {follower_name}")
         self.load_combo_box(self.follower_inputs[follower_name])
@@ -757,8 +769,6 @@ class Editor(QWidget):
 
     def transform_into_yaml_lookup(self, object_name:str) -> str:
         ## transforms the objectName of the widget so that it matches the yaml file
-        ## TODO: make this into a lookup (more robust)
-        # name = object_name[0].capitalize() + object_name[1:]
         name = combo_lookup[object_name]
         # print(f"\ttransform: {object_name} -> {name}")
         return name
@@ -790,7 +800,7 @@ class Editor(QWidget):
         else:
             # raw_options = ["TBA"]
             raw_options = []
-        print(f"\t** get raw combo options: {key=} -> raw_options={raw_options[:2]}... >> {inspect.stack()[1].function}")
+        # print(f"\t** get raw combo options: {key=} -> raw_options={raw_options[:2]}... >> {inspect.stack()[1].function}")
         return raw_options
 
 
@@ -821,15 +831,10 @@ class Editor(QWidget):
                     # index_in_list = new_combo_options.index(selected_item)
                     index = new_combo_options.index(selected_item)
                 except ValueError:
-                    # index_in_list = -1
-                # if index_in_list < 0:
                     print(f"The option *{selected_item}* is not an item in this combo box!")
                     index = 0
-                # else:
-                #     index = index_in_list
             else:
                 # the default index if no selection
-                # index = -1
                 index = 0
         # print(f"\tget normalized combo list: {len(new_combo_options)}, {selected_item=}->{index=}, {new_combo_options[:2]}...\n")
         return (new_combo_options, index)
@@ -912,13 +917,15 @@ class Editor(QWidget):
         return True
 
     def data_is_valid(self, optional_msg="") -> bool:
-        # fields_to_validate: list[tuple[COL, str]] = [(COL.langs, "language"), (COL.title, "title"), (COL.country_name, "country of publication"), (COL.place, "city of publication"), (COL.publisher, "publisher"), (COL.size, "size (height) of the item"), (COL.extent, "number of pages"), (COL.pub_year, "year of publication"), (COL.barcode, "barcode")]
-        # msg = []
-        # errors = []
-        # barcode = self.inputs[COL.barcode.value].text().strip()
-        # if barcode == "*dummy*":
-        #     return True
-        # for field, description in fields_to_validate:
+        required_fields: list[COL] = [COL.subject_consultant, COL.fund_code, COL.order_type, COL.bib_info, COL.library, COL.location, COL.item_policy]
+
+        msg = []
+        errors = []
+        barcode = self.inputs[COL.barcode.value].text().strip()
+        if barcode == "*dummy*":
+            return True
+        for field in required_fields:
+            pass
         #     input_box: QLineEdit | QTextEdit = self.inputs[field.value]
         #     content = input_box.text() if isinstance(input_box, QLineEdit) else input_box.toPlainText()
         #     if not content:

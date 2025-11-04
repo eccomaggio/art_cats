@@ -15,7 +15,6 @@ Things i've done:
 
 To do:
 
-- what does 'date' mean? is it the date of the book? should i use QDateEdit with setCalendarPopup(True) or should i just add in the current date, or is it just the year of publication of the item being ordered??
 - add in validation (but how to deal with jumping between records?): ">> Choose" / isbn / notify / hold for /
 
 - DONE: fix double "first select..." in follower inputs

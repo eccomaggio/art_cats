@@ -3,10 +3,12 @@ Order form for TAY / ART libraries to replace excel-based form.
 Contact: Ross Jones, Osney One
 """
 
-
+from dbm.ndbm import library
+import inspect  ## for debugging only
 from app import convert as shared
 from dataclasses import dataclass
 from collections import namedtuple
+from typing import Any
 import argparse
 import datetime
 import yaml
@@ -34,6 +36,9 @@ from PySide6.QtWidgets import (
     QTextBrowser,
     QSpacerItem,
     # QHBoxLayout,
+    QTableWidget,
+    QTableWidgetItem,
+    QAbstractItemView,
 )
 from PySide6.QtCore import (
     Qt,
@@ -41,6 +46,7 @@ from PySide6.QtCore import (
     QTimer,
     QEvent,
     Signal,
+    QAbstractTableModel,
 )
 from PySide6.QtGui import (
     QMouseEvent,
@@ -76,6 +82,16 @@ class COL(Enum):
     start = 0
 
 
+combo_lookup = {
+  COL.subject_consultant.name :"Subject_consultant",
+  COL.order_type.name:"Order_type",
+  COL.library.name:"Library",
+  COL.item_policy.name:"Item_policy",
+  COL.reporting_code_1.name:"Reporting_code_1",
+  COL.reporting_code_2.name:"Reporting_code_2",
+  COL.reporting_code_3.name:"Reporting_code_3",
+}
+
 shared.settings.out_file = f"one_off_order.{str(datetime.datetime.now())[:19].replace(" ", "_").replace(":", "")}.csv"
 # name = f"one_off_order_form.{timestamp}.csv"
 shared.settings.help_file = "help_orders.html"
@@ -97,6 +113,8 @@ shared.settings.flavour = {
     "combo_default_text": " >> Choose <<",
     "leaders": ["subject_consultant", "library"],
     "followers": ["fund_code", "location"],
+    "headers": ["Subject consultant", "Fund code", "Order type", "Bibliographic information", "Creator", "Date", "ISBN", "Library", "Location", "Item policy", "Reporting code 1", "Reporting code 2", "Reporting code 3", "Hold for", "Notify", "Additional order information", "Items"],
+    "locking_is_enabled": False,
 }
 shared.settings.flavour["listByLeader"] = list(zip(shared.settings.flavour["leaders"], shared.settings.flavour["followers"]))
 shared.settings.flavour["listByFollower"] = list(zip(shared.settings.flavour["followers"], shared.settings.flavour["leaders"]))
@@ -199,29 +217,31 @@ class STATUS(Enum):
 
 default_template = (
     ## non-algorithmic version needs to be: [title, brick-type, start-row, start-col, widget-type=line/area/drop]
-    ("Subject consultant",              "1:2", 0, 0, "combo"),
-    ("Fund code",                       "1:2", 1, 0, "combo"),
-    ("Order type",                      "1:2", 2, 0, "combo"),
-    ("Bibliographic information",       "2:6", 3, 0, "text"),
-    # ("Author",                  "2:2", 3, 2, "text"),
-    # ("Citation",                "2:2", 3, 4, "text"),
-    # ("Subject",                 "1:3", 5, 0, "line"),
-    # ("Other",                   "2:3", 5, 3, "text"),
-    # ("Type",                    "1:3", 6, 0, "line"),
-    ("Creator",                         "1:2", 7, 0, "line"),
-    ("Date",                            "1:2", 7, 2, "line"),
-    ("ISBN",                            "1:2", 7, 4, "line"),
-    ("Library",                         "1:2", 0, 2, "combo"),
-    ("Location",                        "1:2", 1, 2, "combo"),
-    ("Item policy",                     "1:2", 2, 2, "combo"),
-    ("Reporting code 1",                "1:2", 0, 4, "combo"),
-    ("Reporting code 2",                "1:2", 1, 4, "combo"),
-    ("Reporting code 3",                "1:2", 2, 4, "combo"),
-    ("Hold for",                        "1:2", 8, 0, "line"),
-    ("Notify",                          "1:2", 9, 0, "line"),
-    ("Additional order information",    "2:4", 8, 2, "text"),
+    ("Subject consultant", "1:2", 0, 0, "combo"),
+    ("Fund code", "1:2", 1, 0, "combo"),
+    ("Order type", "1:2", 2, 0, "combo"),
+    ("Bibliographic information", "2:6", 3, 0, "text"),
+    ("Creator", "1:2", 7, 0, "line"),
+    ("Date", "1:2", 7, 2, "line"),
+    ("ISBN", "1:2", 7, 4, "line"),
+    ("Library", "1:2", 0, 2, "combo"),
+    ("Location", "1:2", 1, 2, "combo"),
+    ("Item policy", "1:2", 2, 2, "combo"),
+    ("Reporting code 1", "1:2", 0, 4, "combo"),
+    ("Reporting code 2", "1:2", 1, 4, "combo"),
+    ("Reporting code 3", "1:2", 2, 4, "combo"),
+    ("Hold for", "1:2", 8, 0, "line"),
+    ("Notify", "1:2", 9, 0, "line"),
+    ("Additional order information", "2:4", 8, 2, "text"),
+    # ("Items",                           "4:6", 10, 0, "table"),
+    (
+        "Items added to order (click on one to jump to it if you need to amend)",
+        "4:6",
+        10,
+        0,
+        "table",
+    ),
 )
-
 
 
 class Grid:
@@ -341,7 +361,7 @@ class WindowWithRightTogglePanel(QWidget):
     saved_editor_width = 0
     GRID_BUFFER = 3  # Buffer for layout margins/spacing
 
-    def __init__(self, grid:Grid, rows:list[list[str]], settings:shared.Settings ):
+    def __init__(self, grid:Grid, rows:list[list[str]], headers:list[str], settings:shared.Settings ):
         super().__init__()
 
         self.main_grid = QGridLayout(self)
@@ -353,7 +373,7 @@ class WindowWithRightTogglePanel(QWidget):
         self.HELP_PANEL_WIDTH = 350
 
         # --- 1. Main Editor Setup (Column 0, Expanding) ---
-        self.edit_panel_widget = Editor(grid, rows, settings.in_file, self, settings)
+        self.edit_panel_widget = Editor(grid, rows, headers, settings.in_file, self, settings)
         self.edit_panel_widget.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
@@ -537,15 +557,15 @@ class ClickableLabel(QLabel):
         super().leaveEvent(event)
 
 
-
 class Editor(QWidget):
     widget_lookup = {
         "line": QLineEdit,
         "text": QTextEdit,
         "combo": QComboBox,
         "label": QLabel,
+        "table": QTableWidget,
     }
-    def __init__(self, grid: Grid, excel_rows: list[list[str]], file_name: str, caller:WindowWithRightTogglePanel, settings:shared.Settings):
+    def __init__(self, grid: Grid, excel_rows: list[list[str]], headers: list[str], file_name: str, caller:WindowWithRightTogglePanel, settings:shared.Settings):
         super().__init__()
         self.setWindowTitle("Editor")
         self.setGeometry(100, 100, 1200, 800)
@@ -556,18 +576,16 @@ class Editor(QWidget):
         inputs_layout = QGridLayout()
         nav_grid = QGridLayout()
         self.nav_grouped_layout = QGroupBox("Navigation")
-        # self.fieldset.setStyleSheet(
-        #    "QGroupBox {background-color: lightgrey;}"
-        # )
 
         self.grid = grid
         if excel_rows:
             self.excel_rows = excel_rows
+            self.headers = headers
             self.has_records = True
         else:
             self.excel_rows = [["" for _ in range(len(shared.settings.layout_template))]]
+            self.headers = []
             self.has_records = False
-        self.col_count = len(self.excel_rows[0])
 
         self.file_name = file_name
         self.short_file_name = self.get_filename_only(settings.in_file)
@@ -575,6 +593,70 @@ class Editor(QWidget):
         self.record_is_locked = True
         self.all_text_is_saved = True
 
+        self.add_input_widgets(inputs_layout)
+        self.build_nav_buttons(caller, nav_grid)
+
+        self.master_layout.addLayout(inputs_layout)
+        self.master_layout.addWidget(self.nav_grouped_layout)
+        self.setLayout(self.master_layout)
+
+        self.add_custom_behaviour()
+        self.update_title_with_record_number()
+        # if self.has_records:
+        #     self.load_record_into_gui(self.current_row)
+        # else:
+        #     self.handle_new_record()
+        self.update_nav_buttons()
+        self.add_signal_to_fire_on_text_change()
+
+
+    def add_input_widgets(self, inputs_layout):
+        self.labels:list[QLabel] = []
+        self.inputs:list[QWidget] = []
+        self.follower_inputs:dict[str, QComboBox] = {}
+        self.leader_inputs:dict[str, QComboBox] = {}
+        self.tableView:QTableWidget
+        for id, (start_row, start_col, brick, title, widget_type) in self.grid.widget_info.items():
+            row_span, col_span = brick.height, brick.width
+            widget_name = make_snake_name(title)
+            tmp_input: QWidget = self.widget_lookup[widget_type]()
+            tmp_input.setObjectName(widget_name)
+            if isinstance(tmp_input, QComboBox):
+                name = make_snake_name(title)
+                if name in self.settings.flavour["followers"]:
+                    self.follower_inputs[name] = tmp_input
+                elif name in self.settings.flavour["leaders"]:
+                    self.leader_inputs[name] = tmp_input
+                tmp_input.setStyleSheet(self.settings.styles["combo_dropdown"])
+            if isinstance(tmp_input, QTableWidget):
+                tmp_input.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+                tmp_input.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+                self.tableView = tmp_input
+            else:
+                self.inputs.append(tmp_input)
+
+            tmp_wrapper = QVBoxLayout()
+            # tmp_label = QLabel(title)
+            tmp_label = ClickableLabel(title)
+            tmp_label.help_txt = title.lower().replace(" ", "_")
+            tmp_label.clicked.connect(lambda checked=False, l=tmp_label: self.show_help_topic(l))
+            font = tmp_label.font()
+            font.setBold(True)
+            tmp_label.setFont(font)
+            self.labels.append(tmp_label)
+
+            tmp_wrapper.addWidget(tmp_label)
+            tmp_wrapper.addWidget(tmp_input)
+            if isinstance(tmp_input, QLineEdit):
+                tmp_wrapper.addStretch(1)
+            tmp_wrapper.setSpacing(3)
+            inputs_layout.addLayout(
+                tmp_wrapper, start_row, start_col, row_span, col_span
+            )
+        ## TODO: work out why HOL_notes does react to changed text!!
+        # self.add_signal_to_fire_on_text_change()
+
+    def build_nav_buttons(self, caller, nav_grid):
         self.submit_btn = QPushButton("Save item")
         self.submit_btn.setStyleSheet("font-weight: bold;")
         self.submit_btn.clicked.connect(self.handle_submit)
@@ -609,55 +691,13 @@ class Editor(QWidget):
         self.close_btn = QPushButton("Close")
         self.close_btn.clicked.connect(self.handle_close)
         self.unlock_btn = QPushButton("Unlock")
-        self.unlock_btn.clicked.connect(self.handle_unlock)
-        # self.unlock_btn.setEnabled(True)
+        if self.settings.flavour["locking_is_enabled"]:
+            self.unlock_btn.clicked.connect(self.handle_unlock)
+        else:
+            self.unlock_btn.setEnabled(False)
 
-        self.inputs:list[QWidget] = []
-        self.labels:list[QLabel] = []
-        # self.follower_inputs:dict[str, QComboBox | None] = {
-        #     "fund_code": None,
-        #     "location": None
-        # }
-        self.follower_inputs:dict[str, QComboBox] = {}
-        self.leader_inputs:dict[str, QComboBox] = {}
-        for id, (start_row, start_col, brick, title, widget_type) in self.grid.widget_info.items():
-            row_span, col_span = brick.height, brick.width
-            widget_name = make_snake_name(title)
-            # tmp_input: QLineEdit | QTextEdit
-            tmp_input: QWidget = self.widget_lookup[widget_type]()
-            tmp_input.setObjectName(widget_name)
-            if isinstance(tmp_input, QComboBox):
-                name = make_snake_name(title)
-                if name in self.settings.flavour["followers"]:
-                    self.follower_inputs[name] = tmp_input
-                elif name in self.settings.flavour["leaders"]:
-                    self.leader_inputs[name] = tmp_input
-                # tmp_input.currentTextChanged.connect(self.load_combo_options)
-                tmp_input.setStyleSheet(self.settings.styles["combo_dropdown"])
-            self.inputs.append(tmp_input)
-
-            tmp_wrapper = QVBoxLayout()
-            # tmp_label = QLabel(title)
-            tmp_label = ClickableLabel(title)
-            tmp_label.help_txt = title.lower().replace(" ", "_")
-            tmp_label.clicked.connect(lambda checked=False, l=tmp_label: self.show_help_topic(l))
-            font = tmp_label.font()
-            font.setBold(True)
-            tmp_label.setFont(font)
-            self.labels.append(tmp_label)
-
-            tmp_wrapper.addWidget(tmp_label)
-            tmp_wrapper.addWidget(tmp_input)
-            if isinstance(tmp_input, QLineEdit):
-                tmp_wrapper.addStretch(1)
-            tmp_wrapper.setSpacing(3)
-            inputs_layout.addLayout(
-                tmp_wrapper, start_row, start_col, row_span, col_span
-            )
-        ## TODO: work out why HOL_notes does react to changed text!!
-        self.add_signal_to_fire_on_text_change()
-
-        last_id = list(grid.widget_info.keys())[-1]
+        ## Add nav buttons to layout
+        last_id = len(grid.widget_info) - 1
         last_widget = grid.widget_info[last_id]
         last_row = last_widget[0] + last_widget[2].height
         nav_grid.addWidget(self.first_btn, last_row, 0, 1, 1)
@@ -677,98 +717,149 @@ class Editor(QWidget):
         nav_grid.addWidget(self.help_btn, last_row, 3, 1, 1)
         self.nav_grouped_layout.setLayout(nav_grid)
 
-        self.master_layout.addLayout(inputs_layout)
-        self.master_layout.addWidget(self.nav_grouped_layout)
-        self.setLayout(self.master_layout)
-
-        # self.update_current_position("last")
-        self.add_custom_behaviour()
-        if self.has_records:
-            self.load_record_into_gui(self.current_row)
-        else:
-            self.handle_new_record()
-        self.update_nav_buttons()
-
     def add_custom_behaviour(self) -> None:
-        independent_inputs = ["subject_consultant", "order_type", "library", "item_policy", "reporting_code_1", "reporting_code_2", "reporting_code_3"]
         if self.settings.flavour["title"] == "order_form":
-            for input in self.inputs:
-                name = input.objectName()
-                if isinstance(input, QComboBox):
-                    if name in independent_inputs:
-                        raw_options = self.get_raw_combo_options(name.capitalize())
-                        options, _ = self.get_normalized_combo_list(raw_options)
-                        if name in self.settings.flavour["leaders"]:
-                            ## TODO: reinstate when sure that the connection isn't disturbing regular loading of data
-                            input.currentTextChanged.connect(self.handle_update_follower)
-                    else:
-                        continue
-                        ## TODO reinstate this branch
-                        name = self.settings.flavour["dictByFollower"][name]
-                        options = [f" (first select {name.capitalize().replace("_", " ")}) "]
-                        # options = [""]
-                    input.addItems(options)
-                    input.setCurrentIndex(-1)
+            ## set up lists of leaders & followers & populate drop down lists for leaders
+            independent_inputs = ["subject_consultant", "order_type", "library", "item_policy", "reporting_code_1", "reporting_code_2", "reporting_code_3"]
+            for input_widget in [widget for widget in self.inputs if isinstance(widget, QComboBox)]:
+                # name = input_widget.objectName()
+                # if name in self.settings.flavour["leaders"]:
+                #     input_widget.currentTextChanged.connect(self.handle_update_follower)
+                name = input_widget.objectName()
+                if name in independent_inputs:
+                    # print(f" ======= {name} is independent")
+                    raw_options = self.get_raw_combo_options(self.transform_into_yaml_lookup(name))
+                    options, _ = self.get_normalized_combo_list(raw_options)
+                    # if name in self.settings.flavour["leaders"]:
+                    #     print(f" ======= {name} is independent & a leader")
+                    #     input_widget.currentTextChanged.connect(self.handle_update_follower)
+                else:
+                    leader_name = self.settings.flavour["dictByFollower"][name]
+                    leader_widget = self.leader_inputs[leader_name]
+                    # print(f" ======= {name} is a follower -> {leader_name}")
+                    leader_widget.currentTextChanged.connect(self.handle_update_follower)
+                    source = self.get_combo_options_source(input_widget)
+                    raw_options = self.get_raw_combo_options(source)
+                    options, _ = self.get_normalized_combo_list(raw_options)
+                input_widget.clear()
+                input_widget.addItems(options)
+                input_widget.setCurrentIndex(0)
+            self.load_table(self.tableView, self.excel_rows)
+
 
     def handle_update_follower(self) -> None:
         leader:QComboBox = self.sender()
         # leader_name = leader.objectName()
         follower_name = self.settings.flavour["dictByLeader"][leader.objectName()]
-        # print(f"%%%  handle_update_follower: {leader_name} -> {follower_name}")
+        # print(f"%%%  handle_update_follower: {leader.objectName()} -> {follower_name}")
         self.load_combo_box(self.follower_inputs[follower_name])
 
 
-    # def load_combo_options(self, new_text:str="") -> None:
-    #     """
-    #     Load combo options based on
-    #     """
-    #     sender = self.sender()
-    #     name = sender.objectName()
-    #     # print(f"... {sender.objectName()}'s selection changed to:{new_text}...")
-    #     for leader_name, follower_name in self.settings.flavour["listByLeader"]:
-    #         if name == leader_name:
-    #             follower:QComboBox = self.follower_inputs[follower_name]
-    #             raw_options = self.get_raw_combo_options(new_text)
-    #             options, index = self.get_normalized_combo_list(raw_options)
-    #             follower.clear()
-    #             follower.addItems(options)
-    #             follower.setCurrentIndex(index)
+    def transform_into_yaml_lookup(self, object_name:str) -> str:
+        ## transforms the objectName of the widget so that it matches the yaml file
+        ## TODO: make this into a lookup (more robust)
+        # name = object_name[0].capitalize() + object_name[1:]
+        name = combo_lookup[object_name]
+        # print(f"\ttransform: {object_name} -> {name}")
+        return name
+
+
+    def get_combo_options_source(self, combo_box:QComboBox) -> str:
+        ## TODO: (probably) combine with / call only from get_raw_combo_options()
+        name = combo_box.objectName()
+        if name in self.settings.flavour["followers"]:
+            ## need to get the selected value in leader
+            leader_name = self.settings.flavour["dictByFollower"][name]
+            leader = self.leader_inputs[leader_name]
+            match_for_yaml_lookup = leader.currentText()
+            if not match_for_yaml_lookup or match_for_yaml_lookup == self.settings.flavour["combo_default_text"]:
+                match_for_yaml_lookup = f"*!*leader:{name}"
+        else:
+            match_for_yaml_lookup = self.transform_into_yaml_lookup(name)  ## name to match to in yaml file
+        # print(f"\tSource = {match_for_yaml_lookup}")
+        return match_for_yaml_lookup
 
 
     def get_raw_combo_options(self, key:str) -> list:
-        options = self.settings.flavour["combo_data"]
-        # output = self.get_normalized_combo_list(options[key])
-        raw_options = options.get(key, ["TBA."])
-        # print(f"** get raw combo options: {key=} -> {raw_options[:2]=}...")
+        if key:
+            if key.startswith("*!*"):
+                raw_options = [f" (first select {key.split(":")[1]}) "]
+            else:
+                options = self.settings.flavour["combo_data"]
+                raw_options = options.get(key, [])
+        else:
+            # raw_options = ["TBA"]
+            raw_options = []
+        print(f"\t** get raw combo options: {key=} -> raw_options={raw_options[:2]}... >> {inspect.stack()[1].function}")
         return raw_options
 
 
-    def get_normalized_combo_list(self, option_list:list, selected_item="") -> tuple[list[str], int]:
+    def get_normalized_combo_list(self, raw_combo_options:list, selected_item="") -> tuple[list[str], int]:
         """
         returns list with default "choose" text if more than one option
         and the index of any selected item or default -1
         """
         default_text = self.settings.flavour["combo_default_text"]
         ## If more than one option, add in instruction to select an option
-        if len(option_list) > 1:
-            option_list = [default_text, *option_list]
-
-        if selected_item == default_text:
-            selected_item = ""
-        if selected_item:
-            index = option_list.index(selected_item)
+        option_count = len(raw_combo_options)
+        new_combo_options = []
+        if option_count == 0:
+            print("\t\t-- Combo list missing options!!")
+            new_combo_options = ["<missing data>"]
+            index = 0
+        elif option_count == 1:
+            ## if only one option, select it
+            new_combo_options = raw_combo_options
+            index = 0
         else:
-            index = -1 # the default index if no selection
-        # print(f"get normalized combo list: {len(option_list)}, {selected_item=}->{index=}")
-        return (option_list, index)
+            ## if several options, add in an instruction to choose one
+            new_combo_options = [default_text, *raw_combo_options]
+            if selected_item == default_text:
+                selected_item = ""
+            if selected_item:
+                try:
+                    # index_in_list = new_combo_options.index(selected_item)
+                    index = new_combo_options.index(selected_item)
+                except ValueError:
+                    # index_in_list = -1
+                # if index_in_list < 0:
+                    print(f"The option *{selected_item}* is not an item in this combo box!")
+                    index = 0
+                # else:
+                #     index = index_in_list
+            else:
+                # the default index if no selection
+                # index = -1
+                index = 0
+        # print(f"\tget normalized combo list: {len(new_combo_options)}, {selected_item=}->{index=}, {new_combo_options[:2]}...\n")
+        return (new_combo_options, index)
+
+
+    def highlight_row_by_index(self, table_widget:QTableWidget, row_index: int):
+            """
+            Highlights the entire row in the QTableWidget.
+            Args: row_index: The zero-based index of the row to highlight.
+            """
+            table_widget.clearSelection()
+            # SelectionBehavior=SelectRows, so any col highlights the whole row (here, col 0 for convenience).
+            table_widget.setCurrentCell(row_index, 0)
+            # table_widget.scrollToItem(self.table_widget.item(row_index, 0))
+
 
     def show_help_topic(self, sender_label: ClickableLabel):
         """Slot runs when label is clicked, accessing custom property."""
         link = sender_label.help_txt
         self.caller.handle_internal_link(QUrl(f"#{link}"))
         # self.display.setText(link)
-        print(f"... the link is: #{link}")
+        print(f"--- the link is: #{link}")
 
+    @property
+    def row_count(self) -> int:
+        return len(self.excel_rows)
+
+    @property
+    def column_count(self) -> int:
+        return len(self.excel_rows[0])
 
     @property
     def current_record_is_new(self) -> int:
@@ -802,29 +893,20 @@ class Editor(QWidget):
         # print("OK... data passes as valid for submission...")
         for input_widget in self.inputs:
             data.append(self.get_input_data(input_widget))
-            # if isinstance(input_widget, QLineEdit):
-            #     data.append(input_widget.text())
-            # elif isinstance(input_widget, QTextEdit):
-            #     data.append(input_widget.toPlainText())
-            # elif isinstance(input_widget, QComboBox):
-            #     data.append(input_widget.currentText())
-            # else:
-            #     print(
-            #         f"Huston, we have a problem with submitting record no. {self.current_row_index}"
-            #     )
         if self.current_record_is_new:
             # print(f"***{self.has_records=}, record count: {self.record_count} {data=}")
             if self.has_records:
                 self.excel_rows.append(data)
             else:
                 self.excel_rows = [data]
+                self.headers = []
                 self.has_records = True
             self.current_row_index = self.index_of_last_record
             self.update_title_with_record_number()
         else:
             ## Update existing record
             self.current_row = data
-        self.save_as_csv()
+        self.save_as_csv(self.settings.out_file)
         self.update_nav_buttons()
         self.load_record_into_gui(self.current_row)
         return True
@@ -873,25 +955,55 @@ class Editor(QWidget):
     def go_to_next_record(self) -> None:
         self.update_current_position("forwards")
 
-    # def saledates_action(self) -> None:
-    #     # print("sales_date filled in!!")
-    #     sender = self.sender()
-    #     # sender = self.inputs[COL.sale_dates.value]
-    #     pubdate = self.inputs[COL.pub_year.value]
-    #     if isinstance(sender, QLineEdit) and isinstance(pubdate, QLineEdit):
-    #         if not pubdate.text():
-    #             year_of_pub = sender.text().strip()[:4]
-    #             # print(f">>>>>>>>> {year_of_pub}")
-    #             pubdate.setText(f"{year_of_pub}?")
-    #     else:
-    #         print("Can't access salecode or pubdate fields...")
+    def go_to_record_number(self, record_number:int) -> None:
+        self.update_current_position("exact", record_number)
 
-    # def update_title_with_record_number(self, text="", prefix="Record no. "):
+    def update_current_position(self, direction, record_number=-1) -> None:
+        # print(f">>>{self.record_count=}, {self.current_row_index=}, {self.current_record_is_new=}, {self.has_records=} {self.all_text_is_saved=}")
+        if not self.all_text_is_saved and self.choose_to_abort_on_unsaved_text():
+            return
+        # index_of_last_record = len(self.excel_rows) - 1
+        match direction:
+            case "first":
+                self.current_row_index = 0
+            case "last":
+                self.current_row_index = self.index_of_last_record
+            case "back":
+                if self.current_row_index > 0:
+                    self.current_row_index -= 1
+            case "exact" if record_number >=0:
+                if record_number < self.column_count:
+                    self.current_row_index = record_number
+            case _:
+                if self.current_row_index < self.index_of_last_record:
+                    self.current_row_index += 1
+        # msg = str(self.current_row)
+        msg = self.get_human_readable_record_number()
+        msg += self.update_nav_buttons()
+        self.update_title_with_record_number(msg)
+        # self.load_record_into_gui(self.excel_rows[self.current_row_index])
+        self.load_record_into_gui(self.current_row)
+        # self.all_text_is_saved = True
+
+
     def update_title_with_record_number(self, prefix="Record no. "):
         text = f"{self.get_human_readable_record_number()} of {self.record_count}"
-        status = " **locked**" if self.record_is_locked else " (editable)"
+        # status = " **locked**" if self.record_is_locked else " (editable)"
+        if self.settings.flavour["locking_is_enabled"]:
+            if self.record_is_locked:
+                status = " **locked**"
+            else:
+                status =" (editable)"
+        else:
+            status = ""
         # print(f"title >>> {self.record_is_locked=}, {status}")
-        self.caller.setWindowTitle(f"<file: {self.settings.in_file}.new.csv>: {prefix}{text}{status}")
+        # self.caller.setWindowTitle(f"<file: {self.settings.in_file}.new.csv>: {prefix}{text}{status}")
+        if self.has_records:
+            # file = self.settings.in_file
+            file = self.settings.out_file
+        else:
+            file = "*unsaved*"
+        self.caller.setWindowTitle(f"FILE: {file} -- {prefix}{text}{status}")
         # self.update_input_styles()
 
     def add_signal_to_fire_on_text_change(self):
@@ -902,7 +1014,9 @@ class Editor(QWidget):
                 input.textEdited.connect(self.handle_text_change)
             elif isinstance(input, QTextEdit):
                 input.textChanged.connect(self.handle_text_change)
-            ## TODO: add support for combo boxes
+            elif isinstance(input, QComboBox):
+                input.currentTextChanged.connect(self.handle_text_change)
+
 
     def handle_text_change(self) -> None:
         # print(f"Text changed...{datetime.datetime.now()}")
@@ -914,9 +1028,13 @@ class Editor(QWidget):
         elif isinstance(sender, QTextEdit):
             sender.setStyleSheet(self.settings.styles[style])
             sender.textChanged.disconnect(self.handle_text_change)
+        elif isinstance(sender, QComboBox):
+            sender.setStyleSheet(self.settings.styles[style])
+            sender.currentTextChanged.disconnect(self.handle_text_change)
         else:
             print("Huston, we have a problem with text input...")
         self.all_text_is_saved = False
+
 
     def load_record_into_gui(self, row_to_load:list | None=None) -> None:
         """
@@ -926,13 +1044,17 @@ class Editor(QWidget):
         NB. the order of the inputs in self.inputs matches the column order
         ...but the display order does not necessarily match
         """
-        for i, input_widget in enumerate(self.inputs):
-            data = "" if not row_to_load else row_to_load[i]
-            print(f"\t%% load into gui: {input_widget.objectName()} -> {data}")
-            self.load_record(input_widget, data)
+        # need_to_load_table = True
+        for col_i, input_widget in enumerate(self.inputs):
+            cell_contents = "" if not row_to_load else row_to_load[col_i]
+            self.load_record(input_widget, cell_contents)
+            input_widget.setStyleSheet(self.settings.styles["input_active"])
+        self.load_table(self.tableView, self.excel_rows, self.headers)
+        self.highlight_row_by_index(self.tableView, self.current_row_index)
         self.add_signal_to_fire_on_text_change()
         mode = "lock" if row_to_load else "edit"
         self.toggle_record_editable(mode)
+        self.update_title_with_record_number()
         # print(f">>>>>{mode=}, {row_to_load=}")
         self.all_text_is_saved = True
 
@@ -951,58 +1073,68 @@ class Editor(QWidget):
             for field in self.settings.flavour["fields_to_clear"]:
                 input_widget = self.inputs[field.value]
                 self.load_record(input_widget, "")
-                # if isinstance(field, QComboBox):
-                #     print(f"{field=}")
-
-                #     self.load_combo_options()
-                # else:
-                #     self.inputs[field.value].setText("")
-            # for field, value in self.settings.flavour["fields_to_fill"]:
-            #     self.inputs[field.value].setText(value)
-        # self.all_text_is_saved = False if self.has_records else True
         self.all_text_is_saved = True
-        # self.all_records_are_saved = False
         self.toggle_record_editable("edit")
-        # self.update_title_with_record_number("[new]")
-        # self.has_no_records = False
+        self.update_title_with_record_number()
 
-    def load_record(self, input_widget:QWidget, value:str, options=[]) -> None:
-        # print(f"+++++++++ {input_widget.objectName()}: {input_widget=}")
+    def load_record(self, input_widget:QWidget, value:Any, options=[]) -> None:
+        # caller = inspect.stack()[1].function
+        # print(f"++++++ [load rec] {input_widget.objectName()}: <{input_widget.__class__.__name__}> {value=}, {caller=}")
         if isinstance(input_widget, QComboBox):
-            # self.load_combo_box(input_widget, value, options)
             self.load_combo_box(input_widget, value)
         elif isinstance(input_widget, QLineEdit):
             self.load_line_edit(input_widget, value)
         elif isinstance(input_widget, QTextEdit):
             self.load_text_edit(input_widget, value)
+        # elif isinstance(input_widget, QTableWidget):
+        #     ## the entire table is loaded from scratch, not just a single value, as for others
+        #     self.load_table(input_widget, value)
         else:
             print(f"!!!! Problem: current widget ({type(input_widget)})")
 
-
-    # def load_combo_box(self, combo_box:QComboBox, value:str, options:list[str]) -> None:
     def load_combo_box(self, combo_box:QComboBox, value="") -> None:
         """
         The list of options is populated from the baseName() value
         If a record exists, a value is passed which is rendered as the correct display index
         otherwise, the default of -1 is set as the index
         """
-        name = combo_box.objectName()
-        if name in self.settings.flavour["followers"]:
-            ## need to get the selected value in leader
-            leader_name = self.settings.flavour["dictByFollower"][name]
-            leader = self.leader_inputs[leader_name]
-            match_for_yaml_lookup = leader.currentText()
-        else:
-            match_for_yaml_lookup = name[0].capitalize() + name[1:]  ## name to match to in yaml file
-        if match_for_yaml_lookup:
-            raw_options = self.get_raw_combo_options(match_for_yaml_lookup)
-        else:
-            raw_options = ["TBA"]
+        source = self.get_combo_options_source(combo_box)
+        raw_options = self.get_raw_combo_options(source)
         options, index = self.get_normalized_combo_list(raw_options, value)
         # print(f"load_combo_box {combo_box.objectName()} >>> {match_for_yaml_lookup=}: {value=}, {index=}, {options[:2]=}...\n")
         combo_box.clear()
         combo_box.addItems(options)
         combo_box.setCurrentIndex(index)
+
+    def load_table(self, table:QTableWidget, rows:list[list], headers=[]) -> None:
+        # print(f"   === {rows=}, {headers=}")
+        # if not rows or rows == [[]]:
+        # if not rows:
+        table.setEnabled(True)
+        if not self.has_records:
+            headers = ["empty"]
+            rows = [["no order items added yet"]]
+            table.setEnabled(False)
+        elif rows and not headers:
+            headers = self.headers
+        table.setColumnCount(len(rows[0]))
+        table.setRowCount(len(rows))
+        if headers:
+            table.setHorizontalHeaderLabels(headers)
+        for row_i, row in enumerate(rows):
+            tmp = ""
+            for col_i, column in enumerate(row):
+                table.setItem(row_i, col_i, QTableWidgetItem(column))
+                tmp += f"<{col_i}: {column}> "
+            table.setRowHeight(row_i, 30)
+            # print(f">> row: {row_i}, col: {tmp}")
+        table.cellClicked.connect(self.pass_table_row_index)
+        table.setMinimumHeight(200)
+
+    def pass_table_row_index(self, row, column) -> None:
+        # print(f"$$$$$$$$$ {row=}, {column=}")
+        self.highlight_row_by_index(self.tableView, row)
+        self.go_to_record_number(row)
 
     def load_line_edit(self, input_widget:QLineEdit, value="") -> None:
         input_widget.setText(value)
@@ -1025,8 +1157,6 @@ class Editor(QWidget):
             )
         return data
 
-
-
     def handle_unlock(self) -> None:
         # print(f"... handling unlock (currently {self.record_is_locked=})")
         if self.record_is_locked:
@@ -1037,6 +1167,8 @@ class Editor(QWidget):
             self.toggle_record_editable("lock")
 
     def toggle_record_editable(self, mode="edit") -> None:
+        if not self.settings.flavour["locking_is_enabled"]:
+            return
         Option = namedtuple("Option", ["label_style", "input_style", "locked_status", "btn_text"])
         css = self.settings.styles
         if mode == "edit":
@@ -1057,35 +1189,9 @@ class Editor(QWidget):
             label.setStyleSheet(status.label_style)
         for input in self.inputs:
             input.setStyleSheet(status.input_style)
-            # input.setReadOnly(status.locked_status)
             input.setEnabled(not status.locked_status)
         self.unlock_btn.setText(status.btn_text)
         self.submit_btn.setEnabled(not status.locked_status)
-        self.update_title_with_record_number()
-
-    def update_current_position(self, direction) -> None:
-        # print(f">>>{self.record_count=}, {self.current_row_index=}, {self.current_record_is_new=}, {self.has_records=} {self.all_text_is_saved=}")
-        if not self.all_text_is_saved and self.choose_to_abort_on_unsaved_text():
-            return
-        # index_of_last_record = len(self.excel_rows) - 1
-        match direction:
-            case "first":
-                self.current_row_index = 0
-            case "last":
-                self.current_row_index = self.index_of_last_record
-            case "back":
-                if self.current_row_index > 0:
-                    self.current_row_index -= 1
-            case _:
-                if self.current_row_index < self.index_of_last_record:
-                    self.current_row_index += 1
-        # msg = str(self.current_row)
-        msg = self.get_human_readable_record_number()
-        msg += self.update_nav_buttons()
-        self.update_title_with_record_number(msg)
-        # self.load_record_into_gui(self.excel_rows[self.current_row_index])
-        self.load_record_into_gui(self.current_row)
-        # self.all_text_is_saved = True
 
     def update_nav_buttons(self) -> str:
         # print(f"nav status: {self.record_count=}")
@@ -1122,15 +1228,14 @@ class Editor(QWidget):
         else:
             out = str(number + 1)
         return out
-        # return str(number + 1)
 
     def save_as_csv(self, file_name="") -> None:
         # is_backup_file = bool(file_name)
         headers = [el[3] for el in self.grid.widget_info.values()]
-        write_to_csv(self.settings.out_file, self.excel_rows, headers)
+        # write_to_csv(self.settings.out_file, self.excel_rows, headers)
+        write_to_csv(file_name, self.excel_rows, headers)
         self.all_text_is_saved = True
         # print(f"*** records saved as {self.settings.out_file}")
-
 
     def choose_to_abort_on_unsaved_text(self) -> int:
         # print("unsaved text alert...", s)
@@ -1168,14 +1273,15 @@ class Editor(QWidget):
             self.settings.in_file = self.get_filename_only(file_path)
             self.settings.out_file = self.settings.in_file
             print(f"File Selected: {self.settings.in_file} ({file_path})")
-            headers, self.excel_rows = shared.parse_file_into_rows(Path(file_path))
+            self.headers, self.excel_rows = shared.parse_file_into_rows(Path(file_path))
             if not self.settings.use_default_layout:
                 print("Haven't coded for non-default layout yet!")
                 ## TODO: code for change of layout on file loading (i.e. make a standalone: 'load file and update grid' function)
-            print(f"\n** file dialog -> records: {self.excel_rows}")
+            print(f"\n** file dialog -> records: {len(self.excel_rows)}")
             self.all_text_is_saved = True
             self.has_records = True
-            self.update_current_position("last")
+            # self.update_current_position("last")
+            self.go_to_last_record()
             shared.logger.info(f"Just opened {file_path} containing {self.record_count} records.")
         else:
             print("Selection cancelled.")
@@ -1227,13 +1333,6 @@ class DialogueOkCancel(QDialog):
         layout.addWidget(message)
         layout.addWidget(self.buttonBox)
         self.setLayout(layout)
-
-
-# def launch_gui(grid: Grid, excel_rows: list[list[str]], file_name: str) -> None:
-#     app = QApplication(sys.argv)
-#     window = Editor(grid, excel_rows, file_name)
-#     window.show()
-#     app.exec()
 
 
 def create_max_lengths(rows: list[list[str]]) -> list[int]:
@@ -1317,12 +1416,14 @@ def make_snake_name(text:str):
 def get_settings():
     read_cli_into_settings()
     grid = Grid()
+    headers = []
     if shared.settings.is_existing_file:
         print(f"processing file: {shared.settings.in_file}")
         headers, rows = shared.parse_file_into_rows(Path(shared.settings.in_file))
         if shared.settings.use_default_layout:
             grid.add_bricks_by_template(shared.settings.layout_template)
         else:
+            headers = shared.settings.flavour["headers"]
             max_lengths = create_max_lengths(rows)
             layout = [select_brick_by_content_length(length) for length in max_lengths]
             for id, brick_enum in enumerate(layout):
@@ -1339,19 +1440,19 @@ def get_settings():
     #     drop_csv_suffix(self.settings.out_file)
     # else:
     #     name = self.settings.default_output_filename
-    return (grid, rows)
+    return (grid, rows, headers)
 
 
 if __name__ == "__main__":
     shared.settings.flavour["combo_data"] = open_yaml_file("./app/bodleian.yaml")
     # print(info)
-    grid, rows = get_settings()
+    grid, rows, headers = get_settings()
     app = QApplication(sys.argv)
 #     app.setStyleSheet(
 #         """QComboBox QAbstractItemView {
 #     selection-background-color: #3B82F6;
 #     selection-color: white;
 # } """)
-    window = WindowWithRightTogglePanel(grid, rows, shared.settings)
+    window = WindowWithRightTogglePanel(grid, rows, headers, shared.settings)
     window.show()
     sys.exit(app.exec())
