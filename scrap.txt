@@ -21,3 +21,21 @@ Reporting code 3
 Hold for
 Notify
 Additional information
+
+subject_consultant = (0, "Subject consultant"),
+fund_code = (auto(), "Fund code"),
+order_type = (auto(), "Order type"),
+bib_info = (auto(), "Bibliographic information"),
+creator = (auto(), "Creator"),
+date = (auto(), "Publishing date"),
+isbn = (auto(), "ISBN"),
+library = (auto(), "Library"),
+location = (auto(), "Location"),
+item_policy = (auto(), "Item policy"),
+reporting_code_1 = (auto(), "Reporting code 1"),
+reporting_code_2 = (auto(), "Reporting code 2"),
+reporting_code_3 = (auto(), "Reporting code 3"),
+hold_for = (auto(), "Hold for"),
+notify = (auto(), "Notify"),
+extra_info = (auto(), "Additional order instructions"),
+table_view = (auto(), "Items added to order (click on one to jump to it if you need to amend)"),

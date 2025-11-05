@@ -57,38 +57,48 @@ from PySide6.QtGui import (
 
 
 class COL(Enum):
-    subject_consultant = 0
-    fund_code = auto()
-    order_type = auto()
-    bib_info = auto()
-    # author = auto()
-    # citation = auto()
-    # subject = auto()
-    # other = auto()
-    # type = auto()
-    creator = auto()
-    date = auto()
-    isbn = auto()
-    library = auto()
-    location = auto()
-    item_policy = auto()
-    reporting_code_1 = auto()
-    reporting_code_2 = auto()
-    reporting_code_3 = auto()
-    hold_for = auto()
-    notify = auto()
-    additional_info = auto()
-    # start = 0
+    @staticmethod
+    def _generate_next_value_(count):
+        return count
+
+    def __new__(cls, title: str):
+        member = object.__new__(cls)
+        member._value_ = cls._generate_next_value_(len(cls.__members__))
+        member.title = title
+        return member
+
+    def __init__(self, title: str):
+            self.title = title
+
+    Subject_consultant = "Subject consultant"
+    Fund_code = "Fund code"
+    Order_type = "Order type"
+    Bib_info = "Bibliographic information"
+    Creator = "Creator"
+    Date = "Publishing date"
+    Isbn = "ISBN"
+    Library = "Library"
+    Location = "Location"
+    Item_policy = "Item policy"
+    Reporting_code_1 = "Reporting code 1"
+    Reporting_code_2 = "Reporting code 2"
+    Reporting_code_3 = "Reporting code 3"
+    Hold_for = "Hold for"
+    Notify = "Notify"
+    Additional_info = "Additional order instructions"
+    Table_view = (
+        "Items added to order (click on one to jump to it if you need to amend)"
+    )
 
 
 combo_lookup = {
-  COL.subject_consultant.name :"Subject_consultant",
-  COL.order_type.name:"Order_type",
-  COL.library.name:"Library",
-  COL.item_policy.name:"Item_policy",
-  COL.reporting_code_1.name:"Reporting_code_1",
-  COL.reporting_code_2.name:"Reporting_code_2",
-  COL.reporting_code_3.name:"Reporting_code_3",
+  COL.Subject_consultant.name :"Subject_consultant",
+  COL.Order_type.name:"Order_type",
+  COL.Library.name:"Library",
+  COL.Item_policy.name:"Item_policy",
+  COL.Reporting_code_1.name:"Reporting_code_1",
+  COL.Reporting_code_2.name:"Reporting_code_2",
+  COL.Reporting_code_3.name:"Reporting_code_3",
 }
 
 shared.settings.out_file = f"one_off_order.{str(datetime.datetime.now())[:19].replace(" ", "_").replace(":", "")}.csv"
@@ -97,34 +107,30 @@ shared.settings.help_file = "help_orders.html"
 shared.settings.flavour = {
     "title": "order_form",
     "fields_to_clear": [
-        COL.isbn,
-        COL.reporting_code_1,
-        COL.reporting_code_2,
-        COL.reporting_code_3,
-        COL.notify,
-        COL.hold_for,
-        COL.bib_info,
-        COL.additional_info
+        COL.Isbn,
+        COL.Reporting_code_1,
+        COL.Reporting_code_2,
+        COL.Reporting_code_3,
+        COL.Notify,
+        COL.Hold_for,
+        COL.Bib_info,
+        COL.Additional_info
     ],
     "fields_to_fill": [
         # [COL.sublib, "ARTBL"],
     ],
     "combo_default_text": " >> Choose <<",
     "combo_following_default_text": " (first select ",
-    "leaders": ["subject_consultant", "library"],
-    "followers": ["fund_code", "location"],
-    "headers": ["Subject consultant", "Fund code", "Order type", "Bibliographic information", "Creator", "Date", "ISBN", "Library", "Location", "Item policy", "Reporting code 1", "Reporting code 2", "Reporting code 3", "Hold for", "Notify", "Additional order information", "Items"],
-    # "required": "subject_consultant, fund_code, order_type, library, location, bib_info",
-    "required_fields": [COL.subject_consultant.name, COL.fund_code.name, COL.order_type.name, COL.bib_info.name, COL.library.name, COL.location.name, COL.item_policy.name, COL.bib_info.name],
+    "independent_inputs": [COL.Subject_consultant.name, COL.Order_type.name, COL.Library.name, COL.Item_policy.name, COL.Reporting_code_1.name, COL.Reporting_code_2.name, COL.Reporting_code_3.name],
+    "leaders": [COL.Subject_consultant.name,COL.Library.name],
+    "followers": [COL.Fund_code.name,COL.Location.name],
+    "headers": [member.title for member in COL],
+    "required_fields": [COL.Subject_consultant.name, COL.Fund_code.name, COL.Order_type.name, COL.Bib_info.name, COL.Library.name, COL.Location.name, COL.Item_policy.name, COL.Bib_info.name],
     "validate_always": [],
-    "validate_if_present": [COL.isbn.name, COL.hold_for.name, COL.notify.name],
-    "validation_skip": (COL.additional_info.name, "*dummy*"),
+    "validate_if_present": [COL.Isbn.name, COL.Hold_for.name, COL.Notify.name],
+    "validation_skip": (COL.Additional_info.name, "*dummy*"),
     "locking_is_enabled": False,
 }
-# shared.settings.flavour["listByLeader"] = list(zip(shared.settings.flavour["leaders"], shared.settings.flavour["followers"]))
-# shared.settings.flavour["listByFollower"] = list(zip(shared.settings.flavour["followers"], shared.settings.flavour["leaders"]))
-# shared.settings.flavour["dictByLeader"] = dict(shared.settings.flavour["listByLeader"])
-# shared.settings.flavour["dictByFollower"] = dict(shared.settings.flavour["listByFollower"])
 shared.settings.flavour["dictByLeader"] = dict(zip(shared.settings.flavour["leaders"], shared.settings.flavour["followers"]))
 shared.settings.flavour["dictByFollower"] = dict(zip(shared.settings.flavour["followers"], shared.settings.flavour["leaders"]))
 
@@ -224,31 +230,23 @@ class STATUS(Enum):
 
 default_template = (
     ## non-algorithmic version needs to be: [title, brick-type, start-row, start-col, widget-type=line/area/drop]
-    ("Subject consultant", "subject_consultant", "1:2", 0, 0, "combo"),
-    ("Fund code", "fund_code", "1:2", 1, 0, "combo"),
-    ("Order type", "order_type", "1:2", 2, 0, "combo"),
-    ("Bibliographic information", "bib_info", "2:6", 3, 0, "text"),
-    ("Creator", "creator", "1:2", 7, 0, "line"),
-    ("Publishing date", "date", "1:2", 7, 2, "line"),
-    ("ISBN", "isbn", "1:2", 7, 4, "line"),
-    ("Library", "library", "1:2", 0, 2, "combo"),
-    ("Location", "location", "1:2", 1, 2, "combo"),
-    ("Item policy", "item_policy", "1:2", 2, 2, "combo"),
-    ("Reporting code 1", "reporting_code_1", "1:2", 0, 4, "combo"),
-    ("Reporting code 2", "reporting_code_2", "1:2", 1, 4, "combo"),
-    ("Reporting code 3", "reporting_code_3", "1:2", 2, 4, "combo"),
-    ("Hold for", "hold_for", "1:2", 8, 0, "line"),
-    ("Notify", "notify", "1:2", 9, 0, "line"),
-    ("Additional order instructions", "extra_info", "2:4", 8, 2, "text"),
-    # ("Items",                           "4:6", 10, 0, "table"),
-    (
-        "Items added to order (click on one to jump to it if you need to amend)",
-        "table_view",
-        "4:6",
-        10,
-        0,
-        "table",
-    ),
+    (COL.Subject_consultant, "1:2", 0, 0, "combo"),
+    (COL.Fund_code, "1:2", 1, 0, "combo"),
+    (COL.Order_type, "1:2", 2, 0, "combo"),
+    (COL.Bib_info, "2:6", 3, 0, "text"),
+    (COL.Creator, "1:2", 7, 0, "line"),
+    (COL.Date, "1:2", 7, 2, "line"),
+    (COL.Isbn, "1:2", 7, 4, "line"),
+    (COL.Library, "1:2", 0, 2, "combo"),
+    (COL.Location, "1:2", 1, 2, "combo"),
+    (COL.Item_policy, "1:2", 2, 2, "combo"),
+    (COL.Reporting_code_1, "1:2", 0, 4, "combo"),
+    (COL.Reporting_code_2, "1:2", 1, 4, "combo"),
+    (COL.Reporting_code_3, "1:2", 2, 4, "combo"),
+    (COL.Hold_for, "1:2", 8, 0, "line"),
+    (COL.Notify, "1:2", 9, 0, "line"),
+    (COL.Additional_info, "2:4", 8, 2, "text"),
+    (COL.Table_view, "4:6", 10, 0, "table"),
 )
 
 
@@ -329,29 +327,18 @@ class Grid:
 
     def add_bricks_by_template(self, template: tuple) -> None:
         last_brick = template[-1]
-        lb_title, lb_name, lb_brick_type, lb_start_row, lb_start_col, lb_widget_type = last_brick
-        # lb_start_col = last_brick[2]
+        _, lb_brick_type, lb_start_row, _, _ = last_brick
         lb_height = brick_lookup[lb_brick_type].value.height
-        # max_row = lb_start_col + lb_height
         max_row = lb_start_row + lb_height
         # print(f"@@@ {lb_height=}, {lb_start_row} -> {max_row=}")
         self.rows = [self.make_row() for _ in range(max_row)]
-        for brick_id, (title, name, brick_type, start_row, start_col, widget_type) in enumerate(template):
+        for brick_id, (brick_enum, brick_type, start_row, start_col, widget_type) in enumerate(template):
+            title = brick_enum.title
+            name = brick_enum.name
             brick = brick_lookup[brick_type].value
             self.place_brick_in_grid(brick, brick_id, start_row, start_col)
             self.widget_info[brick_id] = (start_row, start_col, brick, title, name, widget_type)
 
-
-    # def add_bricks_by_template(self, template: tuple) -> None:
-    #     last_brick = template[-1]
-    #     last_brick_start_col = last_brick[2]
-    #     last_brick_height = brick_lookup[last_brick[1]].value.height
-    #     max_row = last_brick_start_col + last_brick_height
-    #     self.rows = [self.make_row() for _ in range(max_row)]
-    #     for brick_id, (title, name, brick_type, start_row, start_col, widget_type) in enumerate(template):
-    #         brick = brick_lookup[brick_type].value
-    #         self.place_brick_in_grid(brick, brick_id, start_row, start_col)
-    #         self.widget_info[brick_id] = (start_row, start_col, brick, title, name, widget_type)
 
     def count_free_spaces_across(self, row, start_col):
         free_spaces = 0
@@ -749,10 +736,9 @@ class Editor(QWidget):
     def add_custom_behaviour(self) -> None:
         if self.settings.flavour["title"] == "order_form":
             ## set up lists of leaders & followers & populate drop down lists for leaders
-            independent_inputs = ["subject_consultant", "order_type", "library", "item_policy", "reporting_code_1", "reporting_code_2", "reporting_code_3"]
             for input_widget in [widget for widget in self.inputs if isinstance(widget, QComboBox)]:
                 name = input_widget.objectName()
-                if name in independent_inputs:
+                if name in self.settings.flavour["independent_inputs"]:
                     # print(f" ======= {name} is independent")
                     raw_options = self.get_raw_combo_options(self.transform_into_yaml_lookup(name))
                     options, _ = self.get_normalized_combo_list(raw_options)
@@ -779,9 +765,9 @@ class Editor(QWidget):
 
     def transform_into_yaml_lookup(self, object_name:str) -> str:
         ## transforms the objectName of the widget so that it matches the yaml file
-        name = combo_lookup[object_name]
-        # print(f"\ttransform: {object_name} -> {name}")
-        return name
+        # name = combo_lookup[object_name]
+        # return name
+        return object_name
 
 
     def get_combo_options_source(self, combo_box:QComboBox) -> str:
@@ -905,8 +891,7 @@ class Editor(QWidget):
             optional_msg = ""
         data = []
         data_are_valid = self.data_is_valid(optional_msg)
-        # if not self.data_is_valid(optional_msg):
-        print(f">>>>>>>>>> {data_are_valid=}")
+        # print(f">>>>>>>>>> {data_are_valid=}")
         if not data_are_valid:
             return False
         # print("OK... data passes as valid for submission...")
@@ -1206,19 +1191,6 @@ class Editor(QWidget):
         # self.inputs[input_widget.value].setText(value)
         input_widget.setPlainText(value)
 
-    # def get_input_data(self, input_widget:QWidget) -> str:
-    #     data = ""
-    #     if isinstance(input_widget, QLineEdit):
-    #         data = input_widget.text()
-    #     elif isinstance(input_widget, QTextEdit):
-    #         data = input_widget.toPlainText()
-    #     elif isinstance(input_widget, QComboBox):
-    #         data = input_widget.currentText()
-    #     else:
-    #         print(
-    #             f"Huston, we have a problem with submitting record no. {self.current_row_index}"
-    #         )
-    #     return data
 
     def handle_unlock(self) -> None:
         # print(f"... handling unlock (currently {self.record_is_locked=})")
@@ -1356,16 +1328,6 @@ class Editor(QWidget):
             file_name = file_path
         return file_name
 
-    # def drop_csv_suffix(self, name):
-    #     def trim_csv(name):
-    #         if name[1] in ["csv", "tsv", "new"]:
-    #             return trim_csv(name[1:])
-    #         else:
-    #             return name[1:]
-    #     file_name = name.split(".")
-    #     eman = list(reversed(file_name))
-    #     out = trim_csv(eman)
-    #     return ".".join(list(reversed(out)))
 
     def drop_csv_suffix(self, name:str) -> str:
         file_name = name.split(".")
@@ -1452,17 +1414,6 @@ def read_cli_into_settings() -> None:
         shared.settings.in_file = shared.settings.default_output_filename
     shared.settings.layout_template = default_template
 
-
-# def drop_csv_suffix(name:str) -> str:
-#     def trim_csv(name):
-#         if name[1] in ["csv", "tsv"]:
-#             return trim_csv(name[1:])
-#         else:
-#             return name[1:]
-#     file_name = name.split(".")
-#     eman = list(reversed(file_name))
-#     out = trim_csv(eman)
-#     return ".".join(list(reversed(out)))
 
 def save_as_yaml(file:str, data) -> None:
     with open(file, mode="wt", encoding="utf-8") as f:
