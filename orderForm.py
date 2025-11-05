@@ -86,9 +86,7 @@ class COL(Enum):
     Hold_for = "Hold for"
     Notify = "Notify"
     Additional_info = "Additional order instructions"
-    Table_view = (
-        "Items added to order (click on one to jump to it if you need to amend)"
-    )
+    # Table_view = "Items added to order (click on one to jump to it if you need to amend)"
 
 
 combo_lookup = {
@@ -246,7 +244,7 @@ default_template = (
     (COL.Hold_for, "1:2", 8, 0, "line"),
     (COL.Notify, "1:2", 9, 0, "line"),
     (COL.Additional_info, "2:4", 8, 2, "text"),
-    (COL.Table_view, "4:6", 10, 0, "table"),
+    # (COL.Table_view, "4:6", 10, 0, "table"),
 )
 
 
@@ -372,9 +370,9 @@ class WindowWithRightTogglePanel(QWidget):
     saved_editor_width = 0
     GRID_BUFFER = 3  # Buffer for layout margins/spacing
 
-    def __init__(self, grid:Grid, rows:list[list[str]], headers:list[str], settings:shared.Settings ):
+    def __init__(self, grid:Grid, rows:list[list[str]], settings:shared.Settings ):
+        # print(f"<><><><>init:{headers=}")
         super().__init__()
-
         self.main_grid = QGridLayout(self)
         self.main_grid.setContentsMargins(0, 0, 0, 0)
         # self.main_grid.setSpacing(3)
@@ -384,7 +382,7 @@ class WindowWithRightTogglePanel(QWidget):
         self.HELP_PANEL_WIDTH = 350
 
         # --- 1. Main Editor Setup (Column 0, Expanding) ---
-        self.edit_panel_widget = Editor(grid, rows, headers, settings.in_file, self, settings)
+        self.edit_panel_widget = Editor(grid, rows, settings.in_file, self, settings)
         self.edit_panel_widget.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
@@ -576,7 +574,7 @@ class Editor(QWidget):
         "label": QLabel,
         "table": QTableWidget,
     }
-    def __init__(self, grid: Grid, excel_rows: list[list[str]], headers: list[str], file_name: str, caller:WindowWithRightTogglePanel, settings:shared.Settings):
+    def __init__(self, grid: Grid, excel_rows: list[list[str]], file_name: str, caller:WindowWithRightTogglePanel, settings:shared.Settings):
         super().__init__()
         self.setWindowTitle("Editor")
         self.setGeometry(100, 100, 1200, 800)
@@ -589,15 +587,18 @@ class Editor(QWidget):
         self.nav_grouped_layout = QGroupBox("Navigation")
 
         self.grid = grid
-        self.headers_backup = headers
+        # self.headers_backup = headers
+        self.headers = self.settings.flavour["headers"]
         if excel_rows:
             self.excel_rows = excel_rows
-            self.headers = headers
+            # self.headers = headers
             self.has_records = True
         else:
             self.excel_rows = [["" for _ in range(len(shared.settings.layout_template))]]
-            self.headers = []
+            # self.headers = []
+            # self.headers = headers
             self.has_records = False
+        # print(f"<><><>{self.headers=}{self.settings.flavour["headers"]}")
 
         self.file_name = file_name
         self.short_file_name = self.get_filename_only(settings.in_file)
@@ -627,7 +628,7 @@ class Editor(QWidget):
         self.inputs:list[QWidget] = []
         self.follower_inputs:dict[str, QComboBox] = {}
         self.leader_inputs:dict[str, QComboBox] = {}
-        self.tableView:QTableWidget
+        # self.tableView:QTableWidget
         for id, (start_row, start_col, brick, title, name, widget_type) in self.grid.widget_info.items():
             row_span, col_span = brick.height, brick.width
             # widget_name = make_snake_name(title)
@@ -641,12 +642,13 @@ class Editor(QWidget):
                 elif name in self.settings.flavour["leaders"]:
                     self.leader_inputs[name] = tmp_input
                 tmp_input.setStyleSheet(self.settings.styles["combo_dropdown"])
-            if isinstance(tmp_input, QTableWidget):
-                tmp_input.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-                tmp_input.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-                self.tableView = tmp_input
-            else:
-                self.inputs.append(tmp_input)
+            # if isinstance(tmp_input, QTableWidget):
+            #     tmp_input.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+            #     tmp_input.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+            #     self.tableView = tmp_input
+            # else:
+            #     self.inputs.append(tmp_input)
+            self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
             # tmp_label = QLabel(title)
@@ -654,7 +656,8 @@ class Editor(QWidget):
                 title = f"*{title}*"
             # print(f" >>>> {name}-> {title}")
             tmp_label = ClickableLabel(title)
-            tmp_label.help_txt = title.lower().replace(" ", "_")
+            # tmp_label.help_txt = title.lower().replace(" ", "_")
+            tmp_label.help_txt = name
             tmp_label.clicked.connect(lambda checked=False, l=tmp_label: self.show_help_topic(l))
             font = tmp_label.font()
             font.setBold(True)
@@ -673,6 +676,14 @@ class Editor(QWidget):
         # self.add_signal_to_fire_on_text_change()
 
     def build_nav_buttons(self, caller, nav_grid):
+        self.tableView = QTableWidget()
+        self.tableView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.tableView.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        tmp_label = QLabel("Items added to order (click on one to jump to it if you need to amend)")
+        table_wrapper = QVBoxLayout()
+        table_wrapper.addWidget(tmp_label)
+        table_wrapper.addWidget(self.tableView)
+
         self.submit_btn = QPushButton("Save item")
         self.submit_btn.setStyleSheet("font-weight: bold;")
         self.submit_btn.clicked.connect(self.handle_submit)
@@ -716,6 +727,7 @@ class Editor(QWidget):
         last_id = len(grid.widget_info) - 1
         last_widget = grid.widget_info[last_id]
         last_row = last_widget[0] + last_widget[2].height
+        ## addWidget(widget, row, column, rowspan, colspan)
         nav_grid.addWidget(self.first_btn, last_row, 0, 1, 1)
         nav_grid.addWidget(self.prev_btn, last_row, 1, 1, 1)
         nav_grid.addWidget(self.next_btn, last_row, 2, 1, 1)
@@ -731,6 +743,8 @@ class Editor(QWidget):
         # nav_grid.addWidget(self.marc_btn, last_row, 2, 1, 1)
         nav_grid.addWidget(self.close_btn, last_row, 2, 1, 1)
         nav_grid.addWidget(self.help_btn, last_row, 3, 1, 1)
+        last_row += 1
+        nav_grid.addWidget(self.tableView, last_row, 0, 1, 6)
         self.nav_grouped_layout.setLayout(nav_grid)
 
     def add_custom_behaviour(self) -> None:
@@ -905,7 +919,7 @@ class Editor(QWidget):
             else:
                 self.excel_rows = [data]
                 # self.headers = []
-                self.headers = self.headers_backup
+                # self.headers = self.headers_backup
                 self.has_records = True
             self.current_row_index = self.index_of_last_record
             self.update_title_with_record_number()
@@ -1103,7 +1117,7 @@ class Editor(QWidget):
         mode = "lock" if row_to_load else "edit"
         self.toggle_record_editable(mode)
         self.update_title_with_record_number()
-        print(f">>>>>{mode=}, {row_to_load=} {self.has_records=}, {self.headers}, {self.headers_backup}")
+        # print(f">>>>>{mode=}, {row_to_load=} {self.has_records=}, {self.headers}")
         self.all_text_is_saved = True
 
     def clear_form(self) -> None:
@@ -1159,23 +1173,32 @@ class Editor(QWidget):
         # if not rows or rows == [[]]:
         # if not rows:
         table.setEnabled(True)
-        if not self.has_records:
-            headers = ["empty"]
-            rows = [["no order items added yet"]]
-            table.setEnabled(False)
-        elif rows and not headers:
+        if not headers:
             headers = self.headers
+        if not self.has_records:
+            # headers = ["empty"]
+            # rows = [["no order items added yet"]]
+            rows = [["" for _ in headers]]
+            # rows[0][0] = "no order items added yet"
+            table.setEnabled(False)
+        # elif rows and not headers:
+            # headers = self.headers
+        # table.setSpan(0,0,0, len(self.headers))
         table.setColumnCount(len(rows[0]))
         table.setRowCount(len(rows))
+        # print(f"<><>{self.headers=}")
         if headers:
             table.setHorizontalHeaderLabels(headers)
-        for row_i, row in enumerate(rows):
-            tmp = ""
-            for col_i, column in enumerate(row):
-                table.setItem(row_i, col_i, QTableWidgetItem(column))
-                tmp += f"<{col_i}: {column}> "
-            table.setRowHeight(row_i, 30)
-            # print(f">> row: {row_i}, col: {tmp}")
+        if self.has_records:
+            for row_i, row in enumerate(rows):
+                for col_i, column in enumerate(row):
+                    table.setItem(row_i, col_i, QTableWidgetItem(column))
+                table.setRowHeight(row_i, 30)
+        else:
+            table.setSpan(0,0,1, len(self.headers))
+            empty_cell = QTableWidgetItem("no order items added yet")
+            table.setItem(0,0, empty_cell)
+            # empty_cell.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         table.cellClicked.connect(self.pass_table_row_index)
         table.setMinimumHeight(200)
 
@@ -1467,6 +1490,7 @@ if __name__ == "__main__":
 #     selection-background-color: #3B82F6;
 #     selection-color: white;
 # } """)
-    window = WindowWithRightTogglePanel(grid, rows, headers, shared.settings)
+    print(f"headers: {headers}")
+    window = WindowWithRightTogglePanel(grid, rows, shared.settings)
     window.show()
     sys.exit(app.exec())
