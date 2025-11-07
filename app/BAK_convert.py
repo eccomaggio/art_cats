@@ -6,11 +6,18 @@ from dataclasses import dataclass, fields, field
 from abc import ABC, abstractmethod
 from typing import TypeAlias, Any
 from collections.abc import Callable
+
 # from pprint import pprint
+# import sys
+# from datetime import datetime, timezone
 from datetime import date, datetime, timezone
 import re
 from pathlib import Path
 import logging
+
+# from pyisbn import Isbn
+# from pydantic import BaseModel, field_validator, ValidationError
+# from pydantic_extra_types.isbn import ISBN
 
 
 def make_directory(directory_path:str) -> Path:
@@ -255,6 +262,7 @@ class Record:
     pub_year_is_approx: bool
     extent_is_approx: bool
     timestamp: datetime
+    # timestamp: date
 
     sequence_number: int
     links: list[Field | None]
@@ -866,10 +874,6 @@ def norm_pages(pages_raw: str) -> str:
     return pages
 
 
-def norm_copyright(raw: str) -> str:
-    return raw.replace("©","").strip()
-
-
 def norm_year(year_raw: str) -> str:
     year = strip_unwanted(r"[\[\]]", year_raw)
     return year
@@ -985,8 +989,7 @@ def parse_row(row: list[str], current_time: datetime) -> Record:
     place = next(cols)
     publisher = next(cols)
     pub_date, pub_date_is_approx = check_for_approx(norm_year(next(cols)))
-    # copyright_ = next(cols).replace("©", "").strip()
-    copyright_ = norm_copyright(next(cols))
+    copyright_ = next(cols).replace("©", "").strip()
     extent, extent_is_approx = check_for_approx(norm_pages(next(cols)))
     size = norm_size(next(cols))
     series_title = next(cols)
@@ -1240,7 +1243,7 @@ def build_264(record: Record) -> Result:
     if record.copyright:
         # _copyright = Field(tag, i1, 4, [Subfield(f"\u00a9 {record.copyright}", "c")], 2)
         _copyright = Field(
-            tag, i1, 4, [Subfield(f"{copyright_symbol}{record.copyright}", "c")], 2
+            tag, i1, 4, [Subfield(f"{copyright_symbol} {record.copyright}", "c")], 2
         )
         result = Result([content, _copyright], error)
     else:
@@ -1406,8 +1409,6 @@ def build_246(record: Record) -> Result:  ##optional
             record.parallel_title.original,
             record.parallel_subtitle.original,
         )
-        lang = record.langs[1]
-        index_of_article, parallel_title = check_for_nonfiling(parallel_title, lang)
     else:
         parallel_title, parallel_subtitle = "", ""
     if parallel_title:
@@ -1453,16 +1454,10 @@ def build_500(record: Record) -> Result:  ##optional
     tag = 500
     i1 = -1
     i2 = -1
-    # if record.notes:
-    #     content = Content(Subfield(record.notes, "a"))
-    #     if content.can_accept_period():
-    #         # content.add(Punctuation("."))
-    #         content.add(ISBD.period)
-    #     result = Result(Field(tag, i1, i2, content), None)
     if record.notes:
-        notes_text = record.notes[0] + record.notes[1:]
-        content = Content(Subfield(notes_text, "a"))
+        content = Content(Subfield(record.notes, "a"))
         if content.can_accept_period():
+            # content.add(Punctuation("."))
             content.add(ISBD.period)
         result = Result(Field(tag, i1, i2, content), None)
     else:
@@ -1546,13 +1541,9 @@ def check_for_nonfiling(title: str, lang: str = "eng") -> tuple[int, str]:
         result = (nonfiling, title.replace(break_char, "", 1))
     else:
         for article in nonfiling_words[lang]:
-            # test = re.match(f"({article}\\s+[^\\w\\s]?)\\w", title, re.I)
-            test = re.match(f"({article}\\s+)[^\\w\\s]?\\w", title, re.I)
+            test = re.match(f"({article}\\s?[^\\w\\s]?)\\w", title, re.I)
             if test:
-                index = test.span()[1] - 1
-                title_without_initial_article = title[index:]
-                result = (index, title_without_initial_article)
-                # result = (test.span()[1] - 1, title)
+                result = (test.span()[1] - 1, title)
                 break
     return result
 
@@ -1562,7 +1553,7 @@ def variable_control_field():
 
 
 def build_marc_records(records: list[Record]) -> list[marc_record]:
-    ## NB. This differs from the non-pymarc version
+    # marc_records: list[list[Field]] = []
     marc_records: list[marc_record] = []
     for record in records:
         # print(record, type(record))

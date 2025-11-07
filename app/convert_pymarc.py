@@ -1,11 +1,14 @@
-from openpyxl import load_workbook  # type: ignore
+from openpyxl import load_workbook, Workbook  # type: ignore
+from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.worksheet.worksheet import Worksheet
 from pymarc import Record as PyRecord, Indicators, Field, Subfield, Indicators, TextWriter, MARCWriter
-from dataclasses import dataclass, fields
-from abc import ABC, abstractmethod
-from typing import TypeAlias
+import csv
+from dataclasses import dataclass, fields, field
+# from abc import ABC, abstractmethod
+from typing import TypeAlias, Any
 from collections.abc import Callable
 # from pprint import pprint
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import re
 from pathlib import Path
 import logging
@@ -27,11 +30,36 @@ def make_directory(directory_path):
     return directory
 
 
-excel_file_path = "excel_files"
-excel_file_dir = make_directory(excel_file_path)
-output_files_path = "marc21_files"
-output_file_dir = make_directory(output_files_path)
+@dataclass
+class Settings:
+    in_file_full = ""
+    in_file = ""
+    out_file = ""
+    default_output_filename = "output"
+    # data_dir = "excel_files"
+    # output_dir = "marc21_files"
+    app_dir = "app"
+    data_dir = "input_files"
+    output_dir = "output_files"
+    use_default_layout = True
+    is_existing_file = True
+    layout_template: tuple = ()
+    first_row_is_header = True
+    flavour: dict[str, Any] = field(default_factory=dict)
+    styles: dict[str, str]= field(default_factory=dict)
+    help_file = ""
+    backup_file = "backup.bak"
+
+
+# excel_file_path = "excel_files"
+# excel_file_dir = make_directory(excel_file_path)
+# output_files_path = "marc21_files"
+# output_file_dir = make_directory(output_files_path)
 BLANK = " "
+logger = logging.getLogger(__name__)
+settings = Settings()
+excel_file_dir = make_directory(settings.data_dir)
+output_file_dir = make_directory(settings.output_dir)
 
 
 logging.basicConfig(
@@ -438,7 +466,6 @@ def norm_place(place_raw: str) -> str:
         "northernireland": "nik",
         "scotland": "stk",
         "wales": "wlk",
-
         "alberta": "abc",
         "britishcolumbia": "bcc",
         "manitoba": "mbc",
@@ -458,7 +485,6 @@ def norm_place(place_raw: str) -> str:
         "saskatchewan": "snc",
         "yukonterritory": "ykc",
         "yukon": "ykc",
-
         "alabama": "alu",
         "alaska": "aku",
         "arizona": "azu",
@@ -513,7 +539,6 @@ def norm_place(place_raw: str) -> str:
         "westvirginia": "wvu",
         "wisconsin": "wiu",
         "wyoming": "wyu",
-
         "australiancapitalterritory": "aca",
         "queensland": "qea",
         "tasmania": "tma",
@@ -522,7 +547,6 @@ def norm_place(place_raw: str) -> str:
         "newsouthwales": "xna",
         "northernterritory": "xoa",
         "southaustralia": "xra",
-
         "al": "alu",
         "ak": "aku",
         "az": "azu",
@@ -574,7 +598,6 @@ def norm_place(place_raw: str) -> str:
         "wv": "wvu",
         "wi": "wiu",
         "wy": "wyu",
-
         "act": "aca",
         "qld": "qea",
         "tas": "tma",
@@ -583,7 +606,6 @@ def norm_place(place_raw: str) -> str:
         "nsw": "xna",
         "nt": "xoa",
         "sa": "xra",
-
         "alb": "abc",
         "bc": "bcc",
         "man": "mbc",
@@ -670,9 +692,14 @@ def norm_dates(raw: str) -> list[str]:
     return result
 
 
+# def norm_size(raw: str) -> int:
+#     raw = strip_unwanted(r"cm",raw)
+#     return int(raw)
+
 def norm_size(raw: str) -> int:
-    raw = strip_unwanted(r"cm",raw)
-    return int(raw)
+    raw = strip_unwanted(r"cm", raw)
+    clean_value = int(raw) if raw.isnumeric() else -1
+    return clean_value
 
 
 def norm_pages(pages_raw: str) -> str:
@@ -718,13 +745,23 @@ def check_for_approx(raw_string: str) -> tuple[str, bool]:
     """
     take a question mark in any position to mean the information is not certain.
     """
-    clean, is_approx =  re.subn(r"\?", "", raw_string)
-    return (clean.strip(), bool(is_approx))
+    # clean, is_approx =  re.subn(r"\?", "", raw_string)
+    # return (clean.strip(), bool(is_approx))
+    clean, is_approx = re.subn(r"\?", "", raw_string)
+    clean = trim_mistaken_decimals(clean).strip()
+    return (clean, bool(is_approx))
 
-def trim_mistaken_decimals(string: str) -> str:
-    if string.endswith(".0"):
-        string = string[:-2]
-    return string
+
+# def trim_mistaken_decimals(string: str) -> str:
+#     if string.endswith(".0"):
+#         string = string[:-2]
+#     return string
+def trim_mistaken_decimals(value: str | int) -> str:
+    if not isinstance(value, str):
+        value = str(value)
+    if value.endswith(".0"):
+        value = value[:-2]
+    return value
 
 
 def create_date_list(dates_raw: str) -> list[str]:
@@ -733,7 +770,28 @@ def create_date_list(dates_raw: str) -> list[str]:
     return dates
 
 
-def extract_from_excel(excel_sheet) -> list[worksheet_row]:
+# def extract_from_excel(excel_sheet) -> list[worksheet_row]:
+#     """
+#     excel seems pretty random in how it assigns string/int/float, so...
+#     this routine coerces everything into a string,
+#     strips ".0" from misrecognised floats
+#     & removes trailing spaces
+#     """
+#     sheet = []
+#     for excel_row in excel_sheet.iter_rows(min_row=2, values_only=True):
+#         row = []
+#         if not excel_row[0]:
+#             break
+#         for col in excel_row:
+#             if col:
+#                 data = str(col).strip()
+#                 data = trim_mistaken_decimals(data)
+#             else:
+#                 data = ""
+#             row.append(data)
+#         sheet.append(row)
+#     return sheet
+def extract_from_excel(excel_sheet) -> tuple[list[str], list[worksheet_row]]:
     """
     excel seems pretty random in how it assigns string/int/float, so...
     this routine coerces everything into a string,
@@ -741,19 +799,29 @@ def extract_from_excel(excel_sheet) -> list[worksheet_row]:
     & removes trailing spaces
     """
     sheet = []
-    for excel_row in excel_sheet.iter_rows(min_row=2, values_only=True):
-        row = []
-        if not excel_row[0]:
-            break
-        for col in excel_row:
-            if col:
-                data = str(col).strip()
-                data = trim_mistaken_decimals(data)
-            else:
-                data = ""
-            row.append(data)
-        sheet.append(row)
-    return sheet
+    headers = []
+    # for excel_row in excel_sheet.iter_rows(min_row=2, values_only=True):
+    for i, excel_row in enumerate(excel_sheet.iter_rows(min_row=1, values_only=True)):
+        if not excel_row[0] and not excel_row[1]:
+            break  ## needed as openpyxl keeps spitting out empty rows at the end
+        row = normalize_row(excel_row)
+        if i == 0 and settings.first_row_is_header:
+            headers = row
+        else:
+            sheet.append(row)
+    return (headers, sheet)
+
+
+def normalize_row(row: list) -> list:
+    clean_row = []
+    for col in row:
+        if col:
+            data = str(col).strip()
+            data = trim_mistaken_decimals(data)
+        else:
+            data = ""
+        clean_row.append(data)
+    return clean_row
 
 
 def parse_rows_into_records(sheet: list[worksheet_row]) -> list[Record]:
@@ -872,6 +940,8 @@ def build_005(record: Record) -> Result:
 
 def build_008(record: Record) -> Result:
     """place & year of pub & main language"""
+    # blank = "\\"
+    blank = " "
     tag = 8
     t = record.timestamp
     date_entered_on_file = str(t.year)[2:] + str(t.month).zfill(2) + str(t.day).zfill(2)
@@ -879,9 +949,11 @@ def build_008(record: Record) -> Result:
     date_1 = record.pub_year
     date_2 = 4 * "|"
     region = check_for_detailed_region(record.country_code, record.state, record.place)
-    place_of_pub = f"{region:{"\\"}<3}"
+    # place_of_pub = f"{region:{"\\"}<3}"
+    place_of_pub = f"{region:{blank}<3}"
     books_configuration = [14*"|", " ", 2*"|"]
-    lang = f"{record.langs[0]:{"\\"}<3}"
+    # lang = f"{record.langs[0]:{"\\"}<3}"
+    lang = f"{record.langs[0]:{blank}<3}"
     modified_and_cataloging = 2*"|"
     content = [date_entered_on_file,  pub_status,  date_1,  date_2,  place_of_pub,  *books_configuration,  lang,  modified_and_cataloging]
     result = Result(Field(tag=seq_num(tag), data="".join(content)), None)
@@ -972,7 +1044,7 @@ def build_264(record: Record) -> Result:
     pub_year = Subfield(value=f"[{record.pub_year}?]" if record.pub_year_is_approx else record.pub_year, code="c")
     content = Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=[place, publisher, pub_year])
     if record.copyright:
-        _copyright = Field(tag=seq_num(tag), indicators=Indicators(i1, "4"), subfields=[Subfield(value=f"{copyright_symbol} {record.copyright}", code="c")])
+        _copyright = Field(tag=seq_num(tag), indicators=Indicators(i1, "4"), subfields=[Subfield(value=f"{copyright_symbol}{record.copyright}", code="c")])
         result  = Result([content, _copyright], error)
     else:
         result = Result(content, error)
@@ -1118,12 +1190,16 @@ def build_246(record: Record) -> Result:  ##optional
     has_chinese_parallel_title = bool(record.parallel_title.transliteration)
     linkage: Subfield | None = None
     if has_chinese_parallel_title:
-        parallel_title = record.parallel_title.transliteration
-        parallel_subtitle = record.parallel_subtitle.transliteration
         linkage = deal_with_chinese_titles(record, record.parallel_title.original, record.parallel_subtitle.original, i1, i2, tag)
+        parallel_subtitle = record.parallel_subtitle.transliteration
+        parallel_title = record.parallel_title.transliteration
     elif has_parallel_title:  ## (i.e. Western script)
-        parallel_title = record.parallel_title.original
+        lang = record.langs[1]
         parallel_subtitle = record.parallel_subtitle.original
+        parallel_title = record.parallel_title.original
+        parallel_title_with_article = parallel_title
+        index_of_article, parallel_title = check_for_nonfiling(parallel_title, lang)
+        # print(f"\t>>> (has p_t){lang=}: {parallel_title_with_article} -> {parallel_title}")
     else:
         parallel_title, parallel_subtitle = "", ""
     if parallel_title:
@@ -1175,6 +1251,7 @@ def build_500(record: Record) -> Result:  ##optional
     i1, i2 = BLANK, BLANK
     notes_text = add_period_if_necessary(record.notes)
     if notes_text:
+        notes_text = notes_text[0] + notes_text[1:]
         result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=[Subfield(value=notes_text, code="a")]), None)
     else:
         result = Result(None, (tag, ""))
@@ -1222,8 +1299,11 @@ def check_if_mandatory(result: Result, is_mandatory: bool) -> list[Field] | None
     return output
 
 
+# def line_prefix(numeric_tag: int) -> str:
+#     display_tag = seq_num(numeric_tag)
+    return f"={expand_tag(display_tag)}  "
 def line_prefix(numeric_tag: int) -> str:
-    display_tag = seq_num(numeric_tag)
+    display_tag = "LDR" if numeric_tag == 0 else seq_num(numeric_tag)
     return f"={expand_tag(display_tag)}  "
 
 
@@ -1259,18 +1339,23 @@ def check_for_nonfiling(title: str, lang: str="eng") -> tuple[str,str]:
         result = (str(nonfiling), title.replace(break_char, "", 1))
     else:
         for article in nonfiling_words[lang]:
-            test = re.match(f"({article}\\s?[^\\w\\s]?)\\w", title, re.I)
+            # test = re.match(f"({article}\\s+[^\\w\\s]?)\\w", title, re.I)
+            test = re.match(f"({article}\\s+)[^\\w\\s]?\\w", title, re.I)
             if test:
-                result = (str(test.span()[1] - 1), title)
+                index = test.span()[1] - 1
+                title_without_initial_article = title[index:]
+                result = (str(index), title_without_initial_article)
                 break
     return result
 
 
-def variable_control_field():
-    return (-2, -2)
+# def variable_control_field():
+#     return (-2, -2)
 
 
-def build_pymarc_records(records: list[Record]) -> list[PyRecord]:
+# def build_pymarc_records(records: list[Record]) -> list[PyRecord]:
+def build_marc_records(records: list[Record]) -> list[PyRecord]:
+    ## NB. This differs from the non-pymarc version
     marc_records: list[PyRecord] = []
     for record in records:
         # print(record, type(record))
@@ -1319,7 +1404,8 @@ def apply_marc_logic(record: Record) -> PyRecord:
 
 def write_mrk_files(data: list[PyRecord], file_name: str="output.mrk") -> None:
     out_file = output_file_dir / file_name
-    writer = TextWriter(open(out_file, 'wt'))
+    # writer = TextWriter(open(out_file, 'wt'))
+    writer = TextWriter(open(out_file, "w", newline="", encoding="utf-8"))
     for record in data:
         writer.write(record)
     writer.close()
@@ -1329,41 +1415,186 @@ def write_mrc_binaries(data: list[PyRecord], file_name: str="output.mrc") -> Non
     out_file = output_file_dir / file_name
     writer = MARCWriter(open(out_file,'wb'))
     for record in data:
+        # if record.
         writer.write(record)
     writer.close()
 
 
-def parse_excel_into_rows(excel_file_address: Path) -> list[worksheet_row]:
-    excel_file_name = str(excel_file_address.resolve())
-    worksheet = load_workbook(filename=excel_file_name).active
-    raw_rows = extract_from_excel(worksheet)
-    return raw_rows
+# def parse_excel_into_rows(excel_file_address: Path) -> list[worksheet_row]:
+#     excel_file_name = str(excel_file_address.resolve())
+#     worksheet = load_workbook(filename=excel_file_name).active
+#     raw_rows = extract_from_excel(worksheet)
+#     return raw_rows
+def parse_file_into_rows(
+    file_path: Path,
+) -> tuple[list[str], list[worksheet_row]]:
+    is_excel_file = file_path.suffix.startswith(".xl")
+    if is_excel_file:
+        excel_file_name = str(file_path.resolve())
+        worksheet = load_workbook(filename=excel_file_name).active
+        headers, raw_rows = extract_from_excel(worksheet)
+    else:
+        headers, raw_rows = extract_from_csv(file_path)
+    return (headers, raw_rows)
+
+
+def extract_from_csv(file_address: Path) -> tuple[list[str], list[worksheet_row]]:
+    sheet = []
+    headers = []
+    delimiter = "," if file_address.suffix == ".csv" else "\t"
+    with open(file_address.resolve(), mode="r", encoding="utf-8") as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=delimiter)
+        for i, row in enumerate(csv_reader):
+            row = normalize_row(row)
+            if i == 0 and settings.first_row_is_header:
+                headers = row
+            else:
+                sheet.append(row)
+    return (headers, sheet)
 
 
 def write_marc_files(records:list[PyRecord], excel_file_address: Path) -> None:
     print(f"Writing {len(records)} record(s)...")
-    write_mrk_files(records, f"{excel_file_address.stem}.pypaul.mrk")
-    write_mrc_binaries(records, f"{excel_file_address.stem}.pypaul.mrc")
+    write_mrk_files(records, f"{excel_file_address.stem}.mrk")
+    write_mrc_binaries(records, f"{excel_file_address.stem}.mrc")
+
+
+def write_CHU_file(records: list) -> None:
+    """
+    Write out CHU file, including formatting (for the craic)
+    """
+    wb = Workbook()
+    ws:Worksheet = wb.active
+    ws.title = "Recorded data"
+
+    dark_blue = "24069B"
+    lighter_dark_blue = "366092"
+    light_cyan = "D2EEE7"
+
+    # Merge cells for the header title
+    ws.merge_cells('A1:E1')
+    ws['A1'] = "Alma holdings information update form"
+
+    # Style for the header
+    header_font = Font(name = "Arial", size=16, bold=True, color=dark_blue)  # Dark blue
+    header_fill = PatternFill(start_color=light_cyan, end_color=light_cyan, fill_type="solid")  # Light cyan
+    header_alignment = Alignment(horizontal="center", vertical="center")
+
+    cell = ws['A1']
+    cell.font = header_font
+    cell.fill = header_fill
+    cell.alignment = header_alignment
+    ws.row_dimensions[1].height = 45
+
+    # Sub-row details
+    # today = date.today()
+    # today = today.strftime("%d %b %Y")
+    today = date.today().strftime("%d %b %Y")
+    initials = "PTW"
+    email = "paul.wakelin@bodleian.ox.ac.uk"
+    ws['A2'] = f"Date: {today}"
+    ws['C2'] = "Initials:"
+    ws['C2'].alignment= Alignment(horizontal="right")
+    ws['D2'] = initials
+    ws['E2'] = "Contact e-mail:"
+    ws['E2'].alignment= Alignment(horizontal="right")
+    ws['F2'] = email
+    ws['G2'] = "(Always e-mail)"
+    # for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G']:
+    for col in ['A', 'B', 'C', 'D', 'E', 'F']:
+        cell = ws[f"{col}2"]
+        cell.fill = header_fill
+        cell.font = Font(name="Arial", size=8, bold=False, color=lighter_dark_blue)
+        # cell.alignment = Alignment(horizontal="left")
+    ws["F1"].fill = header_fill
+    ws["G2"].fill = PatternFill()
+    ws["G2"].font = Font(name="Arial", size=7, bold=False, color=lighter_dark_blue)
+    ws.row_dimensions[2].height = 10  # Height in points
+
+    # Adjust column widths for better layout
+    ws.column_dimensions['A'].width = 12    # Barcode
+    ws.column_dimensions['B'].width = 10    # Library
+    ws.column_dimensions['C'].width = 20    # Location
+    ws.column_dimensions['D'].width = 12    # Item policy
+    ws.column_dimensions['E'].width = 20    # Process
+    ws.column_dimensions['F'].width = 30    # Shelfmark
+
+    default_row_height = 13
+    headers = ["Barcode", "Library", "Location", "Item Policy", "Process", "Shelfmark"]
+    # Write headers to row 3 (assuming rows 1 and 2 are for the title and sub-header)
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(row=3, column=col, value=header)
+        cell.font = Font(name="Arial", bold=True, size=10)
+        cell.alignment = Alignment(horizontal="left")
+    ws.row_dimensions[3].height = default_row_height  # Height in points
+
+    for row_count, r in enumerate(records, 4):
+        row = [r[27], "", "", "", "Relocating to CSF", ""]
+        for col, value in enumerate(row, 1):
+            cell = ws.cell(row=row_count, column=col, value=value)
+            cell.alignment = Alignment(horizontal="left")
+            cell.font = Font(name="Arial", bold=False, size=10)
+        ws.row_dimensions[row_count].height = default_row_height  # Height in points
+    file_name = str(Path.cwd() / settings.output_dir / "styled_form.xlsx")
+    print(file_name)
+    # wb.save("styled_form.xlsx")
+    wb.save(file_name)
 
 
 def run() -> None:
-    for file in Path(excel_file_path).glob("*.xls[xm]"):
-        msg = f"\n>>>>> processing: {file.name}"
-        logger.info(msg)
-        print(msg)
-        raw_rows = parse_excel_into_rows(file)
+    # for file in Path(settings.data_dir).glob("*.xls[xm]"):
+    extensions = ["*.xlsx", "*.xlsm", "*.csv", "*.tsv"]
+    file_list: list[Path] = []
+    for ext in extensions:
+        file_list.extend(Path(settings.data_dir).glob(ext))
+
+    print(f"There {len(file_list)} files to process.")
+    for file in file_list:
+        # is_excel_file = file.suffix.startswith(".xl")
+        logger.info(f"\n>>>>> processing: {file.name}")
+        print(
+            f">>>>> now processing: {file}>{file.name} ({file.suffix})"
+        )
+        headers, raw_rows = parse_file_into_rows(file)
+        # if is_excel_file:
+        #     headers, raw_rows = parse_file_into_rows(file)
+        # else:
+        #     headers, raw_rows = extract_from_csv(file)
         records = parse_rows_into_records(raw_rows)
+        del headers
         del raw_rows
-        pymarc_records = build_pymarc_records(records)
+        # marc_records = build_pymarc_records(records)
+        marc_records = build_marc_records(records)
         del records
-        # for record in pymarc_records:
-        #     print(record)
-        write_marc_files(pymarc_records, file)
+        write_marc_files(marc_records, file)
 
 
 def main() -> None:
     run()
 
+
 if __name__ == "__main__":
-    logger = logging.getLogger(__name__)
+    # logger = logging.getLogger(__name__)
     main()
+
+# def run() -> None:
+#     for file in Path(excel_file_path).glob("*.xls[xm]"):
+#         msg = f"\n>>>>> processing: {file.name}"
+#         logger.info(msg)
+#         print(msg)
+#         raw_rows = parse_excel_into_rows(file)
+#         records = parse_rows_into_records(raw_rows)
+#         del raw_rows
+#         pymarc_records = build_pymarc_records(records)
+#         del records
+#         # for record in pymarc_records:
+#         #     print(record)
+#         write_marc_files(pymarc_records, file)
+
+
+# def main() -> None:
+#     run()
+
+# if __name__ == "__main__":
+#     logger = logging.getLogger(__name__)
+#     main()

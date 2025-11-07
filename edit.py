@@ -10,7 +10,8 @@ from datetime import datetime
 import sys
 import csv
 from enum import Enum, auto
-from app import convert as shared
+# from app import convert as shared
+from app import convert_pymarc as shared
 from dataclasses import dataclass
 from collections import namedtuple
 from pathlib import Path

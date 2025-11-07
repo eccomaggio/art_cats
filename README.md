@@ -15,7 +15,7 @@ Things i've done:
 
 To do:
 
-- fix headers when you add first record
+- DONE: fix headers when you add first record
 - add fixed min lengths to input boxes so they don't jump around when filled with long records
 
 - DONE - add in validation (but how to deal with jumping between records?): ">> Choose" / isbn / notify / hold for /

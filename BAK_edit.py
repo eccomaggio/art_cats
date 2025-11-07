@@ -5,16 +5,16 @@ It builds on a script that converts excel files into markdown; in fact, the curr
 """
 
 
+import argparse
+from datetime import datetime
+import sys
+import csv
+from enum import Enum, auto
 from app import convert as shared
 from dataclasses import dataclass
 from collections import namedtuple
-import argparse
-import datetime
 from pathlib import Path
 # from pprint import pprint
-from enum import Enum, auto
-import sys
-import csv
 from PySide6.QtWidgets import (
     QApplication,
     QPushButton,
@@ -32,9 +32,18 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QTextBrowser,
     QSpacerItem,
-    # QHBoxLayout,
 )
-from PySide6.QtCore import Qt, QUrl, QTimer
+from PySide6.QtCore import (
+    Qt,
+    QUrl,
+    QTimer,
+    QEvent,
+    Signal,
+)
+from PySide6.QtGui import (
+    QMouseEvent,
+    QEnterEvent,
+)
 
 class COL(Enum):
     sublib = 0
@@ -456,6 +465,51 @@ class WindowWithRightTogglePanel(QWidget):
         if anchor_name:
             self.help_widget.scrollToAnchor(anchor_name)
 
+
+class ClickableLabel(QLabel):
+    """
+    QLabel subclass: emits signals when clicked and visually reacts to hovering.
+    """
+
+    clicked = Signal()
+
+    def __init__(self, text="Click Me", parent=None):
+        super().__init__(text, parent)
+        self.setMouseTracking(True)
+        self.setCursor(Qt.CursorShape.WhatsThisCursor)
+        # self.default_style = "text-decoration: none;"
+        self.default_style = shared.settings.styles["label_active"]
+        self.hover_style = "text-decoration: underline overline;"
+        self.pressed_style = "font-style: italic;"
+        self.setStyleSheet(self.default_style)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Initialize placeholder for custom property
+        self.help_txt = ""
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.setStyleSheet(self.pressed_style)
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
+            if self.underMouse():
+                self.setStyleSheet(self.hover_style)
+            else:
+                self.setStyleSheet(self.default_style)
+            self.clicked.emit()
+        super().mouseReleaseEvent(event)
+
+    def enterEvent(self, event: QEnterEvent):
+        self.setStyleSheet(self.hover_style)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event: QEvent):
+        self.setStyleSheet(self.default_style)
+        super().leaveEvent(event)
+
+
 class Editor(QWidget):
     def __init__(self, grid: Grid, excel_rows: list[list[str]], file_name: str, caller:WindowWithRightTogglePanel, settings:shared.Settings):
         super().__init__()
@@ -533,7 +587,10 @@ class Editor(QWidget):
             self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
-            tmp_label = QLabel(title)
+            # tmp_label = QLabel(title)
+            tmp_label = ClickableLabel(title)
+            tmp_label.help_txt = title.lower().replace(" ", "_")
+            tmp_label.clicked.connect(lambda checked=False, l=tmp_label: self.show_help_topic(l))
             font = tmp_label.font()
             font.setBold(True)
             tmp_label.setFont(font)
@@ -613,6 +670,13 @@ class Editor(QWidget):
     @current_row.setter
     def current_row(self, row:list) -> None:
         self.excel_rows[self.current_row_index] = row
+
+    def show_help_topic(self, sender_label: ClickableLabel):
+        """Slot runs when label is clicked, accessing custom property."""
+        link = sender_label.help_txt
+        self.caller.handle_internal_link(QUrl(f"#{link}"))
+        # self.display.setText(link)
+        print(f"... the link is: #{link}")
 
     def handle_submit(self, optional_msg="") -> bool:
         """
@@ -897,6 +961,7 @@ class Editor(QWidget):
 
     def save_as_marc(self) -> None:
         # records = shared.parse_rows_into_records(self.excel_rows)
+        shared.write_CHU_file(self.excel_rows)
         marc_records = shared.build_marc_records(
             shared.parse_rows_into_records(self.excel_rows)
         )
