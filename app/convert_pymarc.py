@@ -1,10 +1,11 @@
+from unittest import result
 from openpyxl import load_workbook, Workbook  # type: ignore
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.worksheet.worksheet import Worksheet
 from pymarc import Record as PyRecord, Indicators, Field, Subfield, Indicators, TextWriter, MARCWriter
 import csv
 from dataclasses import dataclass, fields, field
-# from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod
 from typing import TypeAlias, Any
 from collections.abc import Callable
 # from pprint import pprint
@@ -49,6 +50,7 @@ class Settings:
     styles: dict[str, str]= field(default_factory=dict)
     help_file = ""
     backup_file = "backup.bak"
+    alt_title_signifier = "*//*"
 
 
 # excel_file_path = "excel_files"
@@ -114,6 +116,52 @@ class Record:
 
     sequence_number: int
     links: list[Field | None]
+
+
+# class Serializable(ABC):
+#     @abstractmethod
+#     def serialize(self, mode="str") -> str:
+#         pass
+
+
+# @dataclass
+# class Blank(Serializable):
+#     def serialize(self, mode="str") -> str:
+#         if mode == "str":
+#             return "\\"
+#         else:
+#             return " "
+
+
+# class Punctuation(Serializable):
+#     """ISBD punctuation used between subfields
+#     https://www.itsmarc.com/crs/mergedprojects/lcri/lcri/1_0c__lcri.htm
+#     """
+#     contents = ""
+
+#     def __init__(self, contents: str):
+#         self.contents = contents
+
+#     def serialize(self, mode="str") -> str:
+#         return self.contents
+
+#     def __str__(self):
+#         return f"<contents='{self.contents}'>"
+
+
+# @dataclass
+# class Isbd:
+#     colon = Punctuation(" : ")
+#     period = Punctuation(". ")
+#     comma = Punctuation(", ")
+#     semicolon = Punctuation(" ; ")
+# ISBD = Isbd()
+ISBD = {
+    ":" : " : ",
+    "." : ". ",
+    "," : ", ",
+    ";" : " ; ",
+}
 
 
 @dataclass
@@ -982,17 +1030,23 @@ def build_040(record: Record) -> Result:
 def build_245(record: Record) -> Result:
     """Title
     Field 245 ends with a period, even when another mark of punctuation is present, unless the last word in the field is an abbreviation, initial/letter, or data that ends with final punctuation.
+    If the source data contains an alternative title, this is separated into a 246 field.
     """
     tag = 245
     i1 = "0"
     nonfiling = "0"
     error = None
+    alt_title = ""
     has_chinese_title = bool(record.title.transliteration)
     if has_chinese_title:
         title, subtitle = record.title.transliteration, record.subtitle.transliteration
         linkage = deal_with_chinese_titles(record, record.title.original, record.subtitle.original, i1, nonfiling, tag)
     else:
         title, subtitle = record.title.original, record.subtitle.original
+        check_for_alt_title = title.split(settings.alt_title_signifier)
+        if len(check_for_alt_title) > 1:
+            title, alt_title = [el.strip() for el in check_for_alt_title]
+            alt_title_field = create_alternative_title(alt_title, record.langs[0]).is_ok
         nonfiling, title = check_for_nonfiling(title)
         linkage = None
     i2 = nonfiling
@@ -1002,13 +1056,19 @@ def build_245(record: Record) -> Result:
             content.append(linkage)
         if subtitle:
             # title += " :"
-            content.append(Subfield(value=title + " :", code="a"))
+            # content.append(Subfield(value=title + " :", code="a"))
+            content.append(Subfield(value=title + ISBD[":"], code="a"))
             subtitle = add_period_if_necessary(subtitle)
             content.append(Subfield(value=subtitle, code="b"))
         else:
            title = add_period_if_necessary(title)
            content.append(Subfield(value=title, code="a"))
-        result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), error)
+        title_field = Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content)
+        if alt_title:
+            result = Result([title_field, alt_title_field], error)
+        else:
+            result = Result(title_field, error)
+        # result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), error)
     else:
         result = Result(None, (tag, ""))
     return result
@@ -1018,7 +1078,7 @@ def deal_with_chinese_titles(record: Record, title_original: str, subtitle_origi
     if subtitle_original:
         if tag == 245:
             subtitle_original = add_period_if_necessary(subtitle_original)
-        full_title =[Subfield(value=title_original + " :", code="a"), Subfield(value=subtitle_original, code="b")]
+        full_title =[Subfield(value=title_original + ISBD[":"], code="a"), Subfield(value=subtitle_original, code="b")]
     else:
         if tag == 245:
             title_original = add_period_if_necessary(title_original)
@@ -1039,8 +1099,8 @@ def build_264(record: Record) -> Result:
     error = None
     copyright_symbol = "\u00a9"
     place_name = record.place if record.place else record.state
-    place = Subfield(value=place_name + " :", code="a")
-    publisher = Subfield(value=record.publisher + ",", code="b")
+    place = Subfield(value=place_name + ISBD[":"], code="a")
+    publisher = Subfield(value=record.publisher + ISBD[","], code="b")
     pub_year = Subfield(value=f"[{record.pub_year}?]" if record.pub_year_is_approx else record.pub_year, code="c")
     content = Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=[place, publisher, pub_year])
     if record.copyright:
@@ -1057,7 +1117,7 @@ def build_300(record: Record) -> Result:
     # i1, i2 = "\\", "\\"
     i1, i2 = BLANK, BLANK ## "undefined"
     tmp = f"approximately {record.extent} pages" if record.extent_is_approx else f"{record.extent} pages"
-    pages = Subfield(value=tmp + " ;", code="a")
+    pages = Subfield(value=tmp + ISBD[";"], code="a")
     size = Subfield(value=f"{record.size} cm", code="c")
     content = [pages, size]
     result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
@@ -1177,12 +1237,22 @@ def build_041(record: Record) -> Result:  ##optional
     return result
 
 
-def build_246(record: Record) -> Result:  ##optional
+def build_246(record: Record, alternative_form="", language="eng") -> Result:  ##optional
     """
     Varying Form of Title
     Holds parallel Western title AND/OR original Chinese character title
     NB: Initial articles (e.g., The, La) are generally not recorded in field 246 unless the intent is to file on the article. [https://www.loc.gov/marc/bibliographic/bd246.html]
     """
+    # tag = 246
+    # i1 = "3"  ## "No note, added entry"
+    if alternative_form:
+        result = create_alternative_title(alternative_form, language)
+    else:
+        result = create_parallel_title(record)
+    return result
+
+
+def create_parallel_title(record:Record) -> Result:
     tag = 246
     i1 = "3"  ## "No note, added entry"
     i2 = "1"  ## parallel title
@@ -1196,16 +1266,15 @@ def build_246(record: Record) -> Result:  ##optional
     elif has_parallel_title:  ## (i.e. Western script)
         lang = record.langs[1]
         parallel_subtitle = record.parallel_subtitle.original
-        parallel_title = record.parallel_title.original
-        parallel_title_with_article = parallel_title
-        index_of_article, parallel_title = check_for_nonfiling(parallel_title, lang)
-        # print(f"\t>>> (has p_t){lang=}: {parallel_title_with_article} -> {parallel_title}")
+        _, parallel_title_without_initial_article = check_for_nonfiling(record.parallel_title.original, lang)
+        parallel_title = parallel_title_without_initial_article
+        # print(f"\t>>> (has p_t){lang=}: {parallel_title_without_article} <- {parallel_title}")
     else:
         parallel_title, parallel_subtitle = "", ""
     if parallel_title:
         parallel_title_sub = Subfield(value=parallel_title, code="a")
         if linkage:
-           content = [linkage, parallel_title_sub]
+            content = [linkage, parallel_title_sub]
         else:
             content = [parallel_title_sub]
         if parallel_subtitle:
@@ -1213,6 +1282,18 @@ def build_246(record: Record) -> Result:  ##optional
         result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
     else:
         result = Result(None, (tag, ""))
+    return result
+
+
+def create_alternative_title(alternative_form:str, lang="eng") -> Result:
+    ## Deals with alternative forms of a title, e.g. 1984*//*Nineteen Eighty-four
+    ## NB. this doesn't deal with non-Western scripts (yet)
+    tag = 246
+    i1 = "3"    ## "No note, added entry"
+    i2 = BLANK  ## No type specified
+    _, alternative_title = check_for_nonfiling(alternative_form, lang)
+    content = [Subfield(value=alternative_title, code="a")]
+    result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
     return result
 
 
@@ -1225,7 +1306,7 @@ def build_490(record: Record) -> Result:  ## optional
     series_title_text = record.series_title
     series_enum_text = record.series_enum
     if series_title_text and series_enum_text:
-        series_title_text += " ;"
+        series_title_text += ISBD[";"]
     series_title = Subfield(value=series_title_text, code="a")
     series_enum = Subfield(value=series_enum_text, code="v")
     content = []
@@ -1274,7 +1355,8 @@ def build_880(record: Record, title_subfield, i1: str, i2: str, caller: int, seq
 
 def add_period_if_necessary(title: str) -> str:
     if title and title.rstrip()[-1] not in "?!.":
-            title += "."
+            # title += "."
+            title += ISBD["."]
     return title
 
 

@@ -1,3 +1,6 @@
+"""
+This was up to date until 7th November; thereafter, it has not been maintained. If necessary, it could be updated with reference to convert_pymarc.py However, it seems unnecessary as the pymarc library is maintained and reviewed externally.
+"""
 from openpyxl import load_workbook, Workbook  # type: ignore
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.worksheet.worksheet import Worksheet

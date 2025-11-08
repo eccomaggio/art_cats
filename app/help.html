@@ -98,14 +98,14 @@ th, td {
 <body>
 
   <h1>Spreadsheet cataloguing</h1>
-  <p>Please enter the bibliographic information according to the following rules:</p>
+  <p>This app is designed for non-cataloguers to enter information which can then be transformed into bibliographic records (Marc 21 RDA records) for upload to ALMA. It deals with most of the tricky markup and linking aspects but there are a few things that you need to know in order to use it effectively. The following information should help you:</p>
 
   <h4>First, check title against SOLO!!!</h4>
   <p>This is essential to avoid creating duplicate records. If a record already exists, do not enter the details on the spreadsheet.
-  <p>NB. It may be more efficient to check a number of titles against SOLO and then switch to enter the details into the spreadsheet, rather than jumping between SOLO and Excel each time.</p>
+  <p>NB. It may be more efficient to check a number of titles against SOLO and then switch to enter the details into the spreadsheet, rather than jumping between SOLO and the app each time.</p>
 
   <h4>Capitalisation</h4>
-  <p>Data is generally entered in sentence case, even if it is all in capital letters on the resource. Unless there is a reason for it to be capitalised, e.g. an acronym. </p>
+  <p>Data is generally entered in sentence case (even if it is all in capital letters on the resource) unless there is a reason for it to be capitalised, e.g. an acronym, proper noun, or entering text in say German, where all nouns must be capitalised. </p>
 
   <h4>Incomplete records</h4>
   <p>Records must include the following minimum information to be saved:</p>
@@ -124,20 +124,20 @@ th, td {
   <p>By default, complete records are locked for safety. Toggle the <code>unlock</code> button if you want to edit them further.</p>
 
   <h4>Backups</h4>
-  <p>Everytime a record is submitted, it is backed up to a file called <code>backup.bak</code></p>
+  <p>Everytime a record is submitted, it is backed up to a file unimaginatively named <code>backup.bak</code></p>
 
   <h2 id="sublibrary">Sublibrary</h2>
   <p>Enter the sublibrary which the materials belong to (<code>BODBL</code>, <code>RSLBL</code>, <code>ARTBL</code> or similar). Team Leaders can advise.</p>
 
   <h2 id="language_of_resource">Language of resource</h2>
-  <p>This is required in order to sort the records at a later stage in the process. Enter the language in which the resource is written (e.g. English or French). If the item has multiple languages, this should be entered as, e.g. <code>English/German</code>.</p>
+  <p>This is required in order to sort the records at a later stage in the process. Enter the language in which the resource is written (e.g. English or French). If the item has multiple languages, this should be entered as, e.g. <code>English/German</code>. Put them in order of priority, for instance: if the resource is mainly in Chinese, but has a parallel title in English, it should be labelled <code>Chinese/English</code>. This allows the app to process titles etc. correctly for the particular language.</p>
 
   <h2 id="isbn">ISBN(s)</h2>
   <p>Enter if applicable.</p>
 
   <h2 id="title">Title</h2>
-  <p>Transcribe the title using sentence case. Include any initial article, e.g. <code>The</code>, <code>A</code>, <code>La</code>, <code>Der</code> (this will be automatically tagged as non-filing).</p>
-  <p>you want to add an <b>alternative version</b>--typically to expand an acronym or to represent a number that has been spelt out in letters as digits (e.g. <code>CNG</code> -> <code>Classical Numismatics Group</code> or <code>forty-two</code> -> <code>42</code>), type the full alternative title after the official one, separating the two with the sign *//*</p>
+  <p>Transcribe the title using <b>sentence case</b>. Include any initial article, e.g. <code>The</code>, <code>A</code>, <code>La</code>, <code>Der</code> (this will be automatically tagged as non-filing).</p>
+  <p>If you want to add an <b>alternative version</b>--typically to expand an acronym or to represent a number that has been spelt out in letters as digits (e.g. <code>CNG</code> -> <code>Classical Numismatics Group</code> or <code>forty-two</code> -> <code>42</code>), type the full alternative title after the official one, separating the two with the sign *//*</p>
   <p>If a title divides naturally (because of punctuation) into several parts, put the first part into the main Title field and ALL the others into the Subtitle field. The subtitle doesn't need to be further subdivided. For example: "Osian's dare to care: an initiative for the adolescent girl -- a charity fundraising gala event" should be split: Title="Osian's dare to care", Subtitle="an initiative for the adolescent girl -- a charity fundraising gala event". Note also that the punctuation (here a colon) separating the title from the subtitle should be omitted.</p>
 
   <h2 id="subtitle">Subtitle</h2>
