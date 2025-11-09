@@ -5,7 +5,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from pymarc import Record as PyRecord, Indicators, Field, Subfield, Indicators, TextWriter, MARCWriter
 import csv
 from dataclasses import dataclass, fields, field
-from abc import ABC, abstractmethod
+# from abc import ABC, abstractmethod
 from typing import TypeAlias, Any
 from collections.abc import Callable
 # from pprint import pprint
@@ -51,6 +51,7 @@ class Settings:
     help_file = ""
     backup_file = "backup.bak"
     alt_title_signifier = "*//*"
+    # TMP_is_illustrated = False
 
 
 # excel_file_path = "excel_files"
@@ -100,6 +101,7 @@ class Record:
     copyright: str
     extent: str
     size: int
+    is_illustrated: bool
     series_title: str
     series_enum: str
     volume: str
@@ -118,44 +120,6 @@ class Record:
     links: list[Field | None]
 
 
-# class Serializable(ABC):
-#     @abstractmethod
-#     def serialize(self, mode="str") -> str:
-#         pass
-
-
-# @dataclass
-# class Blank(Serializable):
-#     def serialize(self, mode="str") -> str:
-#         if mode == "str":
-#             return "\\"
-#         else:
-#             return " "
-
-
-# class Punctuation(Serializable):
-#     """ISBD punctuation used between subfields
-#     https://www.itsmarc.com/crs/mergedprojects/lcri/lcri/1_0c__lcri.htm
-#     """
-#     contents = ""
-
-#     def __init__(self, contents: str):
-#         self.contents = contents
-
-#     def serialize(self, mode="str") -> str:
-#         return self.contents
-
-#     def __str__(self):
-#         return f"<contents='{self.contents}'>"
-
-
-# @dataclass
-# class Isbd:
-#     colon = Punctuation(" : ")
-#     period = Punctuation(". ")
-#     comma = Punctuation(", ")
-#     semicolon = Punctuation(" ; ")
-# ISBD = Isbd()
 ISBD = {
     ":" : " : ",
     "." : ". ",
@@ -750,12 +714,27 @@ def norm_size(raw: str) -> int:
     return clean_value
 
 
-def norm_pages(pages_raw: str) -> str:
+def norm_illustrations(raw:str) -> bool:
+    return raw.strip() == "True"
+
+# def norm_pages(pages_raw: str) -> tuple[str, bool, bool]:
+def norm_pages(pages_raw: str) -> tuple[str, bool]:
+    # is_illustrated = pages_raw.find("illus") != -1
+    # print(f">>>> {is_illustrated=}")
     pages = strip_unwanted(r"pages|\[|\]", pages_raw)
     if "approx" in pages:
         pages = re.sub(r"[^\d]", "", pages)
         pages = pages + "?"
-    return pages
+    extent, extent_is_approx = check_for_approx(pages)
+    # return (extent, extent_is_approx, is_illustrated)
+    return (extent, extent_is_approx)
+# def norm_pages(pages_raw: str) -> str:
+#     is_illustrated = pages_raw.find("illus") != -1
+#     pages = strip_unwanted(r"pages|\[|\]", pages_raw)
+#     if "approx" in pages:
+#         pages = re.sub(r"[^\d]", "", pages)
+#         pages = pages + "?"
+#     return pages
 
 
 def norm_copyright(raw: str) -> str:
@@ -897,8 +876,11 @@ def parse_row(row: list[str], current_time: datetime) -> Record:
     publisher = next(cols)
     pub_date, pub_date_is_approx = check_for_approx(norm_year(next(cols)))
     copyright_ = norm_copyright(next(cols))
-    extent, extent_is_approx = check_for_approx(norm_pages(next(cols)))
+    # extent, extent_is_approx = check_for_approx(norm_pages(next(cols)))
+    # extent, extent_is_approx, is_illustrated = norm_pages(next(cols))
+    extent, extent_is_approx = norm_pages(next(cols))
     size = norm_size(next(cols))
+    is_illustrated = norm_illustrations(next(cols))
     series_title = next(cols)
     series_enum = next(cols)
     volume = next(cols)
@@ -909,6 +891,7 @@ def parse_row(row: list[str], current_time: datetime) -> Record:
     donation = next(cols)
     barcode = norm_barcode(next(cols))
 
+    # settings.TMP_is_illustrated = is_illustrated
     record = Record(
         sublibrary,
         langs,
@@ -926,6 +909,7 @@ def parse_row(row: list[str], current_time: datetime) -> Record:
         copyright_,
         extent,
         size,
+        is_illustrated,
         series_title,
         series_enum,
         volume,
@@ -945,7 +929,6 @@ def parse_row(row: list[str], current_time: datetime) -> Record:
     )
     validate_record(record)
     return record
-
 
 
 def build_leader(record: Record) -> Result:
@@ -997,12 +980,39 @@ def build_008(record: Record) -> Result:
     date_1 = record.pub_year
     date_2 = 4 * "|"
     region = check_for_detailed_region(record.country_code, record.state, record.place)
-    # place_of_pub = f"{region:{"\\"}<3}"
     place_of_pub = f"{region:{blank}<3}"
-    books_configuration = [14*"|", " ", 2*"|"]
-    # lang = f"{record.langs[0]:{"\\"}<3}"
+
+    # books_configuration = [14*"|", " ", 2*"|"]
+    # illustrations = "|a||" if settings.TMP_is_illustrated else "||||"   ## pos 18-21
+    illustrations = "|a||" if record.is_illustrated else "||||"   ## pos 18-21
+    target_audience = "|"           ## 22
+    form_of_item = "|"              ## 23
+    nature_of_contents = "||||"     ## 24-27
+    government_publication = "|"    ## 28
+    conference_publication = "|"    ## 29
+    festschrift = "|"               ## 30
+    index = "|"                     ## 31
+    undefined = " "                 ## 32
+    literary_form = "|"             ## 33
+    biography = "|"                 ## 34
+
+    books_configuration = [
+        illustrations,
+        target_audience,
+        form_of_item,
+        nature_of_contents,
+        government_publication,
+        conference_publication,
+        festschrift,
+        index,
+        undefined,
+        literary_form,
+        biography,
+    ]
+
     lang = f"{record.langs[0]:{blank}<3}"
     modified_and_cataloging = 2*"|"
+
     content = [date_entered_on_file,  pub_status,  date_1,  date_2,  place_of_pub,  *books_configuration,  lang,  modified_and_cataloging]
     result = Result(Field(tag=seq_num(tag), data="".join(content)), None)
     return result
@@ -1116,10 +1126,20 @@ def build_300(record: Record) -> Result:
     tag = 300
     # i1, i2 = "\\", "\\"
     i1, i2 = BLANK, BLANK ## "undefined"
-    tmp = f"approximately {record.extent} pages" if record.extent_is_approx else f"{record.extent} pages"
-    pages = Subfield(value=tmp + ISBD[";"], code="a")
-    size = Subfield(value=f"{record.size} cm", code="c")
-    content = [pages, size]
+    pages_content = f"approximately {record.extent} pages" if record.extent_is_approx else f"{record.extent} pages"
+    # pages_punctuation = ISBD[":"] if settings.TMP_is_illustrated else ""
+    # pages_punctuation = ISBD[":"] if record.is_illustrated else ""
+    # pages = Subfield(value=tmp + ISBD[";"], code="a")
+    # pages = Subfield(value=tmp + pages_punctuation, code="a")
+    size = Subfield(value=f"{ISBD[":"]}{record.size} cm", code="c")
+    # if settings.TMP_is_illustrated:
+    if record.is_illustrated:
+        pages = Subfield(value=pages_content + ISBD[":"], code="a")
+        illustrations = Subfield(value="illustrations", code="b")
+        content = [pages, illustrations, size]
+    else:
+        pages = Subfield(value=pages_content, code="a")
+        content = [pages, size]
     result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
     return result
 
@@ -1129,7 +1149,10 @@ def build_336(record: Record) -> Result:
     tag = 336
     # i1, i2 = "\\", "\\"
     i1, i2 = BLANK, BLANK
-    content = [Subfield(value="text", code="a"), Subfield(value="rdacontent", code="2")]
+    # content_type = "still image" if settings.TMP_is_illustrated else "text"
+    content_type = "still image" if record.is_illustrated else "text"
+    # content = [Subfield(value="text", code="a"), Subfield(value="rdacontent", code="2")]
+    content = [Subfield(value = content_type, code="a"), Subfield(value="rdacontent", code="2")]
     result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
     return result
 
@@ -1617,7 +1640,9 @@ def write_CHU_file(records: list) -> None:
             cell.alignment = Alignment(horizontal="left")
             cell.font = Font(name="Arial", bold=False, size=10)
         ws.row_dimensions[row_count].height = default_row_height  # Height in points
-    file_name = str(Path.cwd() / settings.output_dir / "styled_form.xlsx")
+    # file_name = str(Path.cwd() / settings.output_dir / "styled_form.xlsx")
+    chu_file = Path(settings.in_file + "_toCHU.xlsx")
+    file_name = str(Path.cwd() / settings.output_dir / chu_file)
     print(file_name)
     # wb.save("styled_form.xlsx")
     wb.save(file_name)

@@ -208,13 +208,13 @@ default_hint = (
     ("Copyright date", "1:1", 14, 5),
     ("Pagination", "1:1", 15, 1),
     ("Size", "1:1", 15, 0),
-    ("Illustrations", "1:1", 15, 3),
+    ("Illustrations", "1:1", 15, 0),
     ("Series title", "1:3", 12, 0),
     ("Series enumeration", "1:2", 12, 3),
     ("Volume", "1:1", 12, 5),
     ("Note", "3:3", 9, 0),
     ("Sale code", "1:1", 15, 2),
-    ("Date of sale", "1:2", 15, 4),
+    ("Date of sale", "1:3", 15, 3),
     ("HOL notes", "3:3", 9, 3),
     ("Donor note", "1:4", 16, 0),
     ("Barcode ", "1:2", 16, 4),
@@ -586,15 +586,9 @@ class Editor(QWidget):
         self.inputs = []
         self.labels = []
         for id, (start_row, start_col, brick, title) in self.grid.widget_info.items():
-            # print(f"\t+++brick:{title}")
             row_span, col_span = brick.height, brick.width
-            ## TODO: this is a cludge: merge into orderForm.py logic to upgrade
-            tmp_input: QWidget
-            if title == "Illustrations":
-                tmp_input = QCheckBox()
-            else:
-            # tmp_input: QLineEdit | QTextEdit
-                tmp_input = QLineEdit() if row_span == 1 else QTextEdit()
+            tmp_input: QLineEdit | QTextEdit
+            tmp_input = QLineEdit() if row_span == 1 else QTextEdit()
             # tmp_input.setStyleSheet(self.settings.styles["input_active"])
             self.inputs.append(tmp_input)
 
@@ -705,8 +699,6 @@ class Editor(QWidget):
                 data.append(el.text())
             elif isinstance(el, QTextEdit):
                 data.append(el.toPlainText())
-            elif isinstance(el, QCheckBox):
-                data.append("True" if el.isChecked() else "False")
             else:
                 print(
                     f"Huston, we have a problem with submitting record no. {self.current_row_index}"
@@ -824,10 +816,6 @@ class Editor(QWidget):
                 el.setText(data)
             elif isinstance(el, QTextEdit):
                 el.setPlainText(data)
-            elif isinstance(el, QCheckBox):
-                # print(f">>> checkbox: {data=}")
-                check_state = Qt.CheckState.Checked if data == "True" else Qt.CheckState.Unchecked
-                el.setCheckState(check_state)
             else:
                 print("Huston, we have a problem loading data into the form...")
         self.add_signal_to_fire_on_text_change()
@@ -888,11 +876,8 @@ class Editor(QWidget):
         for label in self.labels:
             label.setStyleSheet(status.label_style)
         for input in self.inputs:
-            if isinstance(input, QCheckBox):
-                input.setEnabled(not status.locked_status)
-            else:
-                input.setStyleSheet(status.input_style)
-                input.setReadOnly(status.locked_status)
+            input.setStyleSheet(status.input_style)
+            input.setReadOnly(status.locked_status)
         self.unlock_btn.setText(status.btn_text)
         self.submit_btn.setEnabled(not status.locked_status)
         self.update_title_with_record_number()
