@@ -127,14 +127,15 @@ shared.settings.flavour = {
     "leaders": [],
     "followers": [],
     "headers": [member.title for member in COL],
-    "required_fields": [COL.title.name, COL.extent.name, COL.pub_year.name, COL.publisher.name, COL.country_name.name, COL.place.name, COL.extent.name, COL.size.name, COL.barcode.name],
-    "validate_always": [],
+    "required_fields": [COL.langs.name, COL.title.name, COL.extent.name, COL.pub_year.name, COL.publisher.name, COL.country_name.name, COL.place.name, COL.extent.name, COL.size.name, COL.barcode.name],
+    "validate_always": [COL.barcode.name],
     "validate_if_present": [COL.isbn.name],
     "validation_skip": (COL.barcode.name, "*dummy*"),
     "locking_is_enabled": True,
 }
 shared.settings.styles = {
     "text_changed": "border: 1px solid red; background-color: white;",
+    "text_changed_border_only": "border: 1px solid red;",
     "labels": "font-weight: bold;",
     "label_active": "color: #7c6241;",
     "label_locked": "color: darkgrey;",
@@ -958,8 +959,6 @@ class Editor(QWidget):
         errors = []
         rules = self.settings.flavour
         skip_validation_field, skip_validation_text = rules["validation_skip"]
-        # if skip_validation_field == skip_validation_text:
-        #     return True
         for widget in self.inputs:
             name = widget.objectName()
             if name == skip_validation_field and self.get_content(widget).strip().lower() == skip_validation_text:
@@ -973,9 +972,13 @@ class Editor(QWidget):
                 if (error_msg := self.validate_input(widget)) :
                     invalid.append(f"{name}: {error_msg}")
         if missing:
-            errors.append(f"The following fields are missing: {', '.join(missing)}")
+            count = len(missing)
+            add_s = "s" if count > 1 else ""
+            errors.append(f"The following {count} field{add_s} are missing: {', '.join(missing)}")
         if invalid:
-            errors.append(f"Please correct the following problem(s): {'; '.join(invalid)}")
+            count = len(invalid)
+            add_s = "s" if count > 1 else ""
+            errors.append(f"Please correct the {count} following problem{add_s}: {'; '.join(invalid)}")
         msg = "\n".join(errors)
         if msg:
             alert = QMessageBox()
@@ -984,33 +987,7 @@ class Editor(QWidget):
             return False
         print(f"%%% {msg}")
         return True
-    # def data_is_valid(self, optional_msg="") -> bool:
-    #     fields_to_validate: list[tuple[COL, str]] = [(COL.langs, "language"), (COL.title, "title"), (COL.country_name, "country of publication"), (COL.place, "city of publication"), (COL.publisher, "publisher"), (COL.size, "size (height) of the item"), (COL.extent, "number of pages"), (COL.pub_year, "year of publication"), (COL.barcode, "barcode")]
-    #     msg = []
-    #     errors = []
-    #     barcode = self.inputs[COL.barcode.value].text().strip()
-    #     if barcode == "*dummy*":
-    #         return True
-    #     for field, description in fields_to_validate:
-    #         input_box: QLineEdit | QTextEdit = self.inputs[field.value]
-    #         content = input_box.text() if isinstance(input_box, QLineEdit) else input_box.toPlainText()
-    #         if not content:
-    #             errors.append(description)
-    #     if errors:
-    #         msg.append(f"{optional_msg}The following fields are missing:\n{", ".join(errors)}")
-    #     if not self.inputs[COL.donation.value]:
-    #         self.inputs[COL.donation.value].setText("Anonymous donation")
-    #     if len(barcode) != 9:
-    #         msg.append("barcode needs to be 9 digits long")
-    #     if barcode and barcode[0] not in "367":
-    #         msg.append("barcode needs to start with 3, 6, or 9")
-    #     if msg:
-    #         output = "; ".join(msg)
-    #         msg_box = QMessageBox()
-    #         msg_box.setText(f"The data in this record has the following issue(s):\n\n{output}")
-    #         msg_box.exec()
-    #         return False
-    #     return True
+
 
     def validate_input(self, widget:QWidget) -> str:
         ## Valid = empty string
@@ -1024,6 +1001,12 @@ class Editor(QWidget):
                 isbn = self.get_content(widget)
                 if 10 > len(isbn) > 13:
                     return "The ISBN is not valid."
+            case "barcode":
+                barcode = self.get_content(widget)
+                if len(barcode) != 9:
+                    return "A barcode must have 9 digits"
+                if barcode[0] not in "367":
+                    return "A barcode needs to start with 3, 6 or 7"
         return ""
 
 
@@ -1156,7 +1139,7 @@ class Editor(QWidget):
             sender.setStyleSheet(self.settings.styles[style])
             sender.currentTextChanged.disconnect(self.handle_text_change)
         elif isinstance(sender, QCheckBox):
-            sender.setStyleSheet(self.settings.styles[style])
+            sender.setStyleSheet(self.settings.styles["text_changed_border_only"])
             sender.checkStateChanged.disconnect(self.handle_text_change)
         else:
             print("Huston, we have a problem with text input...")

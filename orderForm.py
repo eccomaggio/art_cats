@@ -118,8 +118,6 @@ shared.settings.flavour = {
     "fields_to_fill": [
         # [COL.sublib, "ARTBL"],
     ],
-    # "combo_default_text": " >> Choose <<",
-    # "combo_following_default_text": " (first select ",
     "independent_inputs": [COL.Subject_consultant.name, COL.Order_type.name, COL.Library.name, COL.Item_policy.name, COL.Reporting_code_1.name, COL.Reporting_code_2.name, COL.Reporting_code_3.name],
     "leaders": [COL.Subject_consultant.name,COL.Library.name],
     "followers": [COL.Fund_code.name,COL.Location.name],

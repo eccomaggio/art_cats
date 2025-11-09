@@ -9,22 +9,20 @@
 5. **fields** contain: subfields, or blanks or punctuation; bare strings are coded as subfields with no subcode
 6. **marc_record** = list[Field]
 
-orderForm:
+rationalize:
 
-Things i've done:
-
-Potential problems:
-
-- Not validating on lock
-- i haven't migrated the specific validations to the new edit.py file for art catalogues
+- edit.py & orderForm.py
+- settings
+- add_custom_behaviour()
 
 To do:
 
+- DONE: not validating on lock
+- DONE: i haven't migrated the specific validations to the new edit.py file for art catalogues
 - DONE: migrate edit.py to new build scheme (in orderForm.py)
 - DONE: add in fixes for Georgina's comments
 - DONE: fix headers when you add first record
 - add fixed min lengths to input boxes so they don't jump around when filled with long records
-
 - DONE - add in validation (but how to deal with jumping between records?): ">> Choose" / isbn / notify / hold for /
 - DONE: fix double "first select..." in follower inputs
 - DONE: table view should read 'add a record...'
