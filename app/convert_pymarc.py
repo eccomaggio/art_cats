@@ -52,6 +52,8 @@ class Settings:
     backup_file = "backup.bak"
     alt_title_signifier = "*//*"
     # TMP_is_illustrated = False
+    combo_default_text = " >> Choose <<",
+    combo_following_default_text = " (first select ",
 
 
 # excel_file_path = "excel_files"
@@ -728,13 +730,6 @@ def norm_pages(pages_raw: str) -> tuple[str, bool]:
     extent, extent_is_approx = check_for_approx(pages)
     # return (extent, extent_is_approx, is_illustrated)
     return (extent, extent_is_approx)
-# def norm_pages(pages_raw: str) -> str:
-#     is_illustrated = pages_raw.find("illus") != -1
-#     pages = strip_unwanted(r"pages|\[|\]", pages_raw)
-#     if "approx" in pages:
-#         pages = re.sub(r"[^\d]", "", pages)
-#         pages = pages + "?"
-#     return pages
 
 
 def norm_copyright(raw: str) -> str:
@@ -779,10 +774,6 @@ def check_for_approx(raw_string: str) -> tuple[str, bool]:
     return (clean, bool(is_approx))
 
 
-# def trim_mistaken_decimals(string: str) -> str:
-#     if string.endswith(".0"):
-#         string = string[:-2]
-#     return string
 def trim_mistaken_decimals(value: str | int) -> str:
     if not isinstance(value, str):
         value = str(value)
@@ -797,27 +788,6 @@ def create_date_list(dates_raw: str) -> list[str]:
     return dates
 
 
-# def extract_from_excel(excel_sheet) -> list[worksheet_row]:
-#     """
-#     excel seems pretty random in how it assigns string/int/float, so...
-#     this routine coerces everything into a string,
-#     strips ".0" from misrecognised floats
-#     & removes trailing spaces
-#     """
-#     sheet = []
-#     for excel_row in excel_sheet.iter_rows(min_row=2, values_only=True):
-#         row = []
-#         if not excel_row[0]:
-#             break
-#         for col in excel_row:
-#             if col:
-#                 data = str(col).strip()
-#                 data = trim_mistaken_decimals(data)
-#             else:
-#                 data = ""
-#             row.append(data)
-#         sheet.append(row)
-#     return sheet
 def extract_from_excel(excel_sheet) -> tuple[list[str], list[worksheet_row]]:
     """
     excel seems pretty random in how it assigns string/int/float, so...
@@ -1525,11 +1495,6 @@ def write_mrc_binaries(data: list[PyRecord], file_name: str="output.mrc") -> Non
     writer.close()
 
 
-# def parse_excel_into_rows(excel_file_address: Path) -> list[worksheet_row]:
-#     excel_file_name = str(excel_file_address.resolve())
-#     worksheet = load_workbook(filename=excel_file_name).active
-#     raw_rows = extract_from_excel(worksheet)
-#     return raw_rows
 def parse_file_into_rows(
     file_path: Path,
 ) -> tuple[list[str], list[worksheet_row]]:

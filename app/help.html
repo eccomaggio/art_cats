@@ -126,10 +126,10 @@ th, td {
   <h4>Backups</h4>
   <p>Everytime a record is submitted, it is backed up to a file unimaginatively named <code>backup.bak</code></p>
 
-  <h2 id="sublibrary">Sublibrary</h2>
+  <h2 id="sublib">Sublibrary</h2>
   <p>Enter the sublibrary which the materials belong to (<code>BODBL</code>, <code>RSLBL</code>, <code>ARTBL</code> or similar). Team Leaders can advise.</p>
 
-  <h2 id="language_of_resource">Language of resource</h2>
+  <h2 id="langs">Language of resource</h2>
   <p>This is required in order to sort the records at a later stage in the process. Enter the language in which the resource is written (e.g. English or French). If the item has multiple languages, this should be entered as, e.g. <code>English/German</code>. Put them in order of priority, for instance: if the resource is mainly in Chinese, but has a parallel title in English, it should be labelled <code>Chinese/English</code>. This allows the app to process titles etc. correctly for the particular language.</p>
 
   <h2 id="isbn">ISBN(s)</h2>
@@ -147,37 +147,37 @@ th, td {
   <p><i>(For dual language items only)</i></p>
   <p>Transcribe the parallel subtitle, omitting any initial article. Begin with a <b>lower-case</b> letter unless the first word of the parallel subtitle requires a capital letter (as for Subtitle). See "Title" for alternate parallel subtitles.</p>
 
-  <h2>Transliteration</h2>
+  <h2 id="tr_title">Transliteration<span id="tr_subtitle"></span><span id="tr_parallel_title"></span><span id="tr_parallel_subtitle"></span></h2>
   <p>Only for all languages with non-Latin scripts. Make sure you follow the relevant Library of Congress transcription guidelines for each language.</p>
 
   <!-- <h2 id="statement_of_responsibility">Statement of responsibility</h2>
   <p>Transcribe in full exactly as it is written. This may just be the author's name or may include e.g. edited by...</p> -->
 
-  <h2 id="edition_statement">Edition statement</h2>
-  <p>Transcribe if applicable.</p>
+  <!-- <h2 id="edition_statement">Edition statement</h2>
+  <p>Transcribe if applicable.</p> -->
 
-  <h2 id="country_of_publication">Country of publication</h2>
+  <h2 id="country_name">Country of publication</h2>
   <p>Enter the country of publication.
   <p>NB. If the resource was published in a place which is now in a different country, enter the present-day name of that country (e.g. Bratislava is now in Slovakia although at time of publication it was in Czechoslovakia)</p>
 
   <h2 id="state">State</h2>
   <p>This is needed only for states that have a 3-letter country code: The USA, the UK, Canada & Australia. Transcribe from the resource. NB. In the case of the UK, this means simply specifying <code>Northern Ireland</code>, <code>England</code>, <code>Scotland</code> or <code>Wales</code>.</p>
 
-  <h2 id="place_of_publication">Place of publication</h2>
+  <h2 id="place">Place of publication</h2>
   <p>Transcribe from the resource.</p>
 
-  <h2 id="publisher_name">Publisher name</h2>
+  <h2 id="publisher">Publisher name</h2>
   <p>Transcribe from the resource. If working in a non-European script, use the publisher's English name. In the rare event of there being two or more, equal publishers, simply add the one listed first and ignore the other(s).</p>
 
-  <h2 id="date_of_publication">Date of publication</h2>
+  <h2 id="pub_year">Date of publication</h2>
   <p>Enter the year of publication ONLY from the resource.
   <p>Do not record day/month.</p>
   <p>Add a question mark for conjectured dates [i.e. <code>2015?</code>]</p>
 
-  <h2 id="copyright_date">Copyright date</h2>
+  <h2 id="copyright">Copyright date</h2>
   <p>If the resource has a copyright date, input the date (without the © symbol: this will be inserted automatically). </p>
 
-  <h2 id="pagination">Pagination</h2>
+  <h2 id="extent">Pagination</h2>
   <p>Enter the number of pages, e.g. vii, 504. Do not add the words <code>pages </code>, <code>pp.</code>, etc.</p>
   <p>If the number of pages is not given explicitly, add a question mark after your guesstimation / count, i.e. <code>175?</code>.</p>
   <p>Do not record illustrations, maps etc.</p>
@@ -185,31 +185,34 @@ th, td {
   <h2 id="size">Size</h2>
   <p>Measure height of book and round up to nearest centimetre but do not include <code>cm</code>, <code>cms</code>, <code>centimeters</code>, etc., as this will be added automatically] i.e, 22 cm</p>
 
-  <h2 id="illustrations">Illustrations</h2>
+  <h2 id="is_illustrated">Illustrations</h2>
   <p>Check this if the catalogue is predominantly illustrated.</p>
 
   <h2 id="series_title">Series title</h2>
   <p>Transcribe from the resource.</p>
 
-  <h2 id="series_enumeration">Series enumeration</h2>
+  <h2 id="series_enum">Series enumeration</h2>
   <p>Transcribe from the resource.</p>
 
   <h2 id="note">Note</h2>
   <p>Add notes for anything unusual or relevant about the book, e.g. Title from cover or listings on the title page in the case of art catalogues, if it helps to differentiate resources with very similar titles.</p>
 
-  <h2 id="sale_code">Sale code</h2>
+  <h2 id="sales_code">Sale code</h2>
   <p>(Additional field for Auction Catalogues)
   <p>This is a numeric or alphanumeric code assigned to a sale, usually found on the catalogue's title page but sometimes further in. Be wary of numbers found on the spine, which are sometimes incomplete.</p>
   <p>If there are multiple sale codes, these should be entered as, e.g. <code>ORCHID27</code>, <code>LILY35</code></p>
   <p>Where they are already included in the title, that is enough. Think of the Sale code as being something someone might search for to find the item on the catalogue so e.g. <code>38A230503</code> might be helpful (although it is only the auction number and date) but just <code>27A</code> isn't that useful. The Sotheby catalogues show how distinctive some of them are. </p>
 
-  <h2 id="date_of_sale">Date of sale</h2>
+  <h2 id="sale_dates">Date of sale</h2>
   <p>(Additional field for Auction Catalogues)</p>
   <p>Use the format YYYYMMDD for a single date. If the date is incomplete, record as much of the date as is known and use hyphens for the missing digits.</p>
   <p>If there are multiple dates, these should be entered as, e.g. <code>20210724, 20210731</code></p>
 
   <h2 id="hol_notes">HOL notes</h2>
   <p>Add notes pertaining to the copy in your hand, e.g.<code>a donor note</code>; <code>Missing pages 4-5</code>.</p>
+
+  <h2 id="donation">Donor note</h2>
+  <p>For example: <code>Donated by the Ashmolean Museum</code> or <code>Anonymous donor</code>.</p>
 
   <h2 id="barcode">Barcode</h2>
   <p>Attach the barcode onto the item in the top left-hand corner of the front cover and scan the barcode into the field. </p>

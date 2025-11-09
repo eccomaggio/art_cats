@@ -4,7 +4,7 @@ Contact: Ross Jones, Osney One
 """
 
 import inspect  ## for debugging only
-from app import convert as shared
+from app import convert_pymarc as shared
 from dataclasses import dataclass
 from collections import namedtuple
 from typing import Any
@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QAbstractItemView,
+    QCheckBox,
 )
 from PySide6.QtCore import (
     Qt,
@@ -45,7 +46,7 @@ from PySide6.QtCore import (
     QTimer,
     QEvent,
     Signal,
-    QAbstractTableModel,
+    # QAbstractTableModel,
 )
 from PySide6.QtGui import (
     QMouseEvent,
@@ -68,7 +69,7 @@ class COL(Enum):
         return member
 
     def __init__(self, title: str):
-            self.title = title
+        self.title = title
 
     Subject_consultant = "Subject consultant"
     Fund_code = "Fund code"
@@ -117,8 +118,8 @@ shared.settings.flavour = {
     "fields_to_fill": [
         # [COL.sublib, "ARTBL"],
     ],
-    "combo_default_text": " >> Choose <<",
-    "combo_following_default_text": " (first select ",
+    # "combo_default_text": " >> Choose <<",
+    # "combo_following_default_text": " (first select ",
     "independent_inputs": [COL.Subject_consultant.name, COL.Order_type.name, COL.Library.name, COL.Item_policy.name, COL.Reporting_code_1.name, COL.Reporting_code_2.name, COL.Reporting_code_3.name],
     "leaders": [COL.Subject_consultant.name,COL.Library.name],
     "followers": [COL.Fund_code.name,COL.Location.name],
@@ -244,7 +245,6 @@ default_template = (
     (COL.Hold_for, "1:2", 8, 0, "line"),
     (COL.Notify, "1:2", 9, 0, "line"),
     (COL.Additional_info, "2:4", 8, 2, "text"),
-    # (COL.Table_view, "4:6", 10, 0, "table"),
 )
 
 
@@ -280,7 +280,7 @@ class Grid:
         return [-1 for _ in range(self.grid_width)]
 
     def add_brick_algorithmically(
-        self, brick_id: int, brick: Brick, title: str = "", name=""
+        self, brick_id: int, brick: Brick, title="", name=""
     ) -> None:
         """
         algorithm:
@@ -362,7 +362,6 @@ class Grid:
     ) -> None:
         for row_i in range(start_row, start_row + brick.height):
             for col_i in range(start_col, start_col + brick.width):
-                # print(f">>> {brick_id}: {row_i=}, {col_i=} {self.rows=}")
                 self.rows[row_i][col_i] = brick_id
 
 
@@ -416,12 +415,14 @@ class WindowWithRightTogglePanel(QWidget):
         self.saved_editor_width = self.edit_panel_widget.width()
         self.centre_window_in_display()
 
+
     def centre_window_in_display(self) -> None:
         screen_geometry = QApplication.primaryScreen().geometry()
         window_frame = self.frameGeometry()
         center_point = screen_geometry.center()
         window_frame.moveCenter(center_point)
         self.move(window_frame.topLeft())
+
 
     def resizeEvent(self, event):
         """
@@ -450,6 +451,7 @@ class WindowWithRightTogglePanel(QWidget):
                 self.layout().invalidate()
                 self.update()
 
+
     def toggle_help_panel(self):
         """
         Toggles the help panel visibility while managing the editor's size policy
@@ -457,6 +459,7 @@ class WindowWithRightTogglePanel(QWidget):
         """
         is_visible = self.help_widget.isVisible()
         self.saved_height = self.height()
+
         if is_visible:
             # --- Hiding Panel (Shrinking Window) ---
             self.saved_editor_width = self.edit_panel_widget.width()
@@ -573,6 +576,7 @@ class Editor(QWidget):
         "combo": QComboBox,
         "label": QLabel,
         "table": QTableWidget,
+        "checkbox": QCheckBox,
     }
     def __init__(self, grid: Grid, excel_rows: list[list[str]], file_name: str, caller:WindowWithRightTogglePanel, settings:shared.Settings):
         super().__init__()
@@ -587,16 +591,12 @@ class Editor(QWidget):
         self.nav_grouped_layout = QGroupBox("Navigation")
 
         self.grid = grid
-        # self.headers_backup = headers
         self.headers = self.settings.flavour["headers"]
         if excel_rows:
             self.excel_rows = excel_rows
-            # self.headers = headers
             self.has_records = True
         else:
             self.excel_rows = [["" for _ in range(len(shared.settings.layout_template))]]
-            # self.headers = []
-            # self.headers = headers
             self.has_records = False
         # print(f"<><><>{self.headers=}{self.settings.flavour["headers"]}")
 
@@ -628,10 +628,8 @@ class Editor(QWidget):
         self.inputs:list[QWidget] = []
         self.follower_inputs:dict[str, QComboBox] = {}
         self.leader_inputs:dict[str, QComboBox] = {}
-        # self.tableView:QTableWidget
         for id, (start_row, start_col, brick, title, name, widget_type) in self.grid.widget_info.items():
             row_span, col_span = brick.height, brick.width
-            # widget_name = make_snake_name(title)
             tmp_input: QWidget = self.widget_lookup[widget_type]()
             tmp_input.setObjectName(name)
             if isinstance(tmp_input, QComboBox):
@@ -642,21 +640,13 @@ class Editor(QWidget):
                 elif name in self.settings.flavour["leaders"]:
                     self.leader_inputs[name] = tmp_input
                 tmp_input.setStyleSheet(self.settings.styles["combo_dropdown"])
-            # if isinstance(tmp_input, QTableWidget):
-            #     tmp_input.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-            #     tmp_input.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-            #     self.tableView = tmp_input
-            # else:
-            #     self.inputs.append(tmp_input)
             self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
-            # tmp_label = QLabel(title)
             if name in shared.settings.flavour["required_fields"]:
                 title = f"*{title}*"
             # print(f" >>>> {name}-> {title}")
             tmp_label = ClickableLabel(title)
-            # tmp_label.help_txt = title.lower().replace(" ", "_")
             tmp_label.help_txt = name
             tmp_label.clicked.connect(lambda checked=False, l=tmp_label: self.show_help_topic(l))
             font = tmp_label.font()
@@ -792,7 +782,8 @@ class Editor(QWidget):
             leader_name = self.settings.flavour["dictByFollower"][name]
             leader = self.leader_inputs[leader_name]
             match_for_yaml_lookup = leader.currentText()
-            if not match_for_yaml_lookup or match_for_yaml_lookup == self.settings.flavour["combo_default_text"]:
+            # if not match_for_yaml_lookup or match_for_yaml_lookup == self.settings.flavour["combo_default_text"]:
+            if not match_for_yaml_lookup or match_for_yaml_lookup == self.settings.combo_default_text:
                 match_for_yaml_lookup = f"*!*leader:{name}"
         else:
             match_for_yaml_lookup = self.transform_into_yaml_lookup(name)  ## name to match to in yaml file
@@ -804,7 +795,8 @@ class Editor(QWidget):
         if key:
             if key.startswith("*!*"):
                 # raw_options = [f" (first select {key.split(":")[1]}) "]
-                raw_options = [f"{self.settings.flavour["combo_following_default_text"]}{key.split(":")[1]}) "]
+                # raw_options = [f"{self.settings.flavour["combo_following_default_text"]}{key.split(":")[1]}) "]
+                raw_options = [f"{self.settings.combo_following_default_text}{key.split(":")[1]}) "]
             else:
                 options = self.settings.flavour["combo_data"]
                 raw_options = options.get(key, [])
@@ -820,7 +812,8 @@ class Editor(QWidget):
         returns list with default "choose" text if more than one option
         and the index of any selected item or default -1
         """
-        default_text = self.settings.flavour["combo_default_text"]
+        # default_text = self.settings.flavour["combo_default_text"]
+        default_text = self.settings.combo_default_text
         ## If more than one option, add in instruction to select an option
         option_count = len(raw_combo_options)
         new_combo_options = []
@@ -935,17 +928,14 @@ class Editor(QWidget):
         missing = []
         invalid = []
         errors = []
-        msg = optional_msg
-        # errors = []
-        # barcode = self.inputs[COL.barcode.value].text().strip()
-        # if barcode == "*dummy*":
-        #     return True
         rules = self.settings.flavour
         skip_validation_field, skip_validation_text = rules["validation_skip"]
-        if skip_validation_field == skip_validation_text:
-            return True
+        # if skip_validation_field == skip_validation_text:
+        #     return True
         for widget in self.inputs:
             name = widget.objectName()
+            if name == skip_validation_field and self.get_content(widget).strip().lower() == skip_validation_text:
+                return True
             # print(f"....{name} in {rules["required_fields"]}-> {name in rules['required_fields']}")
             if name in rules["required_fields"]:
                 if not self.get_content(widget):
@@ -954,9 +944,6 @@ class Editor(QWidget):
             if name in rules["validate_always"] or name in rules["validate_if_present"]:
                 if (error_msg := self.validate_input(widget)) :
                     invalid.append(f"{name}: {error_msg}")
-            # elif name in rules["validate_if_present"]:
-            #     if (error_msg := self.validate_input(widget)) :
-            #         invalid.append(f"{name}: {error_msg}")
         if missing:
             errors.append(f"The following fields are missing: {', '.join(missing)}")
         if invalid:
@@ -993,7 +980,8 @@ class Editor(QWidget):
             content = widget.toPlainText()
         elif isinstance(widget, QComboBox):
             content = widget.currentText()
-            if content == self.settings.flavour["combo_default_text"] or content.startswith(self.settings.flavour["combo_following_default_text"]):
+            # if content == self.settings.flavour["combo_default_text"] or content.startswith(self.settings.flavour["combo_following_default_text"]):
+            if content == self.settings.combo_default_text or content.startswith(self.settings.combo_following_default_text):
                 content = ""
         else:
             msg = f"No reader set up for {widget}!"
@@ -1059,7 +1047,6 @@ class Editor(QWidget):
         else:
             status = ""
         # print(f"title >>> {self.record_is_locked=}, {status}")
-        # self.caller.setWindowTitle(f"<file: {self.settings.in_file}.new.csv>: {prefix}{text}{status}")
         if self.has_records:
             # file = self.settings.in_file
             file = self.settings.out_file
@@ -1078,6 +1065,8 @@ class Editor(QWidget):
                 input.textChanged.connect(self.handle_text_change)
             elif isinstance(input, QComboBox):
                 input.currentTextChanged.connect(self.handle_text_change)
+            elif isinstance(input, QCheckBox):
+                input.checkStateChanged.connect(self.handle_text_change)
 
 
     def handle_text_change(self) -> None:
@@ -1093,6 +1082,9 @@ class Editor(QWidget):
         elif isinstance(sender, QComboBox):
             sender.setStyleSheet(self.settings.styles[style])
             sender.currentTextChanged.disconnect(self.handle_text_change)
+        elif isinstance(sender, QCheckBox):
+            sender.setStyleSheet(self.settings.styles[style])
+            sender.checkStateChanged.disconnect(self.handle_text_change)
         else:
             print("Huston, we have a problem with text input...")
         self.all_text_is_saved = False
@@ -1153,6 +1145,14 @@ class Editor(QWidget):
         #     self.load_table(input_widget, value)
         else:
             print(f"!!!! Problem: current widget ({type(input_widget)})")
+
+
+    def load_checkbox(self, widget:QCheckBox, value="") -> None:
+        if value == "True":
+            widget.setCheckState(Qt.CheckState.Checked)
+        else:
+            widget.setCheckState(Qt.CheckState.Unchecked)
+
 
     def load_combo_box(self, combo_box:QComboBox, value="") -> None:
         """
@@ -1246,10 +1246,16 @@ class Editor(QWidget):
         for label in self.labels:
             label.setStyleSheet(status.label_style)
         for input in self.inputs:
-            input.setStyleSheet(status.input_style)
-            input.setEnabled(not status.locked_status)
+            if isinstance(input, QCheckBox):
+                input.setEnabled(not status.locked_status)
+            else:
+                input.setStyleSheet(status.input_style)
+                input.setReadOnly(status.locked_status)
+            # input.setStyleSheet(status.input_style)
+            # input.setEnabled(not status.locked_status)
         self.unlock_btn.setText(status.btn_text)
         self.submit_btn.setEnabled(not status.locked_status)
+
 
     def update_nav_buttons(self) -> str:
         # print(f"nav status: {self.record_count=}")
@@ -1295,6 +1301,26 @@ class Editor(QWidget):
         self.all_text_is_saved = True
         # print(f"*** records saved as {self.settings.out_file}")
 
+
+    # def save_as_marc(self) -> None:
+    #     shared.write_CHU_file(self.excel_rows)
+    #     marc_records = shared.build_marc_records(
+    #         shared.parse_rows_into_records(self.excel_rows)
+    #     )
+    #     file_name = (
+    #         self.settings.out_file
+    #         if self.settings.out_file
+    #         else self.settings.default_output_filename
+    #     )
+    #     # print(f">>>>>>> out_file = {file_name}")
+    #     shared.write_marc_files(marc_records, Path(file_name))
+    #     msg = f"The {self.record_count} records in {self.settings.in_file} have been successfully saved as {file_name}.mrk/.mrc in {self.settings.output_dir}."
+    #     shared.logger.info(msg)
+    #     msg_box = QMessageBox()
+    #     msg_box.setText(msg)
+    #     msg_box.exec()
+
+
     def choose_to_abort_on_unsaved_text(self) -> int:
         # print("unsaved text alert...", s)
         dialogue = DialogueOkCancel(
@@ -1338,11 +1364,11 @@ class Editor(QWidget):
             print(f"\n** file dialog -> records: {len(self.excel_rows)}")
             self.all_text_is_saved = True
             self.has_records = True
-            # self.update_current_position("last")
             self.go_to_last_record()
             shared.logger.info(f"Just opened {file_path} containing {self.record_count} records.")
         else:
             print("Selection cancelled.")
+
 
     def get_filename_only(self, file_path: str) -> str:
         if name_start_index := file_path.rfind("/") + 1:
@@ -1447,8 +1473,8 @@ def open_yaml_file(file:str):
     return yaml.safe_load(f)
 
 
-def make_snake_name(text:str):
-    return text.lower().replace(" ", "_")
+# def make_snake_name(text:str):
+#     return text.lower().replace(" ", "_")
 
 def get_settings():
     read_cli_into_settings()
@@ -1485,12 +1511,7 @@ if __name__ == "__main__":
     # print(info)
     grid, rows, headers = get_settings()
     app = QApplication(sys.argv)
-#     app.setStyleSheet(
-#         """QComboBox QAbstractItemView {
-#     selection-background-color: #3B82F6;
-#     selection-color: white;
-# } """)
-    print(f"headers: {headers}")
+    # print(f"headers: {headers}")
     window = WindowWithRightTogglePanel(grid, rows, shared.settings)
     window.show()
     sys.exit(app.exec())

@@ -13,8 +13,15 @@ orderForm:
 
 Things i've done:
 
+Potential problems:
+
+- Not validating on lock
+- i haven't migrated the specific validations to the new edit.py file for art catalogues
+
 To do:
 
+- DONE: migrate edit.py to new build scheme (in orderForm.py)
+- DONE: add in fixes for Georgina's comments
 - DONE: fix headers when you add first record
 - add fixed min lengths to input boxes so they don't jump around when filled with long records
 
