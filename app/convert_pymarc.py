@@ -717,7 +717,11 @@ def norm_size(raw: str) -> int:
 
 
 def norm_illustrations(raw:str) -> bool:
-    return raw.strip() == "True"
+    if isinstance(raw, bool):
+        is_illustrated = raw
+    else:
+        is_illustrated = raw.strip() == "True"
+    return is_illustrated
 
 # def norm_pages(pages_raw: str) -> tuple[str, bool, bool]:
 def norm_pages(pages_raw: str) -> tuple[str, bool]:
@@ -1101,14 +1105,15 @@ def build_300(record: Record) -> Result:
     # pages_punctuation = ISBD[":"] if record.is_illustrated else ""
     # pages = Subfield(value=tmp + ISBD[";"], code="a")
     # pages = Subfield(value=tmp + pages_punctuation, code="a")
-    size = Subfield(value=f"{ISBD[":"]}{record.size} cm", code="c")
+    # size = Subfield(value=f"{ISBD[":"]}{record.size} cm", code="c")
+    size = Subfield(value=f"{record.size} cm", code="c")
     # if settings.TMP_is_illustrated:
     if record.is_illustrated:
         pages = Subfield(value=pages_content + ISBD[":"], code="a")
-        illustrations = Subfield(value="illustrations", code="b")
+        illustrations = Subfield(value=f"illustrations{ISBD[";"]}", code="b")
         content = [pages, illustrations, size]
     else:
-        pages = Subfield(value=pages_content, code="a")
+        pages = Subfield(value=pages_content + ISBD[";"], code="a")
         content = [pages, size]
     result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
     return result
@@ -1265,6 +1270,8 @@ def create_parallel_title(record:Record) -> Result:
     else:
         parallel_title, parallel_subtitle = "", ""
     if parallel_title:
+        if parallel_subtitle:
+            parallel_title += ISBD[":"]
         parallel_title_sub = Subfield(value=parallel_title, code="a")
         if linkage:
             content = [linkage, parallel_title_sub]

@@ -136,6 +136,7 @@ shared.settings.flavour = {
 shared.settings.styles = {
     "text_changed": "border: 1px solid red; background-color: white;",
     "text_changed_border_only": "border: 1px solid red;",
+    "border_only_active": "border: 1px solid whitesmoke;",
     "labels": "font-weight: bold;",
     "label_active": "color: #7c6241;",
     "label_locked": "color: darkgrey;",
@@ -644,13 +645,12 @@ class Editor(QWidget):
             tmp_input: QWidget = self.widget_lookup[widget_type]()
             tmp_input.setObjectName(name)
             if isinstance(tmp_input, QComboBox):
-                # name = make_snake_name(title)
-                ## TODO: continue moving derived titles over to 'name'
                 if name in self.settings.flavour["followers"]:
                     self.follower_inputs[name] = tmp_input
                 elif name in self.settings.flavour["leaders"]:
                     self.leader_inputs[name] = tmp_input
                 tmp_input.setStyleSheet(self.settings.styles["combo_dropdown"])
+            self.update_input_styling(tmp_input, "input_active")
             self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
@@ -762,6 +762,8 @@ class Editor(QWidget):
                     font.setBold(False)
                     font.setItalic(True)
                     label.setFont(font)
+            # for input in self.inputs:
+            #     self.update_input_styling(input, self.settings.styles["input_active"])
 
         ## Integrate the following into default behaviour for combos
         elif self.settings.flavour["title"] == "order_form":
@@ -1130,20 +1132,40 @@ class Editor(QWidget):
         sender = self.sender()
         style = "text_changed"
         if isinstance(sender, QLineEdit):
-            sender.setStyleSheet(self.settings.styles[style])
+            # sender.setStyleSheet(self.settings.styles[style])
             sender.textEdited.disconnect(self.handle_text_change)
         elif isinstance(sender, QTextEdit):
-            sender.setStyleSheet(self.settings.styles[style])
+            # sender.setStyleSheet(self.settings.styles[style])
             sender.textChanged.disconnect(self.handle_text_change)
         elif isinstance(sender, QComboBox):
-            sender.setStyleSheet(self.settings.styles[style])
+            # sender.setStyleSheet(self.settings.styles[style])
             sender.currentTextChanged.disconnect(self.handle_text_change)
         elif isinstance(sender, QCheckBox):
-            sender.setStyleSheet(self.settings.styles["text_changed_border_only"])
+            # sender.setStyleSheet(self.settings.styles["text_changed_border_only"])
             sender.checkStateChanged.disconnect(self.handle_text_change)
         else:
             print("Huston, we have a problem with text input...")
+        self.update_input_styling(sender, style)
         self.all_text_is_saved = False
+
+
+    def update_input_styling(self, widget:QWidget, style:str) -> None:
+        # print(f"Text changed...{datetime.datetime.now()}")
+        if isinstance(widget, QLineEdit):
+            widget.setStyleSheet(self.settings.styles[style])
+        elif isinstance(widget, QTextEdit):
+            widget.setStyleSheet(self.settings.styles[style])
+        elif isinstance(widget, QComboBox):
+            widget.setStyleSheet(self.settings.styles[style])
+        elif isinstance(widget, QCheckBox):
+            if style == "text_changed":
+                style = "text_changed_border_only"
+            else: 
+                style = "border_only_active"
+            widget.setStyleSheet(self.settings.styles[style])
+        else:
+            print("Huston, we have a problem with input styling")
+
 
     def load_record_into_gui(self, row_to_load:list | None=None) -> None:
         """
@@ -1157,7 +1179,8 @@ class Editor(QWidget):
         for col_i, input_widget in enumerate(self.inputs):
             cell_contents = "" if not row_to_load else row_to_load[col_i]
             self.load_record(input_widget, cell_contents)
-            input_widget.setStyleSheet(self.settings.styles["input_active"])
+            # input_widget.setStyleSheet(self.settings.styles["input_active"])
+            self.update_input_styling(input_widget, "input_active")
         # self.load_table(self.tableView, self.excel_rows, self.headers)
         # self.highlight_row_by_index(self.tableView, self.current_row_index)
         self.add_signal_to_fire_on_text_change()
@@ -1208,10 +1231,12 @@ class Editor(QWidget):
 
 
     def load_checkbox(self, widget:QCheckBox, value="") -> None:
-        if value == "True":
-            widget.setCheckState(Qt.CheckState.Checked)
+        if value == "True" or value == True:
+            state = True
         else:
-            widget.setCheckState(Qt.CheckState.Unchecked)
+            state = False
+        widget.setChecked(state)
+        # print(f"+++++++{widget.objectName} {value=} -> {state=} [{widget.checkState()=}]")
 
 
     def load_combo_box(self, combo_box:QComboBox, value="") -> None:
@@ -1351,7 +1376,6 @@ class Editor(QWidget):
         else:
             out = str(number + 1)
         return out
-        # return str(number + 1)
 
     def save_as_csv(self, file_name="") -> None:
         # is_backup_file = bool(file_name)
@@ -1418,6 +1442,9 @@ class Editor(QWidget):
             self.settings.out_file = self.settings.in_file
             print(f"File Selected: {self.settings.in_file} ({file_path})")
             self.headers, self.excel_rows = shared.parse_file_into_rows(Path(file_path))
+            self.headers, self.excel_rows = self.update_csv_fields(self.headers, self.excel_rows)
+            print(f"**{len(self.headers)=}: {self.headers=}")
+            print(f"**{len(self.excel_rows[0])=}: {self.excel_rows[0]=}")
             if not self.settings.use_default_layout:
                 print("Haven't coded for non-default layout yet!")
                 ## TODO: code for change of layout on file loading (i.e. make a standalone: 'load file and update grid' function)
@@ -1428,6 +1455,18 @@ class Editor(QWidget):
             shared.logger.info(f"Just opened {file_path} containing {self.record_count} records.")
         else:
             print("Selection cancelled.")
+
+
+    def update_csv_fields(self, headers:list[str], rows:list[list[str]]) -> tuple[list[str], list[list[str]]]:
+        index_of_illustrations = 19
+        if len(headers) < 29:
+            headers = [*headers[:index_of_illustrations],"Illustrated",*headers[index_of_illustrations:]]
+        if len(rows[0]) < 29:
+            new_rows = []
+            for row in rows:
+                new_rows.append([*row[:index_of_illustrations], True, *row[index_of_illustrations:]])
+            rows = new_rows
+        return (headers, rows)
 
 
     def get_filename_only(self, file_path: str) -> str:

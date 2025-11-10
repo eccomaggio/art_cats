@@ -133,6 +133,8 @@ shared.settings.flavour["dictByFollower"] = dict(zip(shared.settings.flavour["fo
 
 shared.settings.styles = {
     "text_changed": "border: 1px solid red; background-color: white;",
+    "text_changed_border_only": "border: 1px solid red;",
+    "border_only_active": "border: 1px solid whitesmoke;",
     "labels": "font-weight: bold;",
     "label_active": "color: #7c6241;",
     "label_locked": "color: darkgrey;",
@@ -613,10 +615,6 @@ class Editor(QWidget):
 
         self.add_custom_behaviour()
         self.update_title_with_record_number()
-        # if self.has_records:
-        #     self.load_record_into_gui(self.current_row)
-        # else:
-        #     self.handle_new_record()
         self.update_nav_buttons()
         self.add_signal_to_fire_on_text_change()
 
@@ -631,13 +629,12 @@ class Editor(QWidget):
             tmp_input: QWidget = self.widget_lookup[widget_type]()
             tmp_input.setObjectName(name)
             if isinstance(tmp_input, QComboBox):
-                # name = make_snake_name(title)
-                ## TODO: continue moving derived titles over to 'name'
                 if name in self.settings.flavour["followers"]:
                     self.follower_inputs[name] = tmp_input
                 elif name in self.settings.flavour["leaders"]:
                     self.leader_inputs[name] = tmp_input
                 tmp_input.setStyleSheet(self.settings.styles["combo_dropdown"])
+            self.update_input_styling(tmp_input, "input_active")
             self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
@@ -780,7 +777,6 @@ class Editor(QWidget):
             leader_name = self.settings.flavour["dictByFollower"][name]
             leader = self.leader_inputs[leader_name]
             match_for_yaml_lookup = leader.currentText()
-            # if not match_for_yaml_lookup or match_for_yaml_lookup == self.settings.flavour["combo_default_text"]:
             if not match_for_yaml_lookup or match_for_yaml_lookup == self.settings.combo_default_text:
                 match_for_yaml_lookup = f"*!*leader:{name}"
         else:
@@ -793,7 +789,6 @@ class Editor(QWidget):
         if key:
             if key.startswith("*!*"):
                 # raw_options = [f" (first select {key.split(":")[1]}) "]
-                # raw_options = [f"{self.settings.flavour["combo_following_default_text"]}{key.split(":")[1]}) "]
                 raw_options = [f"{self.settings.combo_following_default_text}{key.split(":")[1]}) "]
             else:
                 options = self.settings.flavour["combo_data"]
@@ -810,7 +805,6 @@ class Editor(QWidget):
         returns list with default "choose" text if more than one option
         and the index of any selected item or default -1
         """
-        # default_text = self.settings.flavour["combo_default_text"]
         default_text = self.settings.combo_default_text
         ## If more than one option, add in instruction to select an option
         option_count = len(raw_combo_options)
@@ -860,6 +854,7 @@ class Editor(QWidget):
         # self.display.setText(link)
         print(f"--- the link is: #{link}")
 
+
     @property
     def row_count(self) -> int:
         return len(self.excel_rows)
@@ -887,6 +882,7 @@ class Editor(QWidget):
     @current_row.setter
     def current_row(self, row:list) -> None:
         self.excel_rows[self.current_row_index] = row
+
 
     def handle_submit(self, optional_msg="") -> bool:
         """
@@ -928,8 +924,6 @@ class Editor(QWidget):
         errors = []
         rules = self.settings.flavour
         skip_validation_field, skip_validation_text = rules["validation_skip"]
-        # if skip_validation_field == skip_validation_text:
-        #     return True
         for widget in self.inputs:
             name = widget.objectName()
             if name == skip_validation_field and self.get_content(widget).strip().lower() == skip_validation_text:
@@ -943,9 +937,13 @@ class Editor(QWidget):
                 if (error_msg := self.validate_input(widget)) :
                     invalid.append(f"{name}: {error_msg}")
         if missing:
-            errors.append(f"The following fields are missing: {', '.join(missing)}")
+            count = len(missing)
+            add_s = "s" if count > 1 else ""
+            errors.append(f"The following {count} field{add_s} are missing: {', '.join(missing)}")
         if invalid:
-            errors.append(f"Please correct the following problem(s): {'; '.join(invalid)}")
+            count = len(invalid)
+            add_s = "s" if count > 1 else ""
+            errors.append(f"Please correct the {count} following problem{add_s}: {'; '.join(invalid)}")
         msg = "\n".join(errors)
         if msg:
             alert = QMessageBox()
@@ -954,6 +952,7 @@ class Editor(QWidget):
             return False
         print(f"%%% {msg}")
         return True
+
 
     def validate_input(self, widget:QWidget) -> str:
         ## Valid = empty string
@@ -967,6 +966,12 @@ class Editor(QWidget):
                 isbn = self.get_content(widget)
                 if 10 > len(isbn) > 13:
                     return "The ISBN is not valid."
+            case "barcode":
+                barcode = self.get_content(widget)
+                if len(barcode) != 9:
+                    return "A barcode must have 9 digits"
+                if barcode[0] not in "367":
+                    return "A barcode needs to start with 3, 6 or 7"
         return ""
 
 
@@ -978,14 +983,16 @@ class Editor(QWidget):
             content = widget.toPlainText()
         elif isinstance(widget, QComboBox):
             content = widget.currentText()
-            # if content == self.settings.flavour["combo_default_text"] or content.startswith(self.settings.flavour["combo_following_default_text"]):
             if content == self.settings.combo_default_text or content.startswith(self.settings.combo_following_default_text):
                 content = ""
+        elif isinstance(widget, QCheckBox):
+                content = "True" if widget.isChecked() else "False"
         else:
             msg = f"No reader set up for {widget}!"
             print(msg)
             # logging.critical(msg)
         return content.strip()
+
 
     def handle_close(self) -> None:
         # self.close()
@@ -1051,7 +1058,6 @@ class Editor(QWidget):
         else:
             file = "*unsaved*"
         self.caller.setWindowTitle(f"FILE: {file} -- {prefix}{text}{status}")
-        # self.update_input_styles()
 
     def add_signal_to_fire_on_text_change(self):
         # for input in self.inputs:
@@ -1072,20 +1078,39 @@ class Editor(QWidget):
         sender = self.sender()
         style = "text_changed"
         if isinstance(sender, QLineEdit):
-            sender.setStyleSheet(self.settings.styles[style])
+            # sender.setStyleSheet(self.settings.styles[style])
             sender.textEdited.disconnect(self.handle_text_change)
         elif isinstance(sender, QTextEdit):
-            sender.setStyleSheet(self.settings.styles[style])
+            # sender.setStyleSheet(self.settings.styles[style])
             sender.textChanged.disconnect(self.handle_text_change)
         elif isinstance(sender, QComboBox):
-            sender.setStyleSheet(self.settings.styles[style])
+            # sender.setStyleSheet(self.settings.styles[style])
             sender.currentTextChanged.disconnect(self.handle_text_change)
         elif isinstance(sender, QCheckBox):
-            sender.setStyleSheet(self.settings.styles[style])
+            # sender.setStyleSheet(self.settings.styles[style])
             sender.checkStateChanged.disconnect(self.handle_text_change)
         else:
             print("Huston, we have a problem with text input...")
+        self.update_input_styling(sender, style)
         self.all_text_is_saved = False
+
+
+    def update_input_styling(self, widget:QWidget, style:str) -> None:
+        # print(f"Text changed...{datetime.datetime.now()}")
+        if isinstance(widget, QLineEdit):
+            widget.setStyleSheet(self.settings.styles[style])
+        elif isinstance(widget, QTextEdit):
+            widget.setStyleSheet(self.settings.styles[style])
+        elif isinstance(widget, QComboBox):
+            widget.setStyleSheet(self.settings.styles[style])
+        elif isinstance(widget, QCheckBox):
+            if style == "text_changed":
+                style = "text_changed_border_only"
+            else:
+                style = "border_only_active"
+            widget.setStyleSheet(self.settings.styles[style])
+        else:
+            print("Huston, we have a problem with input styling")
 
 
     def load_record_into_gui(self, row_to_load:list | None=None) -> None:
@@ -1100,7 +1125,8 @@ class Editor(QWidget):
         for col_i, input_widget in enumerate(self.inputs):
             cell_contents = "" if not row_to_load else row_to_load[col_i]
             self.load_record(input_widget, cell_contents)
-            input_widget.setStyleSheet(self.settings.styles["input_active"])
+            # input_widget.setStyleSheet(self.settings.styles["input_active"])
+            self.update_input_styling(input_widget, "input_active")
         self.load_table(self.tableView, self.excel_rows, self.headers)
         self.highlight_row_by_index(self.tableView, self.current_row_index)
         self.add_signal_to_fire_on_text_change()
@@ -1110,6 +1136,7 @@ class Editor(QWidget):
         # print(f">>>>>{mode=}, {row_to_load=} {self.has_records=}, {self.headers}")
         self.all_text_is_saved = True
 
+
     def clear_form(self) -> None:
         if not self.current_record_is_new and self.abort_on_clearing_existing_record(
             self
@@ -1118,16 +1145,18 @@ class Editor(QWidget):
         self.load_record_into_gui()
         # self.toggle_record_editable("edit")
 
+
     def handle_new_record(self) -> None:
         ## TODO: should i add in a routine to save the previous record here?
         self.current_row_index = -1
-        if self.settings.flavour["title"] == "order_form":
-            for field in self.settings.flavour["fields_to_clear"]:
-                input_widget = self.inputs[field.value]
-                self.load_record(input_widget, "")
+        # if self.settings.flavour["title"] == "order_form":
+        for field in self.settings.flavour["fields_to_clear"]:
+            input_widget = self.inputs[field.value]
+            self.load_record(input_widget, "")
         self.all_text_is_saved = True
         self.toggle_record_editable("edit")
         self.update_title_with_record_number()
+
 
     def load_record(self, input_widget:QWidget, value:Any, options=[]) -> None:
         # caller = inspect.stack()[1].function
@@ -1138,6 +1167,8 @@ class Editor(QWidget):
             self.load_line_edit(input_widget, value)
         elif isinstance(input_widget, QTextEdit):
             self.load_text_edit(input_widget, value)
+        elif isinstance(input_widget, QCheckBox):
+            self.load_checkbox(input_widget, value)
         # elif isinstance(input_widget, QTableWidget):
         #     ## the entire table is loaded from scratch, not just a single value, as for others
         #     self.load_table(input_widget, value)
@@ -1146,10 +1177,12 @@ class Editor(QWidget):
 
 
     def load_checkbox(self, widget:QCheckBox, value="") -> None:
-        if value == "True":
-            widget.setCheckState(Qt.CheckState.Checked)
+        if value == "True" or value == True:
+            state = True
         else:
-            widget.setCheckState(Qt.CheckState.Unchecked)
+            state = False
+        widget.setChecked(state)
+        # print(f"+++++++{widget.objectName} {value=} -> {state=} [{widget.checkState()=}]")
 
 
     def load_combo_box(self, combo_box:QComboBox, value="") -> None:
@@ -1471,9 +1504,6 @@ def open_yaml_file(file:str):
     return yaml.safe_load(f)
 
 
-# def make_snake_name(text:str):
-#     return text.lower().replace(" ", "_")
-
 def get_settings():
     read_cli_into_settings()
     grid = Grid()
@@ -1506,7 +1536,6 @@ def get_settings():
 
 if __name__ == "__main__":
     shared.settings.flavour["combo_data"] = open_yaml_file("./app/bodleian.yaml")
-    # print(info)
     grid, rows, headers = get_settings()
     app = QApplication(sys.argv)
     # print(f"headers: {headers}")
