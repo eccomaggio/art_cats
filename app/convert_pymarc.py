@@ -1,3 +1,4 @@
+from string import punctuation
 from unittest import result
 from openpyxl import load_workbook, Workbook  # type: ignore
 from openpyxl.styles import Font, Alignment, PatternFill
@@ -1106,7 +1107,8 @@ def build_300(record: Record) -> Result:
     # pages = Subfield(value=tmp + ISBD[";"], code="a")
     # pages = Subfield(value=tmp + pages_punctuation, code="a")
     # size = Subfield(value=f"{ISBD[":"]}{record.size} cm", code="c")
-    size = Subfield(value=f"{record.size} cm", code="c")
+    punctuation = ISBD["."] if record.series_title else ""
+    size = Subfield(value=f"{record.size} cm{punctuation}", code="c")
     # if settings.TMP_is_illustrated:
     if record.is_illustrated:
         pages = Subfield(value=pages_content + ISBD[":"], code="a")
@@ -1122,13 +1124,17 @@ def build_300(record: Record) -> Result:
 def build_336(record: Record) -> Result:
     """content type (boilerplate)"""
     tag = 336
-    # i1, i2 = "\\", "\\"
     i1, i2 = BLANK, BLANK
-    # content_type = "still image" if settings.TMP_is_illustrated else "text"
-    content_type = "still image" if record.is_illustrated else "text"
-    # content = [Subfield(value="text", code="a"), Subfield(value="rdacontent", code="2")]
-    content = [Subfield(value = content_type, code="a"), Subfield(value="rdacontent", code="2")]
-    result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
+    text_content = [Subfield(value="text", code="a"), Subfield(value="rdacontent", code="2")]
+    text_field = Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=text_content)
+    if record.is_illustrated:
+        illus_content = [Subfield(value="still image", code="a"), Subfield(value="rdacontent", code="2")]
+        illus_field = Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=illus_content)
+        result = Result([text_field, illus_field], None)
+    else:
+        result = Result(text_field, None)
+    # content = [Subfield(value = content_type, code="a"), Subfield(value="rdacontent", code="2")]
+    # result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
     return result
 
 

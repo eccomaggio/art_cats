@@ -1160,7 +1160,7 @@ class Editor(QWidget):
         elif isinstance(widget, QCheckBox):
             if style == "text_changed":
                 style = "text_changed_border_only"
-            else: 
+            else:
                 style = "border_only_active"
             widget.setStyleSheet(self.settings.styles[style])
         else:
@@ -1443,12 +1443,12 @@ class Editor(QWidget):
             print(f"File Selected: {self.settings.in_file} ({file_path})")
             self.headers, self.excel_rows = shared.parse_file_into_rows(Path(file_path))
             self.headers, self.excel_rows = self.update_csv_fields(self.headers, self.excel_rows)
-            print(f"**{len(self.headers)=}: {self.headers=}")
-            print(f"**{len(self.excel_rows[0])=}: {self.excel_rows[0]=}")
+            # print(f"**{len(self.headers)=}: {self.headers=}")
+            # print(f"**{len(self.excel_rows[0])=}: {self.excel_rows[0]=}")
             if not self.settings.use_default_layout:
                 print("Haven't coded for non-default layout yet!")
                 ## TODO: code for change of layout on file loading (i.e. make a standalone: 'load file and update grid' function)
-            print(f"\n** file dialog -> records: {len(self.excel_rows)}")
+            print(f"\n** file dialog -> records loaded: {len(self.excel_rows)}")
             self.all_text_is_saved = True
             self.has_records = True
             self.go_to_last_record()
