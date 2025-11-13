@@ -1221,6 +1221,7 @@ class Editor(QWidget):
         if headers:
             table.setHorizontalHeaderLabels(headers)
         if self.has_records:
+            table.setSpan(0,0,1,1)
             for row_i, row in enumerate(rows):
                 for col_i, column in enumerate(row):
                     table.setItem(row_i, col_i, QTableWidgetItem(column))

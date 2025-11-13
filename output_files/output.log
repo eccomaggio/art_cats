@@ -1,4 +1,0 @@
-INFO:Just opened /Users/paulwakelin/coding/art_cats/input_files/test_cat.csv containing 8 records.
-WARNING:barcode *dummy* is non-standard
-WARNING:Record no. 14 is missing the mandatory field 'extent'.
-INFO:The 8 records in test_cat.csv have been successfully saved as test_cat.csv.mrk/.mrc in output_files.

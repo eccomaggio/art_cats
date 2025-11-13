@@ -53,8 +53,8 @@ class Settings:
     backup_file = "backup.bak"
     alt_title_signifier = "*//*"
     # TMP_is_illustrated = False
-    combo_default_text = " >> Choose <<",
-    combo_following_default_text = " (first select ",
+    combo_default_text = " >> Choose <<"
+    combo_following_default_text = " (first select "
 
 
 # excel_file_path = "excel_files"
