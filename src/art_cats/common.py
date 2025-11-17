@@ -1,18 +1,19 @@
 """
-GUI to replace excel files in the excel file cataloguing workflow. I wanted to avoid excel files as the automatic user input form is inadequate and coding a custom one is painful.
-This can create a file from scratch or load a suitable (i.e. contains the correct number of fields in the correct order) csv or excel file. After adding and amending records, the result can be saved as a .csv file and / or marc 21 files (.mrk & .mrc files)
-It builds on a script that converts excel files into markdown; in fact, the current script imports this script and utilises it to open files and create internal representations ("Records").
+Common resources
 """
 
 # import inspect  ## for debugging only
+# import settings as setup
+from enum import Enum
+from .settings import Settings
+from . import marc_21
+
 import argparse
 from datetime import datetime
 import yaml
 import sys
 import csv
 from enum import Enum, auto
-# from app import convert as shared
-from app import convert_pymarc as shared
 from dataclasses import dataclass
 from collections import namedtuple
 from typing import Any
@@ -54,99 +55,21 @@ from PySide6.QtGui import (
     QDesktopServices,
 )
 
-class COL(Enum):
-    ## need pto be in same order as CSV / excel fields
-    @staticmethod
-    def _generate_next_value_(count):
-        return count
+import logging
 
-    def __new__(cls, display_title: str):
-        member = object.__new__(cls)
-        member._value_ = cls._generate_next_value_(len(cls.__members__))
-        member.display_title = display_title
-        return member
 
-    def __init__(self, title: str):
-        self.display_title = title
+# settings = setup.Settings()
+settings = Settings()
 
-    sublib = "Library"
-    langs = "language of resource"
-    isbn = "ISBN"
-    title = "Title"
-    tr_title = "Title transliteration"
-    subtitle = "Subtitle"
-    tr_subtitle = "Subtitle transliteration"
-    parallel_title = "Parallel title (dual language only)"
-    tr_parallel_title = "Parallel title transliteration"
-    parallel_subtitle = "Parallel subtitle (dual language only)"
-    tr_parallel_subtitle = "Parallel subtitle transliteration"
-    country_name = "Country of publication"
-    state = "State (US/UK/Canada & Australia only)"
-    place = "Place of publication"
-    publisher = "Publisher's name"
-    pub_year = "Year of publication"
-    copyright = "Year of copyright"
-    extent = "Number of pages"
-    size = "Size (height)"
-    is_illustrated = "Illustrated"
-    series_title = "Series title"
-    series_enum = "Series enumeration"
-    volume = "Volume"
-    notes = "Note"
-    sales_code = "Sale code"
-    sale_dates = "Date of auction"
-    hol_notes = "HOL notes"
-    donation = "Donor note"
-    barcode = "Barcode"
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    filename = settings.files.output_dir / "output.log",
+    filemode="w",
+    encoding="utf-8",
+    format="%(levelname)s:%(message)s",
+    level=logging.DEBUG
+    )
 
-combo_lookup = {}
-
-shared.settings.help_file = "help.html"
-shared.settings.combo_default_text = " >> Choose <<"
-shared.settings.combo_following_default_text = " (first select "
-shared.settings.show_table_view = False
-shared.settings.flavour = {
-    "title": "art_catalogue",
-    "fields_to_clear": [
-        COL.barcode,
-        COL.hol_notes,
-        COL.extent,
-        COL.pub_year,
-        COL.sale_dates,
-        COL.copyright,
-        COL.sale_dates,
-        COL.sales_code,
-    ],
-    "fields_to_fill": [
-        [COL.sublib, "ARTBL"],
-    ],
-    "combo_default_text": " >> Choose <<",
-    "combo_following_default_text": " (first select ",
-    "independent_inputs": [],
-    "leaders": [],
-    "followers": [],
-    "headers": [member.display_title for member in COL],
-    "required_fields": [COL.langs.name, COL.title.name, COL.extent.name, COL.pub_year.name, COL.publisher.name, COL.country_name.name, COL.place.name, COL.extent.name, COL.size.name, COL.barcode.name],
-    "validate_always": [COL.barcode.name],
-    "validate_if_present": [COL.isbn.name],
-    "validation_skip": (COL.barcode.name, "*dummy*"),
-    "locking_is_enabled": True,
-}
-shared.settings.styles = {
-    "text_changed": "border: 1px solid red; background-color: white;",
-    "text_changed_border_only": "border: 1px solid red;",
-    "border_only_active": "border: 1px solid whitesmoke;",
-    "labels": "font-weight: bold;",
-    "label_active": "color: #7c6241;",
-    "label_locked": "color: darkgrey;",
-    "input_active": "border: 1px solid lightgrey; background-color: white;",
-    "input_locked": "border: 1px solid whitesmoke; background-color: whitesmoke;",
-    "combo_dropdown": "QComboBox QAbstractItemView {selection-background-color: #3B82F6; selection-color: white;}",
-}
-
-LABELS = {
-    "help" : {"show": "Show help", "hide": "Hide help"}
-}
 
 @dataclass
 class Brick:
@@ -225,41 +148,6 @@ class STATUS(Enum):
     occupied = auto()
     toosmall = auto()
     ok = auto()
-
-
-default_template = (
-    ## non-algorithmic version needs to be: [title, brick-type, start-row, start-col]
-    ## needs to be in same order as COL specification
-    (COL.sublib, "1:2", 0, 0, "line"),
-    (COL.langs, "1:2", 0, 2, "line"),
-    (COL.isbn, "1:2", 0, 4, "line"),
-    (COL.title, "2:3", 1, 0, "text"),
-    (COL.tr_title, "2:3", 1, 3, "text"),
-    (COL.subtitle, "2:3", 3, 0, "text"),
-    (COL.tr_subtitle, "2:3", 3, 3, "text"),
-    (COL.parallel_title, "2:3", 5, 0, "text"),
-    (COL.tr_parallel_title, "2:3", 5, 3, "text"),
-    (COL.parallel_subtitle, "2:3", 7, 0, "text"),
-    (COL.tr_parallel_subtitle, "2:3", 7, 3, "text"),
-    (COL.country_name, "1:2", 13, 0, "line"),
-    (COL.state, "1:2", 13, 2, "line"),
-    (COL.place, "1:2", 13, 4, "line"),
-    (COL.publisher, "1:4", 14, 0, "line"),
-    (COL.pub_year, "1:1", 14, 4, "line"),
-    (COL.copyright, "1:1", 14, 5, "line"),
-    (COL.extent, "1:1", 15, 1, "line"),
-    (COL.size, "1:1", 15, 0, "line"),
-    (COL.is_illustrated, "1:1", 15, 3, "checkbox"),
-    (COL.series_title, "1:3", 12, 0, "line"),
-    (COL.series_enum, "1:2", 12, 3, "line"),
-    (COL.volume, "1:1", 12, 5, "line"),
-    (COL.notes, "3:3", 9, 0, "text"),
-    (COL.sales_code, "1:1", 15, 2, "line"),
-    (COL.sale_dates, "1:2", 15, 4, "line"),
-    (COL.hol_notes, "3:3", 9, 3, "text"),
-    (COL.donation, "1:4", 16, 0, "line"),
-    (COL.barcode, "1:2", 16, 4, "line"),
-)
 
 
 class Grid:
@@ -383,9 +271,10 @@ class WindowWithRightTogglePanel(QWidget):
     saved_editor_width = 0
     GRID_BUFFER = 3  # Buffer for layout margins/spacing
 
-    def __init__(self, grid:Grid, rows:list[list[str]], settings:shared.Settings ):
+    def __init__(self, grid:Grid, rows:list[list[str]], settings: Settings, COL:Enum, app):
         super().__init__()
 
+        self.COL = COL
         self.main_grid = QGridLayout(self)
         self.main_grid.setContentsMargins(0, 0, 0, 0)
         # self.main_grid.setSpacing(3)
@@ -395,7 +284,7 @@ class WindowWithRightTogglePanel(QWidget):
         self.HELP_PANEL_WIDTH = 350
 
         # --- 1. Main Editor Setup (Column 0, Expanding) ---
-        self.edit_panel_widget = Editor(grid, rows, settings.in_file, self, settings)
+        self.edit_panel_widget = Editor(grid, rows, settings.files.in_file, self, settings, COL, app)
         self.edit_panel_widget.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
@@ -403,7 +292,7 @@ class WindowWithRightTogglePanel(QWidget):
         # --- 2. Help Panel Setup (Column 1, Fixed Width) ---
         self.help_widget = QTextBrowser()
         ## NB pyside6 does not natively implement internal links in markdown (hence the use of html)
-        html_path = Path.cwd() / settings.app_dir / settings.help_file
+        html_path = Path.cwd() / settings.files.app_dir / settings.files.help_file
         html_content = load_text_from_file(str(html_path))
         self.help_widget.setHtml(html_content)
         # self.help_widget.anchorClicked.connect(self.handle_internal_link)
@@ -493,7 +382,8 @@ class WindowWithRightTogglePanel(QWidget):
             self.resize(self.width(), self.saved_height)
 
             # 5. Update button text
-            self.edit_panel_widget.help_btn.setText(LABELS["help"]["show"])
+            # self.edit_panel_widget.help_btn.setText(LABELS["help"]["show"])
+            self.edit_panel_widget.help_btn.setText(settings.labels.show_help)
 
         else:
             # --- Showing Panel (Expanding Window) ---
@@ -509,7 +399,7 @@ class WindowWithRightTogglePanel(QWidget):
                 self.saved_editor_width + self.HELP_PANEL_WIDTH + self.GRID_BUFFER
             )
             # self.edit_panel_widget.help_btn.setText("Hide Help Panel")
-            self.edit_panel_widget.help_btn.setText(LABELS["help"]["hide"])
+            self.edit_panel_widget.help_btn.setText(settings.labels.hide_help)
             # self.resize(new_width, self.height())
             self.resize(new_width, self.saved_height)
 
@@ -551,7 +441,7 @@ class ClickableLabel(QLabel):
         self.setMouseTracking(True)
         self.setCursor(Qt.CursorShape.WhatsThisCursor)
         # self.default_style = "text-decoration: none;"
-        self.default_style = shared.settings.styles["label_active"]
+        self.default_style = settings.styles.label_active
         self.hover_style = "text-decoration: underline overline;"
         self.pressed_style = "font-style: italic;"
         self.setStyleSheet(self.default_style)
@@ -592,7 +482,7 @@ class Editor(QWidget):
         "table": QTableWidget,
         "checkbox": QCheckBox,
     }
-    def __init__(self, grid: Grid, excel_rows: list[list[str]], file_name: str, caller:WindowWithRightTogglePanel, settings:shared.Settings):
+    def __init__(self, grid: Grid, excel_rows: list[list[str]], file_name: str, caller:WindowWithRightTogglePanel, settings:Settings, COL, app):
         super().__init__()
         self.setWindowTitle("Editor")
         self.setGeometry(100, 100, 1200, 800)
@@ -604,17 +494,19 @@ class Editor(QWidget):
         nav_grid = QGridLayout()
         self.nav_grouped_layout = QGroupBox("Navigation")
 
+        self.app = app
+        self.COL = COL
         self.grid = grid
-        self.headers = self.settings.flavour["headers"]
+        self.headers = self.settings.headers
         if excel_rows:
             self.excel_rows = excel_rows
             self.has_records = True
         else:
-            self.excel_rows = [["" for _ in range(len(shared.settings.layout_template))]]
+            self.excel_rows = [["" for _ in range(len(settings.layout_template))]]
             self.has_records = False
 
         self.file_name = file_name
-        self.short_file_name = self.get_filename_only(settings.in_file)
+        self.short_file_name = self.get_filename_only(settings.files.in_file)
         self.current_row_index = len(excel_rows) - 1
         self.record_is_locked = True
         self.all_text_is_saved = True
@@ -642,17 +534,17 @@ class Editor(QWidget):
             tmp_input: QWidget = self.widget_lookup[widget_type]()
             tmp_input.setObjectName(name)
             if isinstance(tmp_input, QComboBox):
-                if name in self.settings.flavour["followers"]:
+                if name in self.settings.combos.followers:
                     self.follower_inputs[name] = tmp_input
-                elif name in self.settings.flavour["leaders"]:
+                elif name in self.settings.combos.leaders:
                     self.leader_inputs[name] = tmp_input
-                tmp_input.setStyleSheet(self.settings.styles["combo_dropdown"])
+                tmp_input.setStyleSheet(self.settings.styles.combo_dropdown)
             self.update_input_styling(tmp_input, "input_active")
             self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
-            if name in shared.settings.flavour["required_fields"]:
-                title = f"*{title}*"
+            if name in self.settings.validation.required_fields:
+                title = f"**{title}"
             # print(f" >>>> {name}-> {title}")
             tmp_label = ClickableLabel(title)
             tmp_label.help_txt = name
@@ -690,7 +582,8 @@ class Editor(QWidget):
         self.close_btn = QPushButton("Close")
         self.close_btn.clicked.connect(self.handle_close)
         # self.help_btn = QPushButton("Hide Help Panel")
-        self.help_btn = QPushButton(LABELS["help"]["hide"])
+        # self.help_btn = QPushButton(LABELS["help"]["hide"])
+        self.help_btn = QPushButton(self.settings.labels.hide_help)
         self.help_btn.clicked.connect(caller.toggle_help_panel)
         # self.help_btn.clicked.connect(self.window.toggle_help_panel)
         self.load_file_btn = QPushButton("Load file")
@@ -717,14 +610,14 @@ class Editor(QWidget):
         self.close_btn = QPushButton("Close")
         self.close_btn.clicked.connect(self.handle_close)
         self.unlock_btn = QPushButton("Unlock")
-        if self.settings.flavour["locking_is_enabled"]:
+        if self.settings.locking_is_enabled:
             self.unlock_btn.clicked.connect(self.handle_unlock)
         else:
             self.unlock_btn.setEnabled(False)
 
         ## Add nav buttons to layout
-        last_id = len(grid.widget_info) - 1
-        last_widget = grid.widget_info[last_id]
+        last_id = len(self.grid.widget_info) - 1
+        last_widget = self.grid.widget_info[last_id]
         last_row = last_widget[0] + last_widget[2].height
         ## addWidget(widget, row, column, rowspan, colspan)
         nav_grid.addWidget(self.first_btn, last_row, 0, 1, 1)
@@ -743,7 +636,7 @@ class Editor(QWidget):
         #     nav_grid.addWidget(self.marc_btn, last_row, 1, 1, 1)
         nav_grid.addWidget(self.close_btn, last_row, 2, 1, 1)
         nav_grid.addWidget(self.help_btn, last_row, 3, 1, 1)
-        if self.settings.flavour["title"] == "art_catalogue":
+        if self.settings.title == "art_catalogue":
             self.marc_btn = QPushButton("Export as MARC")
             self.marc_btn.clicked.connect(self.save_as_marc)
             nav_grid.addWidget(self.marc_btn, last_row, 1, 1, 1)
@@ -754,8 +647,8 @@ class Editor(QWidget):
 
 
     def add_custom_behaviour(self) -> None:
-        if self.settings.flavour["title"] == "art_catalogue":
-            sale_dates = self.inputs[COL.sale_dates.value]
+        if self.settings.title == "art_catalogue":
+            sale_dates = self.inputs[self.COL.sale_dates.value]
             if isinstance(sale_dates, QLineEdit):
                 sale_dates.editingFinished.connect(self.saledates_action)
             for label in self.labels:
@@ -765,7 +658,7 @@ class Editor(QWidget):
                     font.setItalic(True)
                     label.setFont(font)
 
-        elif self.settings.flavour["title"] == "order_form":
+        elif self.settings.title == "order_form":
             self.setup_combo_boxes()
             self.load_table(self.tableView, self.excel_rows)
 
@@ -775,12 +668,12 @@ class Editor(QWidget):
         for input_widget in self.inputs:
             if isinstance(input_widget, QComboBox):
                 name = input_widget.objectName()
-                if name in self.settings.flavour["independent_inputs"]:
+                if name in self.settings.combos.independents:
                     # print(f" ======= {name} is independent")
                     raw_options = self.get_raw_combo_options(self.transform_into_yaml_lookup(name))
                     options, _ = self.get_normalized_combo_list(raw_options)
                 else:
-                    leader_name = self.settings.flavour["dictByFollower"][name]
+                    leader_name = self.settings.combos.dict_by_follower[name]
                     leader_widget = self.leader_inputs[leader_name]
                     # print(f" ======= {name} is a follower -> {leader_name}")
                     leader_widget.currentTextChanged.connect(self.handle_update_follower)
@@ -795,26 +688,26 @@ class Editor(QWidget):
 
     def handle_update_follower(self) -> None:
         leader:QComboBox = self.sender()
-        follower_name = self.settings.flavour["dictByLeader"][leader.objectName()]
+        follower_name = self.settings.combos.dict_by_leader[leader.objectName()]
         self.load_combo_box(self.follower_inputs[follower_name])
 
 
     def transform_into_yaml_lookup(self, object_name:str) -> str:
         ## transforms the objectName of the widget so that it matches the yaml file
         # name = combo_lookup[object_name]
-        # return name
+        # return name:w
         return object_name
 
 
     def get_combo_options_source(self, combo_box:QComboBox) -> str:
         ## TODO: (probably) combine with / call only from get_raw_combo_options()
         name = combo_box.objectName()
-        if name in self.settings.flavour["followers"]:
+        if name in self.settings.combos.followers:
             ## need to get the selected value in leader
-            leader_name = self.settings.flavour["dictByFollower"][name]
+            leader_name = self.settings.combos.dict_by_follower[name]
             leader = self.leader_inputs[leader_name]
             match_for_yaml_lookup = leader.currentText()
-            if not match_for_yaml_lookup or match_for_yaml_lookup == self.settings.combo_default_text:
+            if not match_for_yaml_lookup or match_for_yaml_lookup == self.settings.combos.default_text:
                 match_for_yaml_lookup = f"*!*leader:{name}"
         else:
             match_for_yaml_lookup = self.transform_into_yaml_lookup(name)  ## name to match to in yaml file
@@ -826,10 +719,10 @@ class Editor(QWidget):
         if key:
             if key.startswith("*!*"):
                 # raw_options = [f" (first select {key.split(":")[1]}) "]
-                raw_options = [f"{self.settings.combo_following_default_text}{key.split(":")[1]}) "]
+                raw_options = [f"{self.settings.combos.following_default_text}{key.split(":")[1]}) "]
                 # raw_options = [f"{self.settings.flavour["combo_following_default_text"]}{key.split(":")[1]}) "]
             else:
-                options = self.settings.flavour["combo_data"]
+                options = self.settings.combos.data
                 raw_options = options.get(key, [])
         else:
             # raw_options = ["TBA"]
@@ -843,7 +736,7 @@ class Editor(QWidget):
         returns list with default "choose" text if more than one option
         and the index of any selected item or default -1
         """
-        default_text = self.settings.combo_default_text
+        default_text = self.settings.combos.default_text
         ## If more than one option, add in instruction to select an option
         option_count = len(raw_combo_options)
         new_combo_options = []
@@ -951,7 +844,7 @@ class Editor(QWidget):
         else:
             ## Update existing record
             self.current_row = data
-        self.save_as_csv(self.settings.out_file)
+        self.save_as_csv(self.settings.files.out_file)
         self.update_nav_buttons()
         self.load_record_into_gui(self.current_row)
         return True
@@ -962,18 +855,17 @@ class Editor(QWidget):
         missing = []
         invalid = []
         errors = []
-        rules = self.settings.flavour
-        skip_validation_field, skip_validation_text = rules["validation_skip"]
+        rules = self.settings.validation
         for widget in self.inputs:
             name = widget.objectName()
-            if name == skip_validation_field and self.get_content(widget).strip().lower() == skip_validation_text:
+            if name == rules.validation_skip_field and self.get_content(widget).strip().lower() == rules.validation_skip_text:
                 return True
             # print(f"....{name} in {rules["required_fields"]}-> {name in rules['required_fields']}")
-            if name in rules["required_fields"]:
+            if name in rules.required_fields:
                 if not self.get_content(widget):
                     missing.append(name)
                     continue
-            if name in rules["validate_always"] or name in rules["validate_if_present"]:
+            if name in rules.validate_always or name in rules.validate_if_present:
                 if (error_msg := self.validate_input(widget)) :
                     invalid.append(f"{name}: {error_msg}")
         if missing:
@@ -1023,7 +915,7 @@ class Editor(QWidget):
             content = widget.toPlainText()
         elif isinstance(widget, QComboBox):
             content = widget.currentText()
-            if content == self.settings.combo_default_text or content.startswith(self.settings.combo_following_default_text):
+            if content == self.settings.combos.default_text or content.startswith(self.settings.combos.following_default_text):
                 content = ""
         elif isinstance(widget, QCheckBox):
                 content = "True" if widget.isChecked() else "False"
@@ -1036,7 +928,7 @@ class Editor(QWidget):
 
     def handle_close(self) -> None:
         # self.close()
-        app.quit()
+        self.app.quit()
 
     def go_to_first_record(self) -> None:
         self.update_current_position("first")
@@ -1085,7 +977,7 @@ class Editor(QWidget):
         # print("sales_date filled in!!")
         sender = self.sender()
         # sender = self.inputs[COL.sale_dates.value]
-        pubdate = self.inputs[COL.pub_year.value]
+        pubdate = self.inputs[self.COL.pub_year.value]
         if isinstance(sender, QLineEdit) and isinstance(pubdate, QLineEdit):
             if not pubdate.text():
                 year_of_pub = sender.text().strip()[:4]
@@ -1098,7 +990,7 @@ class Editor(QWidget):
     def update_title_with_record_number(self, prefix="Record no. ") -> None:
         text = f"{self.get_human_readable_record_number()} of {self.record_count}"
         # status = " **locked**" if self.record_is_locked else " (editable)"
-        if self.settings.flavour["locking_is_enabled"]:
+        if self.settings.locking_is_enabled:
             if self.record_is_locked:
                 status = " **locked**"
             else:
@@ -1108,7 +1000,7 @@ class Editor(QWidget):
         # print(f"title >>> {self.record_is_locked=}, {status}")
         if self.has_records:
             # file = self.settings.in_file
-            file = self.settings.out_file
+            file = self.settings.files.out_file
         else:
             file = "*unsaved*"
         self.caller.setWindowTitle(f"FILE: {file} -- {prefix}{text}{status}")
@@ -1153,17 +1045,17 @@ class Editor(QWidget):
     def update_input_styling(self, widget:QWidget, style:str) -> None:
         # print(f"Text changed...{datetime.datetime.now()}")
         if isinstance(widget, QLineEdit):
-            widget.setStyleSheet(self.settings.styles[style])
+            widget.setStyleSheet(style)
         elif isinstance(widget, QTextEdit):
-            widget.setStyleSheet(self.settings.styles[style])
+            widget.setStyleSheet(style)
         elif isinstance(widget, QComboBox):
-            widget.setStyleSheet(self.settings.styles[style])
+            widget.setStyleSheet(style)
         elif isinstance(widget, QCheckBox):
             if style == "text_changed":
                 style = "text_changed_border_only"
             else:
                 style = "border_only_active"
-            widget.setStyleSheet(self.settings.styles[style])
+            widget.setStyleSheet(style)
         else:
             print("Huston, we have a problem with input styling")
 
@@ -1206,7 +1098,7 @@ class Editor(QWidget):
         ## TODO: should i add in a routine to save the previous record here?
         self.current_row_index = -1
         # if self.settings.flavour["title"] == "order_form":
-        for field in self.settings.flavour["fields_to_clear"]:
+        for field in self.settings.validation.fields_to_clear:
             input_widget = self.inputs[field.value]
             self.load_record(input_widget, "")
         self.all_text_is_saved = True
@@ -1314,21 +1206,21 @@ class Editor(QWidget):
             self.toggle_record_editable("lock")
 
     def toggle_record_editable(self, mode="edit") -> None:
-        if not self.settings.flavour["locking_is_enabled"]:
+        if not self.settings.locking_is_enabled:
             return
         Option = namedtuple("Option", ["label_style", "input_style", "locked_status", "btn_text"])
         css = self.settings.styles
         if mode == "edit":
             status = Option(
-                label_style=css["label_active"],
-                input_style=css["input_active"],
+                label_style=css.label_active,
+                input_style=css.input_active,
                 locked_status=False,
                 btn_text="Lock")
             self.record_is_locked = False
         else:
             status = Option(
-                label_style=css["label_locked"],
-                input_style=css["input_locked"],
+                label_style=css.label_locked,
+                input_style=css.input_locked,
                 locked_status=True,
                 btn_text="Edit")
             self.record_is_locked = True
@@ -1390,19 +1282,19 @@ class Editor(QWidget):
 
 
     def save_as_marc(self) -> None:
-        shared.write_CHU_file(self.excel_rows)
-        marc_records = shared.build_marc_records(
-            shared.parse_rows_into_records(self.excel_rows)
+        marc_21.write_CHU_file(self.excel_rows)
+        marc_records = marc_21.build_marc_records(
+            marc_21.parse_rows_into_records(self.excel_rows)
         )
         file_name = (
-            self.settings.out_file
-            if self.settings.out_file
-            else self.settings.default_output_filename
+            self.settings.files.out_file
+            if self.settings.files.out_file
+            else self.settings.files.default_output_filename
         )
         # print(f">>>>>>> out_file = {file_name}")
-        shared.write_marc_files(marc_records, Path(file_name))
-        msg = f"The {self.record_count} records in {self.settings.in_file} have been successfully saved as {file_name}.mrk/.mrc in {self.settings.output_dir}."
-        shared.logger.info(msg)
+        marc_21.write_marc_files(marc_records, Path(file_name))
+        msg = f"The {self.record_count} records in {self.settings.files.in_file} have been successfully saved as {file_name}.mrk/.mrc in {self.settings.files.output_dir}."
+        logger.info(msg)
         msg_box = QMessageBox()
         msg_box.setText(msg)
         msg_box.exec()
@@ -1435,17 +1327,17 @@ class Editor(QWidget):
             parent=self,  # The parent widget (for centering)
             caption="Select a file.",
             # dir="./excel_files",
-            dir=f"./{self.settings.data_dir}",
+            dir=f"./{self.settings.files.data_dir}",
             filter="Database Files (*.xls *.xlsx *.xlsm *.csv *.tsv)",
         )
         if file_path:
             # self.short_file_name = self.get_filename_only(file_path)
-            self.settings.in_file_full = file_path
-            self.settings.in_file = self.get_filename_only(file_path)
-            self.settings.out_file = self.settings.in_file
-            print(f"File Selected: {self.settings.in_file} ({file_path})")
-            self.headers, self.excel_rows = shared.parse_file_into_rows(Path(file_path))
-            if self.settings.flavour["title"] == "art_catalogue":
+            self.settings.files.in_file_full = file_path
+            self.settings.files.in_file = self.get_filename_only(file_path)
+            self.settings.files.out_file = self.settings.files.in_file
+            print(f"File Selected: {self.settings.files.in_file} ({file_path})")
+            self.headers, self.excel_rows = marc_21.parse_file_into_rows(Path(file_path))
+            if self.settings.title == "art_catalogue":
                 self.headers, self.excel_rows = self.update_csv_fields(self.headers, self.excel_rows)
             if not self.settings.use_default_layout:
                 print("Haven't coded for non-default layout yet!")
@@ -1454,7 +1346,7 @@ class Editor(QWidget):
             self.all_text_is_saved = True
             self.has_records = True
             self.go_to_last_record()
-            shared.logger.info(f"Just opened {file_path} containing {self.record_count} records.")
+            logger.info(f"Just opened {file_path} containing {self.record_count} records.")
         else:
             print("Selection cancelled.")
 
@@ -1524,7 +1416,7 @@ def create_max_lengths(rows: list[list[str]]) -> list[int]:
 
 
 def write_to_csv(file_name: str, data: list[list[str]], headers: list[str]) -> None:
-    out_file = Path(shared.settings.output_dir) / Path(file_name)
+    out_file = Path(settings.files.output_dir) / Path(file_name)
     with open(out_file, "w", newline="", encoding="utf-8") as f:
         csvwriter = csv.writer(f)
         csvwriter.writerow(headers)
@@ -1561,13 +1453,13 @@ def read_cli_into_settings() -> None:
     #     required=False,
     #     help="name to give saved file",)
     args = parser.parse_args()
-    shared.settings.in_file = args.file
+    settings.files.in_file = args.file
     if file := args.file:
-        shared.settings.in_file = file
+        settings.files.in_file = file
     else:
-        shared.settings.is_existing_file = False
-        shared.settings.in_file = shared.settings.default_output_filename
-    shared.settings.layout_template = default_template
+        settings.is_existing_file = False
+        settings.files.in_file = settings.files.default_output_filename
+    # settings.layout_template = default_template
 
 
 def save_as_yaml(file:str, data) -> None:
@@ -1575,21 +1467,24 @@ def save_as_yaml(file:str, data) -> None:
         yaml.dump(data, f, sort_keys=False)
 
 def open_yaml_file(file:str):
-  with open(file, mode="rt", encoding="utf-8") as f:
-    return yaml.safe_load(f)
+    # with open(file, mode="rt", encoding="utf-8") as f:
+    file_path = settings.files.app_dir / Path(file)
+    # file_path = Path(file)
+    with open(file_path, mode="rt", encoding="utf-8") as f:
+        return yaml.safe_load(f)
 
 
 def get_settings():
     read_cli_into_settings()
     grid = Grid()
     headers = []
-    if shared.settings.is_existing_file:
-        print(f"processing file: {shared.settings.in_file}")
-        headers, rows = shared.parse_file_into_rows(Path(shared.settings.in_file))
-        if shared.settings.use_default_layout:
-            grid.add_bricks_by_template(shared.settings.layout_template)
+    if settings.is_existing_file:
+        print(f"processing file: {settings.files.in_file}")
+        headers, rows = marc_21.parse_file_into_rows(Path(settings.files.in_file))
+        if settings.use_default_layout:
+            grid.add_bricks_by_template(settings.layout_template)
         else:
-            headers = shared.settings.flavour["headers"]
+            headers = settings.headers
             max_lengths = create_max_lengths(rows)
             layout = [select_brick_by_content_length(length) for length in max_lengths]
             for id, brick_enum in enumerate(layout):
@@ -1598,15 +1493,20 @@ def get_settings():
     else:
         print("creating new file")
         rows = []
-        grid.add_bricks_by_template(shared.settings.layout_template)
+        grid.add_bricks_by_template(settings.layout_template)
     return (grid, rows, headers)
 
 
-if __name__ == "__main__":
-    shared.settings.flavour["combo_data"] = open_yaml_file("./app/bodleian.yaml")
+# if __name__ == "__main__":
+def run(COL):
+    # settings.combos.data = open_yaml_file("./src/art_cats/combo_data.yaml")
+    settings.combos.data = open_yaml_file("combo_data.yaml")
     grid, rows, headers = get_settings()
     app = QApplication(sys.argv)
     # print(f"headers: {headers}")
-    window = WindowWithRightTogglePanel(grid, rows, shared.settings)
+    window = WindowWithRightTogglePanel(grid, rows, settings, COL, app)
     window.show()
     sys.exit(app.exec())
+
+# if __name__ == "__main__":
+#     main()

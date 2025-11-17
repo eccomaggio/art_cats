@@ -13,68 +13,7 @@ from collections.abc import Callable
 from datetime import date, datetime, timezone
 import re
 from pathlib import Path
-import logging
-
-
-# def make_directory(directory_path):
-#     directory = Path(directory_path)
-#     if not directory.is_dir():
-#         directory.mkdir()
-#         try:
-#             directory.mkdir()
-#             logger.info(f"Directory '{directory}' created successfully.")
-#         except FileExistsError:
-#             logger.info(f"Directory '{directory}' already exists.")
-#         except PermissionError:
-#             logger.warning(f"Permission denied: Unable to create '{directory}'.")
-#         except Exception as e:
-#             logger.warning(f"An error occurred: {e}")
-#     return directory
-
-
-# @dataclass
-# class Settings:
-#     in_file_full = ""
-#     in_file = ""
-#     out_file = ""
-#     default_output_filename = "output"
-#     # data_dir = "excel_files"
-#     # output_dir = "marc21_files"
-#     app_dir = "app"
-#     data_dir = "input_files"
-#     output_dir = "output_files"
-#     use_default_layout = True
-#     is_existing_file = True
-#     layout_template: tuple = ()
-#     first_row_is_header = True
-#     flavour: dict[str, Any] = field(default_factory=dict)
-#     styles: dict[str, str]= field(default_factory=dict)
-#     help_file = ""
-#     backup_file = "backup.bak"
-#     alt_title_signifier = "*//*"
-#     # TMP_is_illustrated = False
-#     combo_default_text = " >> Choose <<"
-#     combo_following_default_text = " (first select "
-
-
-# # excel_file_path = "excel_files"
-# # excel_file_dir = make_directory(excel_file_path)
-# # output_files_path = "marc21_files"
-# # output_file_dir = make_directory(output_files_path)
-# BLANK = " "
-# logger = logging.getLogger(__name__)
-# settings = Settings()
-# excel_file_dir = make_directory(settings.data_dir)
-# output_file_dir = make_directory(settings.output_dir)
-
-
-# logging.basicConfig(
-#     filename = output_file_dir / "output.log",
-#     filemode="w",
-#     encoding="utf-8",
-#     format="%(levelname)s:%(message)s",
-#     level=logging.DEBUG
-#     )
+# import logging
 
 
 worksheet_row: TypeAlias = list[str]
@@ -1031,7 +970,8 @@ def build_245(record: Record) -> Result:
         check_for_alt_title = title.split(settings.alt_title_signifier)
         if len(check_for_alt_title) > 1:
             title, alt_title = [el.strip() for el in check_for_alt_title]
-            alt_title_field = create_alternative_title(alt_title, record.langs[0]).is_ok
+            # alt_title_field = create_alternative_title(alt_title, record.langs[0]).is_ok
+            alt_title_field = create_alternative_title(alt_title, record.langs[0])
         nonfiling, title = check_for_nonfiling(title)
         linkage = None
     i2 = nonfiling
@@ -1250,7 +1190,7 @@ def build_246(record: Record, alternative_form="", language="eng") -> Result:  #
     # tag = 246
     # i1 = "3"  ## "No note, added entry"
     if alternative_form:
-        result = create_alternative_title(alternative_form, language)
+        result = Result(create_alternative_title(alternative_form, language), None)
     else:
         result = create_parallel_title(record)
     return result
@@ -1291,16 +1231,26 @@ def create_parallel_title(record:Record) -> Result:
     return result
 
 
-def create_alternative_title(alternative_form:str, lang="eng") -> Result:
+def create_alternative_title(alternative_form:str, lang="eng") -> Field:
     ## Deals with alternative forms of a title, e.g. 1984*//*Nineteen Eighty-four
     ## NB. this doesn't deal with non-Western scripts (yet)
     tag = 246
     i1 = "3"    ## "No note, added entry"
     i2 = BLANK  ## No type specified
-    _, alternative_title = check_for_nonfiling(alternative_form, lang)
-    content = [Subfield(value=alternative_title, code="a")]
-    result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
-    return result
+    _, alternative_title_field = check_for_nonfiling(alternative_form, lang)
+    content = [Subfield(value=alternative_title_field, code="a")]
+    alternative_title_field = Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content)
+    return alternative_title_field
+# def create_alternative_title(alternative_form:str, lang="eng") -> Result:
+#     ## Deals with alternative forms of a title, e.g. 1984*//*Nineteen Eighty-four
+#     ## NB. this doesn't deal with non-Western scripts (yet)
+#     tag = 246
+#     i1 = "3"    ## "No note, added entry"
+#     i2 = BLANK  ## No type specified
+#     _, alternative_title = check_for_nonfiling(alternative_form, lang)
+#     content = [Subfield(value=alternative_title, code="a")]
+#     result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
+#     return result
 
 
 def build_490(record: Record) -> Result:  ## optional
@@ -1389,7 +1339,7 @@ def check_if_mandatory(result: Result, is_mandatory: bool) -> list[Field] | None
 
 # def line_prefix(numeric_tag: int) -> str:
 #     display_tag = seq_num(numeric_tag)
-    return f"={expand_tag(display_tag)}  "
+    # return f"={expand_tag(display_tag)}  "
 def line_prefix(numeric_tag: int) -> str:
     display_tag = "LDR" if numeric_tag == 0 else seq_num(numeric_tag)
     return f"={expand_tag(display_tag)}  "
@@ -1674,18 +1624,18 @@ settings = Settings()
 # output_files_path = "marc21_files"
 # output_file_dir = make_directory(output_files_path)
 BLANK = " "
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 excel_file_dir = make_directory(settings.data_dir)
 output_file_dir = make_directory(settings.output_dir)
 
 
-logging.basicConfig(
-    filename = output_file_dir / "output.log",
-    filemode="w",
-    encoding="utf-8",
-    format="%(levelname)s:%(message)s",
-    level=logging.DEBUG
-    )
+# logging.basicConfig(
+#     filename = output_file_dir / "output.log",
+#     filemode="w",
+#     encoding="utf-8",
+#     format="%(levelname)s:%(message)s",
+#     level=logging.DEBUG
+#     )
 
 
 def run() -> None:
@@ -1720,7 +1670,7 @@ def run() -> None:
 #     run()
 
 
-if __name__ == "__main__":
-    # logger = logging.getLogger(__name__)
-    run()
-    # main()
+# if __name__ == "__main__":
+#     # logger = logging.getLogger(__name__)
+#     run()
+#     # main()

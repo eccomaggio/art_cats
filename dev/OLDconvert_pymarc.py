@@ -16,65 +16,65 @@ from pathlib import Path
 import logging
 
 
-# def make_directory(directory_path):
-#     directory = Path(directory_path)
-#     if not directory.is_dir():
-#         directory.mkdir()
-#         try:
-#             directory.mkdir()
-#             logger.info(f"Directory '{directory}' created successfully.")
-#         except FileExistsError:
-#             logger.info(f"Directory '{directory}' already exists.")
-#         except PermissionError:
-#             logger.warning(f"Permission denied: Unable to create '{directory}'.")
-#         except Exception as e:
-#             logger.warning(f"An error occurred: {e}")
-#     return directory
+def make_directory(directory_path):
+    directory = Path(directory_path)
+    if not directory.is_dir():
+        directory.mkdir()
+        try:
+            directory.mkdir()
+            logger.info(f"Directory '{directory}' created successfully.")
+        except FileExistsError:
+            logger.info(f"Directory '{directory}' already exists.")
+        except PermissionError:
+            logger.warning(f"Permission denied: Unable to create '{directory}'.")
+        except Exception as e:
+            logger.warning(f"An error occurred: {e}")
+    return directory
 
 
-# @dataclass
-# class Settings:
-#     in_file_full = ""
-#     in_file = ""
-#     out_file = ""
-#     default_output_filename = "output"
-#     # data_dir = "excel_files"
-#     # output_dir = "marc21_files"
-#     app_dir = "app"
-#     data_dir = "input_files"
-#     output_dir = "output_files"
-#     use_default_layout = True
-#     is_existing_file = True
-#     layout_template: tuple = ()
-#     first_row_is_header = True
-#     flavour: dict[str, Any] = field(default_factory=dict)
-#     styles: dict[str, str]= field(default_factory=dict)
-#     help_file = ""
-#     backup_file = "backup.bak"
-#     alt_title_signifier = "*//*"
-#     # TMP_is_illustrated = False
-#     combo_default_text = " >> Choose <<"
-#     combo_following_default_text = " (first select "
+@dataclass
+class Settings:
+    in_file_full = ""
+    in_file = ""
+    out_file = ""
+    default_output_filename = "output"
+    # data_dir = "excel_files"
+    # output_dir = "marc21_files"
+    app_dir = "app"
+    data_dir = "input_files"
+    output_dir = "output_files"
+    use_default_layout = True
+    is_existing_file = True
+    layout_template: tuple = ()
+    first_row_is_header = True
+    flavour: dict[str, Any] = field(default_factory=dict)
+    styles: dict[str, str]= field(default_factory=dict)
+    help_file = ""
+    backup_file = "backup.bak"
+    alt_title_signifier = "*//*"
+    # TMP_is_illustrated = False
+    combo_default_text = " >> Choose <<"
+    combo_following_default_text = " (first select "
 
 
-# # excel_file_path = "excel_files"
-# # excel_file_dir = make_directory(excel_file_path)
-# # output_files_path = "marc21_files"
-# # output_file_dir = make_directory(output_files_path)
-# BLANK = " "
-# logger = logging.getLogger(__name__)
-# settings = Settings()
-# excel_file_dir = make_directory(settings.data_dir)
-# output_file_dir = make_directory(settings.output_dir)
+# excel_file_path = "excel_files"
+# excel_file_dir = make_directory(excel_file_path)
+# output_files_path = "marc21_files"
+# output_file_dir = make_directory(output_files_path)
+BLANK = " "
+logger = logging.getLogger(__name__)
+settings = Settings()
+excel_file_dir = make_directory(settings.data_dir)
+output_file_dir = make_directory(settings.output_dir)
 
 
-# logging.basicConfig(
-#     filename = output_file_dir / "output.log",
-#     filemode="w",
-#     encoding="utf-8",
-#     format="%(levelname)s:%(message)s",
-#     level=logging.DEBUG
-#     )
+logging.basicConfig(
+    filename = output_file_dir / "output.log",
+    filemode="w",
+    encoding="utf-8",
+    format="%(levelname)s:%(message)s",
+    level=logging.DEBUG
+    )
 
 
 worksheet_row: TypeAlias = list[str]
@@ -1626,68 +1626,6 @@ def write_CHU_file(records: list) -> None:
     wb.save(file_name)
 
 
-def make_directory(directory_path):
-    directory = Path(directory_path)
-    if not directory.is_dir():
-        directory.mkdir()
-        try:
-            directory.mkdir()
-            logger.info(f"Directory '{directory}' created successfully.")
-        except FileExistsError:
-            logger.info(f"Directory '{directory}' already exists.")
-        except PermissionError:
-            logger.warning(f"Permission denied: Unable to create '{directory}'.")
-        except Exception as e:
-            logger.warning(f"An error occurred: {e}")
-    return directory
-
-
-@dataclass
-class Settings:
-    in_file_full = ""
-    in_file = ""
-    out_file = ""
-    default_output_filename = "output"
-    # data_dir = "excel_files"
-    # output_dir = "marc21_files"
-    app_dir = "app"
-    data_dir = "input_files"
-    output_dir = "output_files"
-    use_default_layout = True
-    is_existing_file = True
-    layout_template: tuple = ()
-    first_row_is_header = True
-    flavour: dict[str, Any] = field(default_factory=dict)
-    styles: dict[str, str]= field(default_factory=dict)
-    help_file = ""
-    backup_file = "backup.bak"
-    alt_title_signifier = "*//*"
-    # TMP_is_illustrated = False
-    combo_default_text = " >> Choose <<"
-    combo_following_default_text = " (first select "
-    show_table_view = True
-
-settings = Settings()
-
-# excel_file_path = "excel_files"
-# excel_file_dir = make_directory(excel_file_path)
-# output_files_path = "marc21_files"
-# output_file_dir = make_directory(output_files_path)
-BLANK = " "
-logger = logging.getLogger(__name__)
-excel_file_dir = make_directory(settings.data_dir)
-output_file_dir = make_directory(settings.output_dir)
-
-
-logging.basicConfig(
-    filename = output_file_dir / "output.log",
-    filemode="w",
-    encoding="utf-8",
-    format="%(levelname)s:%(message)s",
-    level=logging.DEBUG
-    )
-
-
 def run() -> None:
     # for file in Path(settings.data_dir).glob("*.xls[xm]"):
     extensions = ["*.xlsx", "*.xlsm", "*.csv", "*.tsv"]
@@ -1716,11 +1654,32 @@ def run() -> None:
         write_marc_files(marc_records, file)
 
 
-# def main() -> None:
-#     run()
+def main() -> None:
+    run()
 
 
 if __name__ == "__main__":
     # logger = logging.getLogger(__name__)
-    run()
-    # main()
+    main()
+
+# def run() -> None:
+#     for file in Path(excel_file_path).glob("*.xls[xm]"):
+#         msg = f"\n>>>>> processing: {file.name}"
+#         logger.info(msg)
+#         print(msg)
+#         raw_rows = parse_excel_into_rows(file)
+#         records = parse_rows_into_records(raw_rows)
+#         del raw_rows
+#         pymarc_records = build_pymarc_records(records)
+#         del records
+#         # for record in pymarc_records:
+#         #     print(record)
+#         write_marc_files(pymarc_records, file)
+
+
+# def main() -> None:
+#     run()
+
+# if __name__ == "__main__":
+#     logger = logging.getLogger(__name__)
+#     main()
