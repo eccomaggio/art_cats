@@ -59,11 +59,12 @@ import logging
 
 
 # settings = setup.Settings()
-settings = Settings()
+# settings = Settings()
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
-    filename = settings.files.output_dir / "output.log",
+    # filename = settings.files.output_dir / "output.log",
+    filename = "output.log",
     filemode="w",
     encoding="utf-8",
     format="%(levelname)s:%(message)s",
@@ -226,6 +227,7 @@ class Grid:
             row_i += 1
 
     def add_bricks_by_template(self, template: tuple) -> None:
+        print(f"add bricks by template: {template=}")
         last_brick = template[-1]
         _, lb_brick_type, lb_start_row, _, _ = last_brick
         lb_height = brick_lookup[lb_brick_type].value.height
@@ -284,7 +286,8 @@ class WindowWithRightTogglePanel(QWidget):
         self.HELP_PANEL_WIDTH = 350
 
         # --- 1. Main Editor Setup (Column 0, Expanding) ---
-        self.edit_panel_widget = Editor(grid, rows, settings.files.in_file, self, settings, COL, app)
+        # self.edit_panel_widget = Editor(grid, rows, settings.files.in_file, self, settings, COL, app)
+        self.edit_panel_widget = Editor(grid, rows, self, settings, COL, app)
         self.edit_panel_widget.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
@@ -436,7 +439,7 @@ class ClickableLabel(QLabel):
 
     clicked = Signal()
 
-    def __init__(self, text="Click Me", parent=None):
+    def __init__(self, settings, text="Click Me", parent=None):
         super().__init__(text, parent)
         self.setMouseTracking(True)
         self.setCursor(Qt.CursorShape.WhatsThisCursor)
@@ -482,7 +485,8 @@ class Editor(QWidget):
         "table": QTableWidget,
         "checkbox": QCheckBox,
     }
-    def __init__(self, grid: Grid, excel_rows: list[list[str]], file_name: str, caller:WindowWithRightTogglePanel, settings:Settings, COL, app):
+    # def __init__(self, grid: Grid, excel_rows: list[list[str]], file_name: str, caller:WindowWithRightTogglePanel, settings:Settings, COL, app):
+    def __init__(self, grid: Grid, excel_rows: list[list[str]], caller:WindowWithRightTogglePanel, settings:Settings, COL, app):
         super().__init__()
         self.setWindowTitle("Editor")
         self.setGeometry(100, 100, 1200, 800)
@@ -505,7 +509,8 @@ class Editor(QWidget):
             self.excel_rows = [["" for _ in range(len(settings.layout_template))]]
             self.has_records = False
 
-        self.file_name = file_name
+        # self.file_name = file_name
+        self.file_name = settings.files.in_file
         self.short_file_name = self.get_filename_only(settings.files.in_file)
         self.current_row_index = len(excel_rows) - 1
         self.record_is_locked = True
@@ -546,7 +551,7 @@ class Editor(QWidget):
             if name in self.settings.validation.required_fields:
                 title = f"**{title}"
             # print(f" >>>> {name}-> {title}")
-            tmp_label = ClickableLabel(title)
+            tmp_label = ClickableLabel(self.settings, title)
             tmp_label.help_txt = name
             tmp_label.clicked.connect(lambda checked=False, l=tmp_label: self.show_help_topic(l))
             font = tmp_label.font()
@@ -1436,7 +1441,7 @@ def load_text_from_file(file_name: str) -> str:
         return f"<h1>Help File Not Found</h1><p>Please create a file named '<b>{file_name}</b>' in the current directory.</p>"
 
 
-def read_cli_into_settings() -> None:
+def read_cli_into_settings(settings) -> None:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -1466,22 +1471,24 @@ def save_as_yaml(file:str, data) -> None:
     with open(file, mode="wt", encoding="utf-8") as f:
         yaml.dump(data, f, sort_keys=False)
 
-def open_yaml_file(file:str):
+# def open_yaml_file(file:str):
+def open_yaml_file(file_path:Path):
     # with open(file, mode="rt", encoding="utf-8") as f:
-    file_path = settings.files.app_dir / Path(file)
+    # file_path = settings.files.app_dir / Path(file)
     # file_path = Path(file)
     with open(file_path, mode="rt", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
-def get_settings():
-    read_cli_into_settings()
+def get_settings(settings):
+    read_cli_into_settings(settings)
     grid = Grid()
     headers = []
     if settings.is_existing_file:
         print(f"processing file: {settings.files.in_file}")
         headers, rows = marc_21.parse_file_into_rows(Path(settings.files.in_file))
         if settings.use_default_layout:
+            settings.layout_template = settings.default_template
             grid.add_bricks_by_template(settings.layout_template)
         else:
             headers = settings.headers
@@ -1493,15 +1500,19 @@ def get_settings():
     else:
         print("creating new file")
         rows = []
-        grid.add_bricks_by_template(settings.layout_template)
+        # grid.add_bricks_by_template(settings.layout_template)
+        grid.add_bricks_by_template(settings.default_template)
     return (grid, rows, headers)
 
 
 # if __name__ == "__main__":
-def run(COL):
+def run(settings:Settings, COL):
     # settings.combos.data = open_yaml_file("./src/art_cats/combo_data.yaml")
-    settings.combos.data = open_yaml_file("combo_data.yaml")
-    grid, rows, headers = get_settings()
+    # settings.combos.data = open_yaml_file("combo_data.yaml")
+    settings.combos.data = open_yaml_file(settings.files.app_dir / "combo_data.yaml")
+    print(f"run: {settings.default_template=}")
+    grid, rows, headers = get_settings(settings)
+    print(f"{headers=}, {rows=}")
     app = QApplication(sys.argv)
     # print(f"headers: {headers}")
     window = WindowWithRightTogglePanel(grid, rows, settings, COL, app)

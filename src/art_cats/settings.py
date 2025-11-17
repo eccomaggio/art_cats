@@ -66,7 +66,8 @@ class Settings:
     title= "art_catalogue"
     use_default_layout = True
     is_existing_file = True
-    layout_template: tuple = ()
+    # layout_template: tuple = ()
+    layout_template = []
     first_row_is_header = True
 
     alt_title_signifier = "*//*"

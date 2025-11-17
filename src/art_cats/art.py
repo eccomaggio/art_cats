@@ -81,7 +81,7 @@ settings.validation.validation_skip_field = COL.barcode.name
 
 
 
-settings.default_template = (
+settings.default_template = [
     ## non-algorithmic version needs to be: [title, brick-type, start-row, start-col]
     ## needs to be in same order as COL specification
     (COL.sublib, "1:2", 0, 0, "line"),
@@ -113,11 +113,11 @@ settings.default_template = (
     (COL.hol_notes, "3:3", 9, 3, "text"),
     (COL.donation, "1:4", 16, 0, "line"),
     (COL.barcode, "1:2", 16, 4, "line"),
-)
+]
 
 
 if __name__ == "__main__":
-    common.run(COL)
+    common.run(settings, COL)
 
 
 

@@ -110,4 +110,4 @@ settings.default_template = (
 
 
 if __name__ == "__main__":
-    common.run(COL)
+    common.run(settings, COL)
