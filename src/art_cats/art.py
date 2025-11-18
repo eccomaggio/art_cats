@@ -49,8 +49,7 @@ class COL(Enum):
     volume = "Volume"
     notes = "Note"
     sales_code = "Sale code"
-    sale_dates = "Date of au:w" \
-    "ction"
+    sale_dates = "Date of auction"
     hol_notes = "HOL notes"
     donation = "Donor note"
     barcode = "Barcode"
@@ -62,6 +61,7 @@ settings.title = "art_catalogue"
 settings.headers = [member.display_title for member in COL]
 settings.show_table_view = False
 settings.locking_is_enabled = True
+settings.submit_when_barcode_entered = True
 
 settings.validation.fields_to_clear =  [
     COL.barcode,

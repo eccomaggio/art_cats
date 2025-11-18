@@ -551,6 +551,9 @@ class Editor(QWidget):
             tmp_wrapper = QVBoxLayout()
             if name in self.settings.validation.required_fields:
                 title = f"**{title}"
+            if self.settings.submit_when_barcode_entered and name.lower() == "barcode" and isinstance(tmp_input,QLineEdit):
+                # print("Adding submit on barcode connection...")
+                tmp_input.textEdited.connect(self.choose_to_save_on_barcode)
             # print(f" >>>> {name}-> {title}")
             tmp_label = ClickableLabel(self.settings, title)
             tmp_label.help_txt = name
@@ -1319,6 +1322,15 @@ class Editor(QWidget):
         msg_box.setText(msg)
         msg_box.exec()
 
+
+    def choose_to_save_on_barcode(self) -> None:
+        # print("unsaved text alert...", s)
+        dialogue = DialogueOkCancel(
+            self,
+            "Are you sure you want to save this record?",
+        )
+        if  dialogue.exec() == 1:
+            self.handle_submit()
 
     def choose_to_abort_on_unsaved_text(self) -> int:
         # print("unsaved text alert...", s)

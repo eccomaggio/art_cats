@@ -81,4 +81,5 @@ class Settings:
     labels = Labels()
     locking_is_enabled = True
     show_table_view = True
+    submit_when_barcode_entered = False
     default_template = ()
