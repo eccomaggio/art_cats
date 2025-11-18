@@ -41,23 +41,24 @@ class COL(Enum):
     Additional_info = "Additional order instructions"
 
 
-combo_lookup = {
-  COL.Subject_consultant.name :"Subject_consultant",
-  COL.Order_type.name:"Order_type",
-  COL.Library.name:"Library",
-  COL.Item_policy.name:"Item_policy",
-  COL.Reporting_code_1.name:"Reporting_code_1",
-  COL.Reporting_code_2.name:"Reporting_code_2",
-  COL.Reporting_code_3.name:"Reporting_code_3",
-}
+# combo_lookup = {
+#   COL.Subject_consultant.name :"Subject_consultant",
+#   COL.Order_type.name:"Order_type",
+#   COL.Library.name:"Library",
+#   COL.Item_policy.name:"Item_policy",
+#   COL.Reporting_code_1.name:"Reporting_code_1",
+#   COL.Reporting_code_2.name:"Reporting_code_2",
+#   COL.Reporting_code_3.name:"Reporting_code_3",
+# }
 
 
 settings = Settings()
 settings.title = "order_form"
 settings.files.help_file = "help_orders.html"
 settings.headers = [member.display_title for member in COL]
-settings.show_table_view = False
-settings.locking_is_enabled = True
+settings.show_table_view = True
+settings.locking_is_enabled = False
+settings.combos.data_file =  "combo_data.yaml"
 
 settings.validation.fields_to_clear =  [
     COL.Isbn,
@@ -85,6 +86,11 @@ settings.validation.validate_if_present = [COL.Isbn.name, COL.Hold_for.name, COL
 settings.validation.validation_skip_field = COL.Additional_info.name
 
 
+settings.combos.independents = [COL.Subject_consultant.name, COL.Order_type.name, COL.Library.name, COL.Item_policy.name, COL.Reporting_code_1.name, COL.Reporting_code_2.name, COL.Reporting_code_3.name]
+settings.combos.leaders = [COL.Subject_consultant.name,COL.Library.name]
+settings.combos.followers = [COL.Fund_code.name,COL.Location.name]
+settings.combos.dict_by_follower = {key : value for key, value in list(zip(settings.combos.followers,settings.combos.leaders))}
+settings.combos.dict_by_leader = {key : value for key, value in list(zip(settings.combos.leaders,settings.combos.followers))}
 settings.default_template = (
     ## non-algorithmic version needs to be: [title, brick-type, start-row, start-col, widget-type=line/area/drop]
     (COL.Subject_consultant, "1:2", 0, 0, "combo"),
@@ -104,6 +110,7 @@ settings.default_template = (
     (COL.Notify, "1:2", 9, 0, "line"),
     (COL.Additional_info, "2:4", 8, 2, "text"),
 )
+# print(f"++++ ++++ ++++ {settings.combos.dict_by_follower=}")
 
 
 # def main():

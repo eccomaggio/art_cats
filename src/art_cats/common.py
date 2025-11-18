@@ -227,7 +227,7 @@ class Grid:
             row_i += 1
 
     def add_bricks_by_template(self, template: tuple) -> None:
-        print(f"add bricks by template: {template=}")
+        # print(f"add bricks by template: {template=}")
         last_brick = template[-1]
         _, lb_brick_type, lb_start_row, _, _ = last_brick
         lb_height = brick_lookup[lb_brick_type].value.height
@@ -277,6 +277,7 @@ class WindowWithRightTogglePanel(QWidget):
         super().__init__()
 
         self.COL = COL
+        self.settings = settings
         self.main_grid = QGridLayout(self)
         self.main_grid.setContentsMargins(0, 0, 0, 0)
         # self.main_grid.setSpacing(3)
@@ -386,7 +387,7 @@ class WindowWithRightTogglePanel(QWidget):
 
             # 5. Update button text
             # self.edit_panel_widget.help_btn.setText(LABELS["help"]["show"])
-            self.edit_panel_widget.help_btn.setText(settings.labels.show_help)
+            self.edit_panel_widget.help_btn.setText(self.settings.labels.show_help)
 
         else:
             # --- Showing Panel (Expanding Window) ---
@@ -402,7 +403,7 @@ class WindowWithRightTogglePanel(QWidget):
                 self.saved_editor_width + self.HELP_PANEL_WIDTH + self.GRID_BUFFER
             )
             # self.edit_panel_widget.help_btn.setText("Hide Help Panel")
-            self.edit_panel_widget.help_btn.setText(settings.labels.hide_help)
+            self.edit_panel_widget.help_btn.setText(self.settings.labels.hide_help)
             # self.resize(new_width, self.height())
             self.resize(new_width, self.saved_height)
 
@@ -575,6 +576,8 @@ class Editor(QWidget):
             self.tableView = QTableWidget()
             self.tableView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
             self.tableView.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+            # self.tableView.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding) #
+            # self.tableView.setMinimumHeight(250)  #
             tmp_label = QLabel("Items added to order (click on one to jump to it if you need to amend)")
             table_wrapper = QVBoxLayout()
             table_wrapper.addWidget(tmp_label)
@@ -641,11 +644,13 @@ class Editor(QWidget):
         #     nav_grid.addWidget(self.marc_btn, last_row, 1, 1, 1)
         nav_grid.addWidget(self.close_btn, last_row, 2, 1, 1)
         nav_grid.addWidget(self.help_btn, last_row, 3, 1, 1)
+        # if self.settings.show_table_view:
         if self.settings.title == "art_catalogue":
             self.marc_btn = QPushButton("Export as MARC")
             self.marc_btn.clicked.connect(self.save_as_marc)
             nav_grid.addWidget(self.marc_btn, last_row, 1, 1, 1)
-        else:
+        # else:
+        if self.settings.show_table_view:
             last_row += 1
             nav_grid.addWidget(self.tableView, last_row, 0, 1, 6)
         self.nav_grouped_layout.setLayout(nav_grid)
@@ -849,7 +854,10 @@ class Editor(QWidget):
         else:
             ## Update existing record
             self.current_row = data
-        self.save_as_csv(self.settings.files.out_file)
+        # self.save_as_csv(self.settings.files.out_file)
+        csv_file = self.settings.files.output_dir / f"{self.settings.files.out_file}.csv"
+        print(f"{csv_file=}")
+        self.save_as_csv(csv_file)
         self.update_nav_buttons()
         self.load_record_into_gui(self.current_row)
         return True
@@ -1186,7 +1194,12 @@ class Editor(QWidget):
             table.setItem(0,0, empty_cell)
             # empty_cell.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         table.cellClicked.connect(self.pass_table_row_index)
-        table.setMinimumHeight(200)
+        # table.setMinimumHeight(200)
+        row_count = max(2, min(len(rows), 5))
+        row_height = 30  # or whatever you use for row height
+        table.setMinimumHeight(row_count * row_height + table.horizontalHeader().height())
+        table.setMaximumHeight(row_count * row_height + table.horizontalHeader().height())
+
 
     def pass_table_row_index(self, row, column) -> None:
         # print(f"$$$$$$$$$ {row=}, {column=}")
@@ -1232,7 +1245,7 @@ class Editor(QWidget):
         for label in self.labels:
             label.setStyleSheet(status.label_style)
         for input in self.inputs:
-            if isinstance(input, QCheckBox):
+            if isinstance(input, QCheckBox) or isinstance(input, QComboBox):
                 input.setEnabled(not status.locked_status)
             else:
                 input.setStyleSheet(status.input_style)
@@ -1277,7 +1290,8 @@ class Editor(QWidget):
             out = str(number + 1)
         return out
 
-    def save_as_csv(self, file_name="") -> None:
+    def save_as_csv(self, file_name:Path) -> None:
+    # def save_as_csv(self, file_name="") -> None:
         # is_backup_file = bool(file_name)
         headers = [el[3] for el in self.grid.widget_info.values()]
         # write_to_csv(self.settings.out_file, self.excel_rows, headers)
@@ -1287,7 +1301,8 @@ class Editor(QWidget):
 
 
     def save_as_marc(self) -> None:
-        marc_21.write_CHU_file(self.excel_rows)
+        chu_file = self.settings.files.output_dir / f"{self.settings.files.in_file}.CHU.xlsx"
+        marc_21.write_CHU_file(self.excel_rows, chu_file, self.COL.barcode.value)
         marc_records = marc_21.build_marc_records(
             marc_21.parse_rows_into_records(self.excel_rows)
         )
@@ -1420,9 +1435,12 @@ def create_max_lengths(rows: list[list[str]]) -> list[int]:
     return [max(col) for col in max_lengths]
 
 
-def write_to_csv(file_name: str, data: list[list[str]], headers: list[str]) -> None:
-    out_file = Path(settings.files.output_dir) / Path(file_name)
-    with open(out_file, "w", newline="", encoding="utf-8") as f:
+def write_to_csv(file_name: Path, data: list[list[str]], headers: list[str]) -> None:
+# def write_to_csv(file_name: str, data: list[list[str]], headers: list[str]) -> None:
+    # out_file = Path(settings.files.output_dir) / Path(file_name)
+    # with open(out_file, "w", newline="", encoding="utf-8") as f:
+    print(f">>>>> {file_name}")
+    with open(file_name, "w", newline="", encoding="utf-8") as f:
         csvwriter = csv.writer(f)
         csvwriter.writerow(headers)
         csvwriter.writerows(data)
@@ -1480,7 +1498,7 @@ def open_yaml_file(file_path:Path):
         return yaml.safe_load(f)
 
 
-def get_settings(settings):
+def setup_environment(settings):
     read_cli_into_settings(settings)
     grid = Grid()
     headers = []
@@ -1509,9 +1527,11 @@ def get_settings(settings):
 def run(settings:Settings, COL):
     # settings.combos.data = open_yaml_file("./src/art_cats/combo_data.yaml")
     # settings.combos.data = open_yaml_file("combo_data.yaml")
-    settings.combos.data = open_yaml_file(settings.files.app_dir / "combo_data.yaml")
-    print(f"run: {settings.default_template=}")
-    grid, rows, headers = get_settings(settings)
+    # settings.combos.data = open_yaml_file(settings.files.app_dir / "combo_data.yaml")
+    if settings.combos.data_file:
+        settings.combos.data = open_yaml_file(settings.files.app_dir / settings.combos.data_file)
+    # print(f"run: {settings.default_template=}")
+    grid, rows, headers = setup_environment(settings)
     print(f"{headers=}, {rows=}")
     app = QApplication(sys.argv)
     # print(f"headers: {headers}")

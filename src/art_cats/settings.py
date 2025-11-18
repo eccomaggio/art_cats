@@ -7,7 +7,7 @@ from typing import Any
 class Files:
     in_file_full = ""
     in_file = ""
-    out_file = ""
+    out_file = "new_file"
     default_output_filename = "output"
     # app_dir = "app"
     app_dir = Path("src/art_cats")
@@ -60,12 +60,13 @@ class Combos:
     dict_by_follower = {}
     dict_by_leader = {}
     data = []
+    data_file = ""
 
 @dataclass
 class Settings:
     title= "art_catalogue"
-    use_default_layout = True
     is_existing_file = True
+    use_default_layout = True
     # layout_template: tuple = ()
     layout_template = []
     first_row_is_header = True

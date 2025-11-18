@@ -1492,7 +1492,7 @@ def write_marc_files(records:list[PyRecord], excel_file_address: Path) -> None:
     write_mrc_binaries(records, f"{excel_file_address.stem}.mrc")
 
 
-def write_CHU_file(records: list) -> None:
+def write_CHU_file(records: list, file_name:Path, barcode_index:int) -> None:
     """
     Write out CHU file, including formatting (for the craic)
     """
@@ -1562,15 +1562,15 @@ def write_CHU_file(records: list) -> None:
     ws.row_dimensions[3].height = default_row_height  # Height in points
 
     for row_count, r in enumerate(records, 4):
-        row = [r[27], "", "", "", "Relocating to CSF", ""]
+        row = [r[barcode_index], "", "", "", "Relocating to CSF", ""]
         for col, value in enumerate(row, 1):
             cell = ws.cell(row=row_count, column=col, value=value)
             cell.alignment = Alignment(horizontal="left")
             cell.font = Font(name="Arial", bold=False, size=10)
         ws.row_dimensions[row_count].height = default_row_height  # Height in points
     # file_name = str(Path.cwd() / settings.output_dir / "styled_form.xlsx")
-    chu_file = Path(settings.in_file + "_toCHU.xlsx")
-    file_name = str(Path.cwd() / settings.output_dir / chu_file)
+    # chu_file = Path(settings.in_file + "_toCHU.xlsx")
+    # file_name = str(Path.cwd() / settings.output_dir / chu_file)
     print(file_name)
     # wb.save("styled_form.xlsx")
     wb.save(file_name)
