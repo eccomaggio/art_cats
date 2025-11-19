@@ -5,6 +5,7 @@ It builds on a script that converts excel files into markdown; in fact, the curr
 """
 
 from enum import Enum
+from pathlib import Path
 from .settings import Settings
 from . import common
 
@@ -54,7 +55,8 @@ class COL(Enum):
     donation = "Donor note"
     barcode = "Barcode"
 
-combo_lookup = {}
+
+##### Tailor settings
 
 settings = Settings()
 settings.title = "art_catalogue"
@@ -63,7 +65,7 @@ settings.show_table_view = False
 settings.locking_is_enabled = True
 settings.submit_when_barcode_entered = True
 
-settings.validation.fields_to_clear =  [
+settings.validation.fields_to_clear = [
     COL.barcode,
     COL.hol_notes,
     COL.extent,
@@ -73,12 +75,24 @@ settings.validation.fields_to_clear =  [
     COL.sale_dates,
     COL.sales_code,
 ]
-settings.validation.fields_to_fill = [ [COL.sublib, "ARTBL"], ]
-settings.validation.required_fields = [COL.langs.name, COL.title.name, COL.extent.name, COL.pub_year.name, COL.publisher.name, COL.country_name.name, COL.place.name, COL.extent.name, COL.size.name, COL.barcode.name]
+settings.validation.fields_to_fill = [
+    [COL.sublib, "ARTBL"],
+]
+settings.validation.required_fields = [
+    COL.langs.name,
+    COL.title.name,
+    COL.extent.name,
+    COL.pub_year.name,
+    COL.publisher.name,
+    COL.country_name.name,
+    COL.place.name,
+    COL.extent.name,
+    COL.size.name,
+    COL.barcode.name,
+]
 settings.validation.validate_always = [COL.barcode.name]
 settings.validation.validate_if_present = [COL.isbn.name]
-settings.validation.validation_skip_field = COL.barcode.name
-
+settings.validation.validation_skip_fieldname = COL.barcode.name
 
 
 settings.default_template = [
@@ -115,6 +129,11 @@ settings.default_template = [
     (COL.barcode, "1:2", 16, 4, "line"),
 ]
 
+settings.files.help_file = "help_art_cats.html"
+settings.files.output_dir = Path("your_marc_files")
+settings.files.full_output_dir = settings.files.module_dir / settings.files.output_dir
+if settings.create_output_dir:
+    settings.files.full_output_dir.mkdir(exist_ok=True)
 
 if __name__ == "__main__":
     common.run(settings, COL)

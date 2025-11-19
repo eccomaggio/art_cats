@@ -1,20 +1,26 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
 
+# class COL(Enum):
+#     pass
+
+
 @dataclass
 class Files:
+    app_dir = Path("src/art_cats")
+    data_dir = Path("input_files")
+    module_dir = Path(__file__).parent.parent.parent.parent
+    output_dir = Path("output_files")
+    full_output_dir = Path(__file__).parent
+    help_file = "help.html"
+    backup_file = "backup.bak"
     in_file_full = ""
     in_file = ""
     out_file = "new_file"
     default_output_filename = "output"
-    # app_dir = "app"
-    app_dir = Path("src/art_cats")
-    data_dir = Path("input_files")
-    output_dir = Path("output_files")
-    help_file = "help.html"
-    backup_file = "backup.bak"
 
 
 @dataclass
@@ -27,7 +33,8 @@ class Validation:
     required_fields = []
     validate_always = []
     validate_if_present = []
-    validation_skip_field = None
+    # validation_skip_field: 'COL' = field(default=None)
+    validation_skip_fieldname = ""
     validation_skip_text = "*dummy*"
 
 
@@ -62,9 +69,10 @@ class Combos:
     data = []
     data_file = ""
 
+
 @dataclass
 class Settings:
-    title= "art_catalogue"
+    title = "art_catalogue"
     is_existing_file = True
     use_default_layout = True
     # layout_template: tuple = ()
@@ -82,4 +90,5 @@ class Settings:
     locking_is_enabled = True
     show_table_view = True
     submit_when_barcode_entered = False
-    default_template = ()
+    default_template = []
+    create_output_dir = True
