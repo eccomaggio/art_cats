@@ -3,10 +3,15 @@ Order form for TAY / ART libraries to replace excel-based form.
 Contact: Ross Jones, Osney One
 """
 
+import logging
+from . import utils
+
 from enum import Enum
 from pathlib import Path
 from .settings import Settings
 from . import common
+
+# logger = logging.getLogger(__name__)
 
 
 class COL(Enum):
@@ -130,8 +135,13 @@ if settings.create_output_dir:
     settings.files.full_output_dir.mkdir(exist_ok=True)
 
 
-# def main():
+CUSTOM_LOG_FILE = settings.files.full_output_dir / "logger.log"
+utils.setup_app_logging(log_file_path=CUSTOM_LOG_FILE)
+logger = logging.getLogger(__name__)
 
+def main():
+    common.run(settings, COL)
 
 if __name__ == "__main__":
-    common.run(settings, COL)
+    # common.run(settings, COL)
+    main()

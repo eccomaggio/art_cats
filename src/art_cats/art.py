@@ -4,10 +4,15 @@ This can create a file from scratch or load a suitable (i.e. contains the correc
 It builds on a script that converts excel files into markdown; in fact, the current script imports this script and utilises it to open files and create internal representations ("Records").
 """
 
+import logging
+from . import utils
+
 from enum import Enum
 from pathlib import Path
 from .settings import Settings
 from . import common
+
+# logger = logging.getLogger(__name__)
 
 
 class COL(Enum):
@@ -135,5 +140,14 @@ settings.files.full_output_dir = settings.files.module_dir / settings.files.outp
 if settings.create_output_dir:
     settings.files.full_output_dir.mkdir(exist_ok=True)
 
-if __name__ == "__main__":
+
+CUSTOM_LOG_FILE = settings.files.full_output_dir / f"logger.{settings.timestamp}.log"
+utils.setup_app_logging(log_file_path=CUSTOM_LOG_FILE)
+logger = logging.getLogger(__name__)
+
+def main():
     common.run(settings, COL)
+
+if __name__ == "__main__":
+    # common.run(settings, COL)
+    main()

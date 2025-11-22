@@ -2,6 +2,10 @@
 Common resources
 """
 
+import logging
+from . import utils
+
+
 # import inspect  ## for debugging only
 # import settings as setup
 from enum import Enum
@@ -56,21 +60,23 @@ from PySide6.QtGui import (
     QDesktopServices,
 )
 
-import logging
+from art_cats import settings
+
+logger = logging.getLogger(__name__)
 
 
 # settings = setup.Settings()
 # settings = Settings()
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(
-    # filename = settings.files.full_output_dir / "output.log",
-    filename="output.log",
-    filemode="w",
-    encoding="utf-8",
-    format="%(levelname)s:%(message)s",
-    level=logging.DEBUG,
-)
+# logger = logging.getLogger(__name__)
+# logging.basicConfig(
+#     # filename = settings.files.full_output_dir / "output.log",
+#     filename="output.log",
+#     filemode="w",
+#     encoding="utf-8",
+#     format="%(levelname)s:%(message)s",
+#     level=logging.DEBUG,
+# )
 
 
 @dataclass
@@ -1336,6 +1342,7 @@ class Editor(QWidget):
             out = str(number + 1)
         return out
 
+
     def save_as_csv(self, file_name: Path) -> None:
         # def save_as_csv(self, file_name="") -> None:
         # is_backup_file = bool(file_name)
@@ -1345,26 +1352,40 @@ class Editor(QWidget):
         self.all_text_is_saved = True
         # print(f"*** records saved as {self.settings.out_file}")
 
+
     def save_as_marc(self) -> None:
-        chu_file = (
-            self.settings.files.full_output_dir / f"{self.settings.files.in_file}.CHU.xlsx"
-        )
-        marc_21.write_CHU_file(self.excel_rows, chu_file, self.COL.barcode.value)
+        # if self.settings.create_chu_file:
+        #     chu_file = (
+        #         self.settings.files.full_output_dir
+        #         / f"{self.settings.files.in_file}.CHU.xlsx"
+        #     )
+        #     marc_21.write_CHU_file(self.excel_rows, chu_file, self.COL.barcode.value)
+
+        # file_name = (
+        #     self.settings.files.out_file
+        #     if self.settings.files.out_file
+        #     else self.settings.files.default_output_filename
+        # )
+        # file_name_with_path = self.settings.files.full_output_dir / file_name
+        file_name_with_path = self.settings.files.full_output_dir / self.settings.files.out_file
+        if self.settings.create_chu_file:
+            chu_file = file_name_with_path.with_suffix(".CHU.xlsx")
+            marc_21.write_CHU_file(self.excel_rows, chu_file, self.COL.barcode.value)
+
+        if self.settings.create_excel_file:
+            excel_file = file_name_with_path.with_suffix(".xlsx")
+        marc_21.write_data_to_excel([self.headers, *self.excel_rows], excel_file)
+
         marc_records = marc_21.build_marc_records(
             marc_21.parse_rows_into_records(self.excel_rows)
         )
-        file_name = (
-            self.settings.files.out_file
-            if self.settings.files.out_file
-            else self.settings.files.default_output_filename
-        )
-        # print(f">>>>>>> out_file = {file_name}")
-        marc_21.write_marc_files(marc_records, Path(file_name))
-        msg = f"The {self.record_count} records in {self.settings.files.in_file} have been successfully saved as {file_name}.mrk/.mrc in {self.settings.files.full_output_dir}."
+        marc_21.write_marc21_files(marc_records, Path(file_name_with_path))
+        msg = f"The {self.record_count} records in \"{self.settings.files.in_file}\" have been successfully saved as \"{file_name_with_path.stem}.mrk\" in *{self.settings.files.full_output_dir}*."
         logger.info(msg)
         msg_box = QMessageBox()
         msg_box.setText(msg)
         msg_box.exec()
+
 
     def choose_to_save_on_barcode(self) -> None:
         # print("unsaved text alert...", s)
@@ -1391,6 +1412,7 @@ class Editor(QWidget):
         )
         return dialogue.exec() != 1
 
+
     def handle_file_dialog(self):
         """Opens the native file selection dialog and processes the result."""
         if not self.all_text_is_saved and self.choose_to_abort_on_unsaved_text():
@@ -1398,18 +1420,21 @@ class Editor(QWidget):
             return
         file_dialog = QFileDialog()
         # This returns a tuple: (file_path, filter_used)
-        file_path, _ = file_dialog.getOpenFileName(
+        file, _ = file_dialog.getOpenFileName(
             parent=self,  # The parent widget (for centering)
             caption="Select a file.",
             # dir="./excel_files",
             dir=f"./{self.settings.files.data_dir}",
             filter="Database Files (*.xls *.xlsx *.xlsm *.csv *.tsv)",
         )
-        if file_path:
+        if file:
             # self.short_file_name = self.get_filename_only(file_path)
-            self.settings.files.in_file_full = file_path
-            self.settings.files.in_file = self.get_filename_only(file_path)
-            self.settings.files.out_file = self.settings.files.in_file
+            file_path = Path(file)
+            # self.settings.files.in_file_full = file_path
+            # self.settings.files.in_file = self.get_filename_only(file_path)
+            # self.settings.files.out_file = self.settings.files.in_file
+            self.settings.files.in_file = file_path.name
+            self.settings.files.out_file = f"{self.settings.files.in_file}.new{file_path.suffix}"
             print(f"File Selected: {self.settings.files.in_file} ({file_path})")
             self.headers, self.excel_rows = marc_21.parse_file_into_rows(
                 Path(file_path)
@@ -1430,6 +1455,47 @@ class Editor(QWidget):
             )
         else:
             print("Selection cancelled.")
+    # def handle_file_dialog(self):
+    #     """Opens the native file selection dialog and processes the result."""
+    #     if not self.all_text_is_saved and self.choose_to_abort_on_unsaved_text():
+    #         # print(f"&&&&&&&&& Should abort!")
+    #         return
+    #     file_dialog = QFileDialog()
+    #     # This returns a tuple: (file_path, filter_used)
+    #     file_path, _ = file_dialog.getOpenFileName(
+    #         parent=self,  # The parent widget (for centering)
+    #         caption="Select a file.",
+    #         # dir="./excel_files",
+    #         dir=f"./{self.settings.files.data_dir}",
+    #         filter="Database Files (*.xls *.xlsx *.xlsm *.csv *.tsv)",
+    #     )
+    #     if file_path:
+    #         # self.short_file_name = self.get_filename_only(file_path)
+
+    #         self.settings.files.in_file_full = file_path
+    #         self.settings.files.in_file = self.get_filename_only(file_path)
+    #         self.settings.files.out_file = self.settings.files.in_file
+    #         print(f"File Selected: {self.settings.files.in_file} ({file_path})")
+    #         self.headers, self.excel_rows = marc_21.parse_file_into_rows(
+    #             Path(file_path)
+    #         )
+    #         if self.settings.title == "art_catalogue":
+    #             self.headers, self.excel_rows = self.update_csv_fields(
+    #                 self.headers, self.excel_rows
+    #             )
+    #         if not self.settings.use_default_layout:
+    #             print("Haven't coded for non-default layout yet!")
+    #             ## TODO: code for change of layout on file loading (i.e. make a standalone: 'load file and update grid' function)
+    #         print(f"\n** file dialog -> records loaded: {len(self.excel_rows)}")
+    #         self.all_text_is_saved = True
+    #         self.has_records = True
+    #         self.go_to_last_record()
+    #         logger.info(
+    #             f"Just opened {file_path} containing {self.record_count} records."
+    #         )
+    #     else:
+    #         print("Selection cancelled.")
+
 
     def update_csv_fields(
         self, headers: list[str], rows: list[list[str]]
@@ -1526,7 +1592,7 @@ def load_text_from_file(file_name: str) -> str:
         return f"<h1>Help File Not Found</h1><p>Please create a file named '<b>{file_name}</b>' in the current directory.</p>"
 
 
-def read_cli_into_settings(settings) -> None:
+def read_cli_into_settings(settings:Settings) -> None:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -1548,7 +1614,8 @@ def read_cli_into_settings(settings) -> None:
         settings.files.in_file = file
     else:
         settings.is_existing_file = False
-        settings.files.in_file = settings.files.default_output_filename
+        # settings.files.in_file = settings.files.default_output_filename
+        settings.files.in_file = settings.files.out_file
     # settings.layout_template = default_template
 
 

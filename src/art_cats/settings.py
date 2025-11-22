@@ -2,22 +2,24 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
+from datetime import datetime, timezone
 
 
 # class COL(Enum):
 #     pass
 
 
+# NB. these are simply defaults; most are overwritten by the entry files.
 @dataclass
 class Files:
     app_dir = Path("src/art_cats")
-    data_dir = Path("input_files")
+    data_dir = Path("input_files")  # where the file dialog opens to
     module_dir = Path(__file__).parent.parent.parent.parent
     output_dir = Path("output_files")
-    full_output_dir = Path(__file__).parent
+    full_output_dir = Path(__file__).parent # module_dir / output_dir
     help_file = "help.html"
     backup_file = "backup.bak"
-    in_file_full = ""
+    # in_file_full = ""
     in_file = ""
     out_file = "new_file"
     default_output_filename = "output"
@@ -92,3 +94,6 @@ class Settings:
     submit_when_barcode_entered = False
     default_template = []
     create_output_dir = True
+    create_chu_file = True
+    create_excel_file = True
+    timestamp = str(datetime.now(timezone.utc)).split(".")[0].replace(" ", "_").replace(":", "-")

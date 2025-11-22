@@ -16,3 +16,9 @@ dependencies = [
 dev = [
     "mypy>=1.17.1",
 ]
+
+[project.entry-points."console_scripts"]
+# Format: <name-for-command> = "<package>.<module>:<function>"
+# This allows the cmds: uv run artcats & uv run order
+artcats = "art_cats.art:main"
+order = "art_cats.order:main"
