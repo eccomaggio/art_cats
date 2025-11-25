@@ -1,3 +1,8 @@
+"""
+Load default settings: many will be overwritten by entry-point scripts
+(in this case: art.py & order.py)
+"""
+
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -82,6 +87,7 @@ class Settings:
     first_row_is_header = True
 
     alt_title_signifier = "*//*"
+    blank = " "
     # headers = [member.display_title for member in COL]
     headers = []
     files = Files()

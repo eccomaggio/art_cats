@@ -1,3 +1,8 @@
+"""
+Define the root logger for the application
+We use the root logger to ensure all subsequent loggers inherit the configuration.
+"""
+
 import logging
 from pathlib import Path
 import sys

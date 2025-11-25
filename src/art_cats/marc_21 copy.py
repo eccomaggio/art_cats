@@ -1,8 +1,3 @@
-"""
-Resources to build Marc 21 files and
-import from / export to csv / excel files
-"""
-
 import logging
 from . import utils
 
@@ -34,6 +29,8 @@ from collections.abc import Callable
 from datetime import date, datetime, timezone
 import re
 from pathlib import Path
+
+# import logging
 
 
 logger = logging.getLogger(__name__)
@@ -89,7 +86,6 @@ ISBD = {
     ".": ". ",
     ",": ", ",
     ";": " ; ",
-    "BLANK": " ",
 }
 
 
@@ -770,7 +766,7 @@ def create_date_list(dates_raw: str) -> list[str]:
     return dates
 
 
-def extract_from_excel(excel_sheet, first_row_is_header:bool) -> tuple[list[str], list[worksheet_row]]:
+def extract_from_excel(excel_sheet) -> tuple[list[str], list[worksheet_row]]:
     """
     excel seems pretty random in how it assigns string/int/float, so...
     this routine coerces everything into a string,
@@ -784,8 +780,7 @@ def extract_from_excel(excel_sheet, first_row_is_header:bool) -> tuple[list[str]
         if not excel_row[0] and not excel_row[1]:
             break  ## needed as openpyxl keeps spitting out empty rows at the end
         row = normalize_row(excel_row)
-        # if i == 0 and settings.first_row_is_header:
-        if i == 0 and first_row_is_header:
+        if i == 0 and settings.first_row_is_header:
             headers = row
         else:
             sheet.append(row)
@@ -845,6 +840,7 @@ def parse_row(row: list[str], row_num:int, current_time: datetime) -> Record:
     donation = next(cols)
     barcode = norm_barcode(next(cols), row_num)
 
+    # settings.TMP_is_illustrated = is_illustrated
     record = Record(
         sublibrary,
         langs,
@@ -891,14 +887,14 @@ def build_leader(record: Record) -> Result:
     record_status_05 = "n"  # "n" for new record
     record_type_06 = "a"  # "a" for language material
     biblio_level_07 = "m"  # "m" for monograph
-    type_of_ctrl_08 = ISBD["BLANK"]  # no type of control
+    type_of_ctrl_08 = BLANK  # no type of control
     char_coding_09 = "a"  # Unicode
     indicator_count_10 = "2"  # no indicators
     subfield_count_11 = "2"  # no subfields
     base_address_12 = "00000"  # placeholder for base address of data
     encoding_level_17 = "3"  # "3" for abbrieviated level
     cat_conventions_18 = "i"  # ISBD punctuation included
-    multipart_indic_19 = ISBD["BLANK"]  # no multipart
+    multipart_indic_19 = BLANK  # no multipart
     field_len_20 = "4"  # placeholder for length of field
     start_character_len_21 = "5"  # placeholder for length of starting character
     implementation_len_22 = "0"  # placeholder for implementation length
@@ -951,6 +947,7 @@ def build_008(record: Record) -> Result:
     place_of_pub = f"{region:{blank}<3}"
 
     # books_configuration = [14*"|", " ", 2*"|"]
+    # illustrations = "|a||" if settings.TMP_is_illustrated else "||||"   ## pos 18-21
     illustrations = "|a||" if record.is_illustrated else "||||"  ## pos 18-21
     target_audience = "|"  ## 22
     form_of_item = "|"  ## 23
@@ -999,7 +996,7 @@ def build_033(record: Record) -> Result:
     tag = 33
     i1 = "0" if len(record.sale_dates) == 1 else "1"
     # i2 = "\\"
-    i2 = ISBD["BLANK"]
+    i2 = BLANK
     result = Result(
         Field(
             tag=seq_num(tag),
@@ -1015,7 +1012,7 @@ def build_040(record: Record) -> Result:
     """Cataloguing source (Oxford)"""
     tag = 40
     # i1, i2 = "\\", "\\"
-    i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
+    i1, i2 = BLANK, BLANK
     content = [
         Subfield(value="UkOxU", code="a"),
         Subfield(value="eng", code="b"),
@@ -1046,9 +1043,7 @@ def build_245(record: Record) -> Result:
         )
     else:
         title, subtitle = record.title.original, record.subtitle.original
-        ## TODO: inject settings.alt_title_signifier into this one function. (OR inject settings into all, but no others use them...)
-        # check_for_alt_title = title.split(settings.alt_title_signifier)
-        check_for_alt_title = title.split("*//*")
+        check_for_alt_title = title.split(settings.alt_title_signifier)
         if len(check_for_alt_title) > 1:
             title, alt_title = [el.strip() for el in check_for_alt_title]
             # alt_title_field = create_alternative_title(alt_title, record.langs[0]).is_ok
@@ -1111,7 +1106,7 @@ def build_264(record: Record) -> Result:
     """publisher & copyright"""
     tag = 264
     # i1 = "\\"
-    i1 = ISBD["BLANK"]
+    i1 = BLANK
     i2 = "1"  ## "Publication: Field contains a statement relating to the publication, release, or issuing of a resource."
     # i2 = 0  ## "Production: Field contains a statement relating to the production of a resource."
     error = None
@@ -1146,18 +1141,20 @@ def build_300(record: Record) -> Result:
     """physical description"""
     tag = 300
     # i1, i2 = "\\", "\\"
-    i1, i2 = ISBD["BLANK"], ISBD["BLANK"]  ## "undefined"
+    i1, i2 = BLANK, BLANK  ## "undefined"
     pages_content = (
         f"approximately {record.extent} pages"
         if record.extent_is_approx
         else f"{record.extent} pages"
     )
+    # pages_punctuation = ISBD[":"] if settings.TMP_is_illustrated else ""
     # pages_punctuation = ISBD[":"] if record.is_illustrated else ""
     # pages = Subfield(value=tmp + ISBD[";"], code="a")
     # pages = Subfield(value=tmp + pages_punctuation, code="a")
     # size = Subfield(value=f"{ISBD[":"]}{record.size} cm", code="c")
     punctuation = ISBD["."] if record.series_title else ""
     size = Subfield(value=f"{record.size} cm{punctuation}", code="c")
+    # if settings.TMP_is_illustrated:
     if record.is_illustrated:
         pages = Subfield(value=pages_content + ISBD[":"], code="a")
         illustrations = Subfield(value=f"illustrations{ISBD[";"]}", code="b")
@@ -1174,7 +1171,7 @@ def build_300(record: Record) -> Result:
 def build_336(record: Record) -> Result:
     """content type (boilerplate)"""
     tag = 336
-    i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
+    i1, i2 = BLANK, BLANK
     text_content = [
         Subfield(value="text", code="a"),
         Subfield(value="rdacontent", code="2"),
@@ -1202,7 +1199,7 @@ def build_337(record: Record) -> Result:
     """media type (boilerplate)"""
     tag = 337
     # i1, i2 = "\\", "\\"
-    i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
+    i1, i2 = BLANK, BLANK
     content = [
         Subfield(value="unmediated", code="a"),
         Subfield(value="rdamedia", code="2"),
@@ -1217,7 +1214,7 @@ def build_338(record: Record) -> Result:
     """carrier type (boilerplate)"""
     tag = 338
     # i1, i2 = "\\", "\\"
-    i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
+    i1, i2 = BLANK, BLANK
     content = [
         Subfield(value="volume", code="a"),
         Subfield(value="rdacarrier", code="2"),
@@ -1235,7 +1232,7 @@ def build_876(record: Record) -> Result:
     """
     tag = 876
     # i1, i2 = "\\", "\\"
-    i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
+    i1, i2 = BLANK, BLANK
     content = [Subfield(value=record.barcode, code="p")]
     if donation := record.donation:
         content.append(Subfield(value=donation, code="z"))
@@ -1262,7 +1259,7 @@ def build_020(record: Record) -> Result:  ##optional
     """isbn (if exists)"""
     tag = 20
     # i1, i2 = "\\", "\\"
-    i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
+    i1, i2 = BLANK, BLANK
     contents = []
     if record.isbn:
         contents.append(Subfield(value=record.isbn, code="a"))
@@ -1283,7 +1280,7 @@ def build_024(record: Record) -> Result:  ##optional
     tag = 24
     i1 = "8"
     # i2 = "\\"
-    i2 = ISBD["BLANK"]
+    i2 = BLANK
     if record.sales_code:
         result = Result(
             Field(
@@ -1304,7 +1301,7 @@ def build_041(record: Record) -> Result:  ##optional
     # i1 = -1  ## "No information...as to whether the item is or includes a translation."
     i1 = "0"  ## "Item not a translation/does not include a translation."
     # i2 = "\\"  ## "(followed by) MARC language code"
-    i2 = ISBD["BLANK"]  ## "(followed by) MARC language code"
+    i2 = BLANK  ## "(followed by) MARC language code"
     is_multi_lingual = len(record.langs) > 1
     if is_multi_lingual:
         ## OPTION 1
@@ -1404,7 +1401,7 @@ def create_alternative_title(alternative_form: str, lang="eng") -> Field:
     ## NB. this doesn't deal with non-Western scripts (yet)
     tag = 246
     i1 = "3"  ## "No note, added entry"
-    i2 = ISBD["BLANK"]  ## No type specified
+    i2 = BLANK  ## No type specified
     _, alternative_title_field = check_for_nonfiling(alternative_form, lang)
     content = [Subfield(value=alternative_title_field, code="a")]
     alternative_title_field = Field(
@@ -1430,7 +1427,7 @@ def build_490(record: Record) -> Result:  ## optional
     tag = 490
     i1 = "0"  ## Series not traced: No series added entry is desired for the series.
     # i2 = "\\"
-    i2 = ISBD["BLANK"]
+    i2 = BLANK
     series_title_text = record.series_title
     series_enum_text = record.series_enum
     if series_title_text and series_enum_text:
@@ -1460,7 +1457,7 @@ def build_500(record: Record) -> Result:  ##optional
     """
     tag = 500
     # i1, i2 = "\\", "\\"
-    i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
+    i1, i2 = BLANK, BLANK
     notes_text = add_period_if_necessary(record.notes)
     if notes_text:
         notes_text = notes_text[0] + notes_text[1:]
@@ -1650,19 +1647,18 @@ def apply_marc_logic(record: Record) -> PyRecord:
 
 def parse_file_into_rows(
     file_path: Path,
-    first_row_is_header
 ) -> tuple[list[str], list[worksheet_row]]:
     is_excel_file = file_path.suffix.startswith(".xl")
     if is_excel_file:
         excel_file_name = str(file_path.resolve())
         worksheet = openpyxl.load_workbook(filename=excel_file_name).active
-        headers, raw_rows = extract_from_excel(worksheet, first_row_is_header)
+        headers, raw_rows = extract_from_excel(worksheet)
     else:
-        headers, raw_rows = extract_from_csv(file_path, first_row_is_header)
+        headers, raw_rows = extract_from_csv(file_path)
     return (headers, raw_rows)
 
 
-def extract_from_csv(file_address: Path, first_row_is_header) -> tuple[list[str], list[worksheet_row]]:
+def extract_from_csv(file_address: Path) -> tuple[list[str], list[worksheet_row]]:
     sheet = []
     headers = []
     delimiter = "," if file_address.suffix == ".csv" else "\t"
@@ -1670,8 +1666,7 @@ def extract_from_csv(file_address: Path, first_row_is_header) -> tuple[list[str]
         csv_reader = csv.reader(csv_file, delimiter=delimiter)
         for i, row in enumerate(csv_reader):
             row = normalize_row(row)
-            # if i == 0 and settings.first_row_is_header:
-            if i == 0 and first_row_is_header:
+            if i == 0 and settings.first_row_is_header:
                 headers = row
             else:
                 sheet.append(row)
@@ -1852,70 +1847,77 @@ def make_directory(directory_path):
     return directory
 
 
-# @dataclass
-# class Settings:
-#     in_file_full = ""
-#     in_file = ""
-#     out_file = ""
-#     default_output_filename = "output"
-#     # data_dir = "excel_files"
-#     # output_dir = "marc21_files"
-#     app_dir = "app"
-#     data_dir = "input_files"
-#     output_dir = "output_files"
-#     use_default_layout = True
-#     is_existing_file = True
-#     layout_template: tuple = ()
-#     first_row_is_header = True
-#     flavour: dict[str, Any] = field(default_factory=dict)
-#     styles: dict[str, str] = field(default_factory=dict)
-#     help_file = ""
-#     backup_file = "backup.bak"
-#     alt_title_signifier = "*//*"
-#     # TMP_is_illustrated = False
-#     combo_default_text = " >> Choose <<"
-#     combo_following_default_text = " (first select "
-#     show_table_view = True
+@dataclass
+class Settings:
+    in_file_full = ""
+    in_file = ""
+    out_file = ""
+    default_output_filename = "output"
+    # data_dir = "excel_files"
+    # output_dir = "marc21_files"
+    app_dir = "app"
+    data_dir = "input_files"
+    output_dir = "output_files"
+    use_default_layout = True
+    is_existing_file = True
+    layout_template: tuple = ()
+    first_row_is_header = True
+    flavour: dict[str, Any] = field(default_factory=dict)
+    styles: dict[str, str] = field(default_factory=dict)
+    help_file = ""
+    backup_file = "backup.bak"
+    alt_title_signifier = "*//*"
+    # TMP_is_illustrated = False
+    combo_default_text = " >> Choose <<"
+    combo_following_default_text = " (first select "
+    show_table_view = True
 
 
-# settings = Settings()
+settings = Settings()
 
-# # excel_file_path = "excel_files"
-# # excel_file_dir = make_directory(excel_file_path)
-# # output_files_path = "marc21_files"
-# # output_file_dir = make_directory(output_files_path)
-# BLANK = " "
-# # logger = logging.getLogger(__name__)
-# excel_file_dir = make_directory(settings.data_dir)
-# output_file_dir = make_directory(settings.output_dir)
+# excel_file_path = "excel_files"
+# excel_file_dir = make_directory(excel_file_path)
+# output_files_path = "marc21_files"
+# output_file_dir = make_directory(output_files_path)
+BLANK = " "
+# logger = logging.getLogger(__name__)
+excel_file_dir = make_directory(settings.data_dir)
+output_file_dir = make_directory(settings.output_dir)
 
 
+# logging.basicConfig(
+#     filename = output_file_dir / "output.log",
+#     filemode="w",
+#     encoding="utf-8",
+#     format="%(levelname)s:%(message)s",
+#     level=logging.DEBUG
+#     )
 
-## TODO: rethink this CLI version; not up-to-date
-# def run() -> None:
-#     # for file in Path(settings.data_dir).glob("*.xls[xm]"):
-#     extensions = ["*.xlsx", "*.xlsm", "*.csv", "*.tsv"]
-#     file_list: list[Path] = []
-#     for ext in extensions:
-#         file_list.extend(Path(settings.data_dir).glob(ext))
 
-#     print(f"There {len(file_list)} files to process.")
-#     for file in file_list:
-#         # is_excel_file = file.suffix.startswith(".xl")
-#         logger.info(f"\n>>>>> processing: {file.name}")
-#         print(f">>>>> now processing: {file}>{file.name} ({file.suffix})")
-#         headers, raw_rows = parse_file_into_rows(file, True)
-#         # if is_excel_file:
-#         #     headers, raw_rows = parse_file_into_rows(file)
-#         # else:
-#         #     headers, raw_rows = extract_from_csv(file)
-#         records = parse_rows_into_records(raw_rows)
-#         del headers
-#         del raw_rows
-#         # marc_records = build_pymarc_records(records)
-#         marc_records = build_marc_records(records)
-#         del records
-#         write_marc21_files(marc_records, file)
+def run() -> None:
+    # for file in Path(settings.data_dir).glob("*.xls[xm]"):
+    extensions = ["*.xlsx", "*.xlsm", "*.csv", "*.tsv"]
+    file_list: list[Path] = []
+    for ext in extensions:
+        file_list.extend(Path(settings.data_dir).glob(ext))
+
+    print(f"There {len(file_list)} files to process.")
+    for file in file_list:
+        # is_excel_file = file.suffix.startswith(".xl")
+        logger.info(f"\n>>>>> processing: {file.name}")
+        print(f">>>>> now processing: {file}>{file.name} ({file.suffix})")
+        headers, raw_rows = parse_file_into_rows(file)
+        # if is_excel_file:
+        #     headers, raw_rows = parse_file_into_rows(file)
+        # else:
+        #     headers, raw_rows = extract_from_csv(file)
+        records = parse_rows_into_records(raw_rows)
+        del headers
+        del raw_rows
+        # marc_records = build_pymarc_records(records)
+        marc_records = build_marc_records(records)
+        del records
+        write_marc21_files(marc_records, file)
 
 
 # def main() -> None:

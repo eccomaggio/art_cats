@@ -64,21 +64,6 @@ from art_cats import settings
 
 logger = logging.getLogger(__name__)
 
-
-# settings = setup.Settings()
-# settings = Settings()
-
-# logger = logging.getLogger(__name__)
-# logging.basicConfig(
-#     # filename = settings.files.full_output_dir / "output.log",
-#     filename="output.log",
-#     filemode="w",
-#     encoding="utf-8",
-#     format="%(levelname)s:%(message)s",
-#     level=logging.DEBUG,
-# )
-
-
 @dataclass
 class Brick:
     height: int
@@ -202,7 +187,7 @@ class Grid:
             b. only insert a brick if there are no bricks after the first free space in the row
         """
         if brick.width > self.grid_width:
-            print("Input field has been truncated to fit the grid.")
+            logger.info("Input field has been truncated to fit the grid.")
             brick.width = self.grid_width
         if not title:
             title = f"input #{brick_id}"
@@ -233,7 +218,7 @@ class Grid:
                     break
             row_i += 1
 
-    def add_bricks_by_template(self, template: tuple) -> None:
+    def add_bricks_by_template(self, template: list) -> None:
         # print(f"add bricks by template: {template=}")
         last_brick = template[-1]
         _, lb_brick_type, lb_start_row, _, _ = last_brick
@@ -802,7 +787,7 @@ class Editor(QWidget):
         option_count = len(raw_combo_options)
         new_combo_options = []
         if option_count == 0:
-            print("\t\t-- Combo list missing options!!")
+            logger.warning("\t\t-- Combo list missing options!!")
             new_combo_options = ["<missing data>"]
             index = 0
         elif option_count == 1:
@@ -819,7 +804,7 @@ class Editor(QWidget):
                     # index_in_list = new_combo_options.index(selected_item)
                     index = new_combo_options.index(selected_item)
                 except ValueError:
-                    print(
+                    logger.warning(
                         f"The option *{selected_item}* is not an item in this combo box!"
                     )
                     index = 0
@@ -844,7 +829,7 @@ class Editor(QWidget):
         link = sender_label.help_txt
         self.caller.handle_internal_link(QUrl(f"#{link}"))
         # self.display.setText(link)
-        print(f"--- the link is: #{link}")
+        # print(f"--- the link is: #{link}")
 
     @property
     def row_count(self) -> int:
@@ -907,7 +892,7 @@ class Editor(QWidget):
         csv_file = (
             self.settings.files.full_output_dir / f"{self.settings.files.out_file}.csv"
         )
-        print(f"{csv_file=}")
+        logger.info(f"{csv_file=}")
         self.save_as_csv(csv_file)
         self.update_nav_buttons()
         self.load_record_into_gui(self.current_row)
@@ -953,7 +938,7 @@ class Editor(QWidget):
             alert.setText(msg)
             alert.exec()
             return False
-        print(f"%%% {msg}")
+        # print(f"%%% {msg}")
         return True
 
     def validate_input(self, widget: QWidget) -> str:
@@ -994,8 +979,7 @@ class Editor(QWidget):
             content = "True" if widget.isChecked() else "False"
         else:
             msg = f"No reader set up for {widget}!"
-            print(msg)
-            # logging.critical(msg)
+            logger.critical(msg)
         return content.strip()
 
     def handle_close(self) -> None:
@@ -1055,7 +1039,7 @@ class Editor(QWidget):
                 # print(f">>>>>>>>> {year_of_pub}")
                 pubdate.setText(f"{year_of_pub}?")
         else:
-            print("Can't access salecode or pubdate fields...")
+            logger.warning("Can't access salecode or pubdate fields...")
 
     def update_title_with_record_number(self, prefix="Record no. ") -> None:
         text = f"{self.get_human_readable_record_number()} of {self.record_count}"
@@ -1104,7 +1088,7 @@ class Editor(QWidget):
         elif isinstance(sender, QCheckBox):
             sender.checkStateChanged.disconnect(self.handle_text_change)
         else:
-            print("Huston, we have a problem with text input...")
+            logger.warning("Huston, we have a problem with text input...")
         self.update_input_styling(sender, style)
         self.all_text_is_saved = False
 
@@ -1123,7 +1107,7 @@ class Editor(QWidget):
                 style = "border_only_active"
             widget.setStyleSheet(style)
         else:
-            print("Huston, we have a problem with input styling")
+            logger.warning("Huston, we have a problem with input styling")
 
     def load_record_into_gui(self, row_to_load: list | None = None) -> None:
         """
@@ -1158,7 +1142,6 @@ class Editor(QWidget):
         # self.toggle_record_editable("edit")
 
     def handle_new_record(self) -> None:
-        ## TODO: should i add in a routine to save the previous record here?
         self.current_row_index = -1
         # if self.settings.flavour["title"] == "order_form":
         for field in self.settings.validation.fields_to_clear:
@@ -1183,7 +1166,7 @@ class Editor(QWidget):
         #     ## the entire table is loaded from scratch, not just a single value, as for others
         #     self.load_table(input_widget, value)
         else:
-            print(f"!!!! Problem: current widget ({type(input_widget)})")
+            logger.warning(f"!!!! Problem: current widget ({type(input_widget)})")
 
     def load_checkbox(self, widget: QCheckBox, value="") -> None:
         if value == "True" or value == True:
@@ -1435,66 +1418,27 @@ class Editor(QWidget):
             # self.settings.files.out_file = self.settings.files.in_file
             self.settings.files.in_file = file_path.name
             self.settings.files.out_file = f"{self.settings.files.in_file}.new{file_path.suffix}"
-            print(f"File Selected: {self.settings.files.in_file} ({file_path})")
+            logger.info(f"File Selected: {self.settings.files.in_file} ({file_path})")
             self.headers, self.excel_rows = marc_21.parse_file_into_rows(
-                Path(file_path)
+                Path(file_path),
+                self.settings.first_row_is_header
             )
             if self.settings.title == "art_catalogue":
                 self.headers, self.excel_rows = self.update_csv_fields(
                     self.headers, self.excel_rows
                 )
             if not self.settings.use_default_layout:
-                print("Haven't coded for non-default layout yet!")
+                logger.warning("Haven't coded for non-default layout yet!")
                 ## TODO: code for change of layout on file loading (i.e. make a standalone: 'load file and update grid' function)
-            print(f"\n** file dialog -> records loaded: {len(self.excel_rows)}")
+            logger.info(f"\n** file dialog -> records loaded: {len(self.excel_rows)}")
             self.all_text_is_saved = True
             self.has_records = True
             self.go_to_last_record()
             logger.info(
                 f"Just opened {file_path} containing {self.record_count} records."
             )
-        else:
-            print("Selection cancelled.")
-    # def handle_file_dialog(self):
-    #     """Opens the native file selection dialog and processes the result."""
-    #     if not self.all_text_is_saved and self.choose_to_abort_on_unsaved_text():
-    #         # print(f"&&&&&&&&& Should abort!")
-    #         return
-    #     file_dialog = QFileDialog()
-    #     # This returns a tuple: (file_path, filter_used)
-    #     file_path, _ = file_dialog.getOpenFileName(
-    #         parent=self,  # The parent widget (for centering)
-    #         caption="Select a file.",
-    #         # dir="./excel_files",
-    #         dir=f"./{self.settings.files.data_dir}",
-    #         filter="Database Files (*.xls *.xlsx *.xlsm *.csv *.tsv)",
-    #     )
-    #     if file_path:
-    #         # self.short_file_name = self.get_filename_only(file_path)
-
-    #         self.settings.files.in_file_full = file_path
-    #         self.settings.files.in_file = self.get_filename_only(file_path)
-    #         self.settings.files.out_file = self.settings.files.in_file
-    #         print(f"File Selected: {self.settings.files.in_file} ({file_path})")
-    #         self.headers, self.excel_rows = marc_21.parse_file_into_rows(
-    #             Path(file_path)
-    #         )
-    #         if self.settings.title == "art_catalogue":
-    #             self.headers, self.excel_rows = self.update_csv_fields(
-    #                 self.headers, self.excel_rows
-    #             )
-    #         if not self.settings.use_default_layout:
-    #             print("Haven't coded for non-default layout yet!")
-    #             ## TODO: code for change of layout on file loading (i.e. make a standalone: 'load file and update grid' function)
-    #         print(f"\n** file dialog -> records loaded: {len(self.excel_rows)}")
-    #         self.all_text_is_saved = True
-    #         self.has_records = True
-    #         self.go_to_last_record()
-    #         logger.info(
-    #             f"Just opened {file_path} containing {self.record_count} records."
-    #         )
-    #     else:
-    #         print("Selection cancelled.")
+        # else:
+        #     print("File selection cancelled.")
 
 
     def update_csv_fields(
@@ -1572,7 +1516,7 @@ def write_to_csv(file_name: Path, data: list[list[str]], headers: list[str]) -> 
     # def write_to_csv(file_name: str, data: list[list[str]], headers: list[str]) -> None:
     # out_file = Path(settings.files.full_output_dir) / Path(file_name)
     # with open(out_file, "w", newline="", encoding="utf-8") as f:
-    print(f">>>>> {file_name}")
+    logger.info(f"Exporting records as csv to {file_name}")
     with open(file_name, "w", newline="", encoding="utf-8") as f:
         csvwriter = csv.writer(f)
         csvwriter.writerow(headers)
@@ -1633,13 +1577,13 @@ def open_yaml_file(file_path: Path):
         return yaml.safe_load(f)
 
 
-def setup_environment(settings):
+def setup_environment(settings:Settings):
     read_cli_into_settings(settings)
     grid = Grid()
     headers = []
     if settings.is_existing_file:
         print(f"processing file: {settings.files.in_file}")
-        headers, rows = marc_21.parse_file_into_rows(Path(settings.files.in_file))
+        headers, rows = marc_21.parse_file_into_rows(Path(settings.files.in_file), settings.first_row_is_header)
         if settings.use_default_layout:
             settings.layout_template = settings.default_template
             grid.add_bricks_by_template(settings.layout_template)
@@ -1658,24 +1602,17 @@ def setup_environment(settings):
     return (grid, rows, headers)
 
 
-# if __name__ == "__main__":
 def run(settings: Settings, COL):
-    # settings.combos.data = open_yaml_file("./src/art_cats/combo_data.yaml")
-    # settings.combos.data = open_yaml_file("combo_data.yaml")
-    # settings.combos.data = open_yaml_file(settings.files.app_dir / "combo_data.yaml")
+
     if settings.combos.data_file:
         settings.combos.data = open_yaml_file(
             settings.files.app_dir / settings.combos.data_file
         )
     # print(f"run: {settings.default_template=}")
     grid, rows, headers = setup_environment(settings)
-    print(f"{headers=}, {rows=}")
+    # print(f"{headers=}, {rows=}")
     app = QApplication(sys.argv)
     # print(f"headers: {headers}")
     window = WindowWithRightTogglePanel(grid, rows, settings, COL, app)
     window.show()
     sys.exit(app.exec())
-
-
-# if __name__ == "__main__":
-#     main()
