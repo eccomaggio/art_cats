@@ -1,3 +1,0 @@
-[console_scripts]
-artcats = art_cats.art:main
-order = art_cats.order:main
