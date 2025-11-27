@@ -13,7 +13,7 @@ from unittest import result
 # from openpyxl.styles import Font, Alignment, PatternFill
 import openpyxl  # type: ignore
 import openpyxl.styles
-from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl.worksheet.worksheet import Worksheet  # type: ignore
 from pymarc import (
     Record as PyRecord,
     Indicators,
@@ -1812,7 +1812,7 @@ def write_data_to_excel(
     # 1. Create a new Workbook and get the active worksheet
     try:
         workbook = openpyxl.Workbook()
-        sheet = workbook.active
+        sheet: Worksheet = workbook.active
         sheet.title = sheet_name
 
         # 2. Iterate through the rows in the data structure

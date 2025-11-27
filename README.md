@@ -17,6 +17,38 @@ rationalize:
 
 To do:
 
+NEW DIRECTIVES:
+analyse common.py & refactor to focus on gui
+create validation and io files:
+
+LAST NIGHT"S MUSINGS:
+things common.py does
+creates gui & adds widgets - different variants depending on settings.title etc.
+[actually, most of this is gui code]
+
+— validation: (as suggested, the gui should simply harvest the data and send it to the validator… as a record?) see chat gpt's suggestions
+data_is_valid()
+validate_input()
+
+editor.update_csv_fields()
+
+— io:
+editor.get_filename_only()
+editor.drop_csv_suffix()
+write_to_csv()
+load_text_from_file()
+read_cli_into_settings(settings:Settings)
+save_as_yaml()
+open_yaml_file()
+save_as_marc() - io or gui or marc21??
+
+create_max_lengths() OK = gui!
+
+
+
+
+
+
 - DONE: not validating on lock
 - DONE: i haven't migrated the specific validations to the new edit.py file for art catalogues
 - DONE: migrate edit.py to new build scheme (in orderForm.py)

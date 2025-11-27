@@ -8,10 +8,11 @@ from . import utils
 
 from enum import Enum
 from pathlib import Path
-from .settings import Settings
+from .settings import Default_settings
 from . import common
 
 logger = logging.getLogger(__name__)
+
 
 def main():
     class COL(Enum):
@@ -46,10 +47,9 @@ def main():
         Notify = "Notify"
         Additional_info = "Additional order instructions"
 
-
     ##### Tailor settings
 
-    settings = Settings()
+    settings = Default_settings()
     settings.title = "order_form"
     settings.headers = [member.display_title for member in COL]
     settings.show_table_view = True
@@ -86,7 +86,6 @@ def main():
         COL.Notify.name,
     ]
     settings.validation.validation_skip_fieldname = COL.Additional_info.name
-
 
     settings.combos.independents = [
         COL.Subject_consultant.name,
@@ -130,14 +129,18 @@ def main():
 
     settings.files.help_file = "help_order_form.html"
     settings.files.output_dir = Path("your_order")
-    settings.files.full_output_dir = settings.files.module_dir / settings.files.output_dir
+    settings.files.full_output_dir = (
+        settings.files.module_dir / settings.files.output_dir
+    )
     if settings.create_output_dir:
         settings.files.full_output_dir.mkdir(exist_ok=True)
 
-
-    CUSTOM_LOG_FILE = settings.files.full_output_dir / f"logger.{settings.timestamp}.log"
+    CUSTOM_LOG_FILE = (
+        settings.files.full_output_dir / f"logger.{settings.timestamp}.log"
+    )
     utils.setup_app_logging(log_file_path=CUSTOM_LOG_FILE)
     common.run(settings, COL)
+
 
 if __name__ == "__main__":
     main()

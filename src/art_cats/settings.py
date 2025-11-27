@@ -21,7 +21,7 @@ class Files:
     data_dir = Path("input_files")  # where the file dialog opens to
     module_dir = Path(__file__).parent.parent.parent.parent
     output_dir = Path("output_files")
-    full_output_dir = Path(__file__).parent # module_dir / output_dir
+    full_output_dir = Path(__file__).parent  # module_dir / output_dir
     help_file = "help.html"
     backup_file = "backup.bak"
     # in_file_full = ""
@@ -73,12 +73,13 @@ class Combos:
     followers = []
     dict_by_follower = {}
     dict_by_leader = {}
-    data = []
+    # data = []
+    data = {}
     data_file = ""
 
 
 @dataclass
-class Settings:
+class Default_settings:
     title = "art_catalogue"
     is_existing_file = True
     use_default_layout = True
@@ -102,4 +103,9 @@ class Settings:
     create_output_dir = True
     create_chu_file = True
     create_excel_file = True
-    timestamp = str(datetime.now(timezone.utc)).split(".")[0].replace(" ", "_").replace(":", "-")
+    timestamp = (
+        str(datetime.now(timezone.utc))
+        .split(".")[0]
+        .replace(" ", "_")
+        .replace(":", "-")
+    )

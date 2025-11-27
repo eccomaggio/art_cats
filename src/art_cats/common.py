@@ -9,7 +9,7 @@ from . import utils
 # import inspect  ## for debugging only
 # import settings as setup
 from enum import Enum
-from .settings import Settings
+from .settings import Default_settings
 from . import marc_21
 
 import argparse
@@ -50,9 +50,10 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import (
     Qt,
     QUrl,
-    QTimer,
+    # QTimer,
     QEvent,
     Signal,
+    QObject,
 )
 from PySide6.QtGui import (
     QMouseEvent,
@@ -63,6 +64,7 @@ from PySide6.QtGui import (
 from art_cats import settings
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class Brick:
@@ -278,7 +280,12 @@ class WindowWithRightTogglePanel(QWidget):
     GRID_BUFFER = 3  # Buffer for layout margins/spacing
 
     def __init__(
-        self, grid: Grid, rows: list[list[str]], settings: Settings, COL: Enum, app
+        self,
+        grid: Grid,
+        rows: list[list[str]],
+        settings: Default_settings,
+        COL: Enum,
+        app,
     ):
         super().__init__()
 
@@ -494,7 +501,7 @@ class Editor(QWidget):
         grid: Grid,
         excel_rows: list[list[str]],
         caller: WindowWithRightTogglePanel,
-        settings: Settings,
+        settings: Default_settings,
         COL,
         app,
     ):
@@ -728,7 +735,8 @@ class Editor(QWidget):
                 input_widget.setCurrentIndex(0)
 
     def handle_update_follower(self) -> None:
-        leader: QComboBox = self.sender()
+        # leader: QComboBox = self.sender()
+        leader: QObject = self.sender()
         follower_name = self.settings.combos.dict_by_leader[leader.objectName()]
         self.load_combo_box(self.follower_inputs[follower_name])
 
@@ -1074,7 +1082,7 @@ class Editor(QWidget):
 
     def handle_text_change(self) -> None:
         # print(f"Text changed...{datetime.datetime.now()}")
-        sender = self.sender()
+        sender:QObject = self.sender()
         style = "text_changed"
         if isinstance(sender, QLineEdit):
             # sender.setStyleSheet(self.settings.styles[style])
@@ -1092,7 +1100,7 @@ class Editor(QWidget):
         self.update_input_styling(sender, style)
         self.all_text_is_saved = False
 
-    def update_input_styling(self, widget: QWidget, style: str) -> None:
+    def update_input_styling(self, widget: QObject, style: str) -> None:
         # print(f"Text changed...{datetime.datetime.now()}")
         if isinstance(widget, QLineEdit):
             widget.setStyleSheet(style)
@@ -1283,9 +1291,11 @@ class Editor(QWidget):
         for input in self.inputs:
             if isinstance(input, QCheckBox) or isinstance(input, QComboBox):
                 input.setEnabled(not status.locked_status)
-            else:
+            elif isinstance(input, QLineEdit) or isinstance(input, QTextEdit):
                 input.setStyleSheet(status.input_style)
                 input.setReadOnly(status.locked_status)
+            else:
+                logger.warning("Widget type {input} isn't fully supported.")
         self.unlock_btn.setText(status.btn_text)
         self.submit_btn.setEnabled(not status.locked_status)
 
@@ -1325,7 +1335,6 @@ class Editor(QWidget):
             out = str(number + 1)
         return out
 
-
     def save_as_csv(self, file_name: Path) -> None:
         # def save_as_csv(self, file_name="") -> None:
         # is_backup_file = bool(file_name)
@@ -1334,7 +1343,6 @@ class Editor(QWidget):
         write_to_csv(file_name, self.excel_rows, headers)
         self.all_text_is_saved = True
         # print(f"*** records saved as {self.settings.out_file}")
-
 
     def save_as_marc(self) -> None:
         # if self.settings.create_chu_file:
@@ -1350,7 +1358,9 @@ class Editor(QWidget):
         #     else self.settings.files.default_output_filename
         # )
         # file_name_with_path = self.settings.files.full_output_dir / file_name
-        file_name_with_path = self.settings.files.full_output_dir / self.settings.files.out_file
+        file_name_with_path = (
+            self.settings.files.full_output_dir / self.settings.files.out_file
+        )
         if self.settings.create_chu_file:
             chu_file = file_name_with_path.with_suffix(".CHU.xlsx")
             marc_21.write_CHU_file(self.excel_rows, chu_file, self.COL.barcode.value)
@@ -1363,12 +1373,11 @@ class Editor(QWidget):
             marc_21.parse_rows_into_records(self.excel_rows)
         )
         marc_21.write_marc21_files(marc_records, Path(file_name_with_path))
-        msg = f"The {self.record_count} records in \"{self.settings.files.in_file}\" have been successfully saved as \"{file_name_with_path.stem}.mrk\" in *{self.settings.files.full_output_dir}*."
+        msg = f'The {self.record_count} records in "{self.settings.files.in_file}" have been successfully saved as "{file_name_with_path.stem}.mrk" in *{self.settings.files.full_output_dir}*.'
         logger.info(msg)
         msg_box = QMessageBox()
         msg_box.setText(msg)
         msg_box.exec()
-
 
     def choose_to_save_on_barcode(self) -> None:
         # print("unsaved text alert...", s)
@@ -1395,7 +1404,6 @@ class Editor(QWidget):
         )
         return dialogue.exec() != 1
 
-
     def handle_file_dialog(self):
         """Opens the native file selection dialog and processes the result."""
         if not self.all_text_is_saved and self.choose_to_abort_on_unsaved_text():
@@ -1417,11 +1425,12 @@ class Editor(QWidget):
             # self.settings.files.in_file = self.get_filename_only(file_path)
             # self.settings.files.out_file = self.settings.files.in_file
             self.settings.files.in_file = file_path.name
-            self.settings.files.out_file = f"{self.settings.files.in_file}.new{file_path.suffix}"
+            self.settings.files.out_file = (
+                f"{self.settings.files.in_file}.new{file_path.suffix}"
+            )
             logger.info(f"File Selected: {self.settings.files.in_file} ({file_path})")
             self.headers, self.excel_rows = marc_21.parse_file_into_rows(
-                Path(file_path),
-                self.settings.first_row_is_header
+                Path(file_path), self.settings.first_row_is_header
             )
             if self.settings.title == "art_catalogue":
                 self.headers, self.excel_rows = self.update_csv_fields(
@@ -1439,7 +1448,6 @@ class Editor(QWidget):
             )
         # else:
         #     print("File selection cancelled.")
-
 
     def update_csv_fields(
         self, headers: list[str], rows: list[list[str]]
@@ -1536,7 +1544,7 @@ def load_text_from_file(file_name: str) -> str:
         return f"<h1>Help File Not Found</h1><p>Please create a file named '<b>{file_name}</b>' in the current directory.</p>"
 
 
-def read_cli_into_settings(settings:Settings) -> None:
+def read_cli_into_settings(settings: Default_settings) -> None:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -1577,13 +1585,15 @@ def open_yaml_file(file_path: Path):
         return yaml.safe_load(f)
 
 
-def setup_environment(settings:Settings):
+def setup_environment(settings: Default_settings):
     read_cli_into_settings(settings)
     grid = Grid()
     headers = []
     if settings.is_existing_file:
         print(f"processing file: {settings.files.in_file}")
-        headers, rows = marc_21.parse_file_into_rows(Path(settings.files.in_file), settings.first_row_is_header)
+        headers, rows = marc_21.parse_file_into_rows(
+            Path(settings.files.in_file), settings.first_row_is_header
+        )
         if settings.use_default_layout:
             settings.layout_template = settings.default_template
             grid.add_bricks_by_template(settings.layout_template)
@@ -1602,7 +1612,7 @@ def setup_environment(settings:Settings):
     return (grid, rows, headers)
 
 
-def run(settings: Settings, COL):
+def run(settings: Default_settings, COL):
 
     if settings.combos.data_file:
         settings.combos.data = open_yaml_file(

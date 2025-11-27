@@ -9,11 +9,12 @@ from . import utils
 
 from enum import Enum
 from pathlib import Path
-from .settings import Settings
+from .settings import Default_settings
 from . import common
 
 
 logger = logging.getLogger(__name__)
+
 
 def main():
     class COL(Enum):
@@ -61,10 +62,9 @@ def main():
         donation = "Donor note"
         barcode = "Barcode"
 
-
     ##### Tailor settings
 
-    settings = Settings()
+    settings = Default_settings()
     settings.title = "art_catalogue"
     settings.headers = [member.display_title for member in COL]
     settings.show_table_view = False
@@ -99,7 +99,6 @@ def main():
     settings.validation.validate_always = [COL.barcode.name]
     settings.validation.validate_if_present = [COL.isbn.name]
     settings.validation.validation_skip_fieldname = COL.barcode.name
-
 
     settings.default_template = [
         ## non-algorithmic version needs to be: [title, brick-type, start-row, start-col]
@@ -137,12 +136,15 @@ def main():
 
     settings.files.help_file = "help_art_cats.html"
     settings.files.output_dir = Path("your_marc_files")
-    settings.files.full_output_dir = settings.files.module_dir / settings.files.output_dir
+    settings.files.full_output_dir = (
+        settings.files.module_dir / settings.files.output_dir
+    )
     if settings.create_output_dir:
         settings.files.full_output_dir.mkdir(exist_ok=True)
 
-
-    CUSTOM_LOG_FILE = settings.files.full_output_dir / f"logger.{settings.timestamp}.log"
+    CUSTOM_LOG_FILE = (
+        settings.files.full_output_dir / f"logger.{settings.timestamp}.log"
+    )
     utils.setup_app_logging(log_file_path=CUSTOM_LOG_FILE)
     common.run(settings, COL)
 
