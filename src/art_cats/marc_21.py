@@ -1662,6 +1662,7 @@ def parse_file_into_rows(
     return (headers, raw_rows)
 
 
+## TODO: split this between in-file validation & io.py
 def extract_from_csv(file_address: Path, first_row_is_header) -> tuple[list[str], list[worksheet_row]]:
     sheet = []
     headers = []
@@ -1676,6 +1677,29 @@ def extract_from_csv(file_address: Path, first_row_is_header) -> tuple[list[str]
             else:
                 sheet.append(row)
     return (headers, sheet)
+
+
+def save_as_marc_files(headers: list[str], excel_rows:list[list[str]], barcode_index:int, file_name_with_path: Path, create_excel_file=True, create_chu_file=True) -> bool:
+    """
+    Saves the record set as .mrk & .mrc files;
+    depending on settings, also creates an excel CHU file
+    for once the marc files have been uploaded to ALMA
+    """
+    if create_chu_file:
+        chu_file = file_name_with_path.with_suffix(".CHU.xlsx")
+        write_CHU_file(excel_rows, chu_file, barcode_index)
+
+    if create_excel_file:
+        excel_file = file_name_with_path.with_suffix(".xlsx")
+    write_data_to_excel([headers, *excel_rows], excel_file)
+
+    marc_records = build_marc_records(
+        parse_rows_into_records(excel_rows)
+    )
+    write_marc21_files(marc_records, Path(file_name_with_path))
+    ## TODO: code this value!
+    file_operations_successful = True
+    return file_operations_successful
 
 
 def write_marc21_files(records: list[PyRecord], file_name_and_path: Path) -> None:

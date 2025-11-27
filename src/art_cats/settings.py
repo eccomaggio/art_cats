@@ -81,7 +81,8 @@ class Combos:
 @dataclass
 class Default_settings:
     title = "art_catalogue"
-    is_existing_file = True
+    # is_existing_file = True
+    is_existing_file = False
     use_default_layout = True
     # layout_template: tuple = ()
     layout_template = []

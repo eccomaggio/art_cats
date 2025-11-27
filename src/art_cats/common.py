@@ -12,11 +12,11 @@ from enum import Enum
 from .settings import Default_settings
 from . import marc_21
 
-import argparse
+# import argparse
 from datetime import datetime
-import yaml
+# import yaml
 import sys
-import csv
+# import csv
 from enum import Enum, auto
 from dataclasses import dataclass
 from collections import namedtuple
@@ -62,6 +62,7 @@ from PySide6.QtGui import (
 )
 
 from art_cats import settings
+from . import io
 
 logger = logging.getLogger(__name__)
 
@@ -310,7 +311,7 @@ class WindowWithRightTogglePanel(QWidget):
         self.help_widget = QTextBrowser()
         ## NB pyside6 does not natively implement internal links in markdown (hence the use of html)
         html_path = Path.cwd() / settings.files.app_dir / settings.files.help_file
-        html_content = load_text_from_file(str(html_path))
+        html_content = io.load_plaintext_from_file(str(html_path))
         self.help_widget.setHtml(html_content)
         # self.help_widget.anchorClicked.connect(self.handle_internal_link)
         self.help_widget.anchorClicked.connect(self.handle_link_click)
@@ -529,7 +530,7 @@ class Editor(QWidget):
 
         # self.file_name = file_name
         self.file_name = settings.files.in_file
-        self.short_file_name = self.get_filename_only(settings.files.in_file)
+        # self.short_file_name = self.get_filename_only(settings.files.in_file)
         self.current_row_index = len(excel_rows) - 1
         self.record_is_locked = True
         self.all_text_is_saved = True
@@ -685,7 +686,8 @@ class Editor(QWidget):
         # if self.settings.show_table_view:
         if self.settings.title == "art_catalogue":
             self.marc_btn = QPushButton("Export as MARC")
-            self.marc_btn.clicked.connect(self.save_as_marc)
+            # self.marc_btn.clicked.connect(self.save_as_marc)
+            self.marc_btn.clicked.connect(self.handle_marc_files)
             nav_grid.addWidget(self.marc_btn, last_row, 1, 1, 1)
         # else:
         if self.settings.show_table_view:
@@ -1340,44 +1342,53 @@ class Editor(QWidget):
         # is_backup_file = bool(file_name)
         headers = [el[3] for el in self.grid.widget_info.values()]
         # write_to_csv(self.settings.out_file, self.excel_rows, headers)
-        write_to_csv(file_name, self.excel_rows, headers)
+        io.write_to_csv(file_name, self.excel_rows, headers)
         self.all_text_is_saved = True
         # print(f"*** records saved as {self.settings.out_file}")
 
-    def save_as_marc(self) -> None:
-        # if self.settings.create_chu_file:
-        #     chu_file = (
-        #         self.settings.files.full_output_dir
-        #         / f"{self.settings.files.in_file}.CHU.xlsx"
-        #     )
-        #     marc_21.write_CHU_file(self.excel_rows, chu_file, self.COL.barcode.value)
 
-        # file_name = (
-        #     self.settings.files.out_file
-        #     if self.settings.files.out_file
-        #     else self.settings.files.default_output_filename
-        # )
-        # file_name_with_path = self.settings.files.full_output_dir / file_name
+    def handle_marc_files(self) -> None:
         file_name_with_path = (
             self.settings.files.full_output_dir / self.settings.files.out_file
         )
-        if self.settings.create_chu_file:
-            chu_file = file_name_with_path.with_suffix(".CHU.xlsx")
-            marc_21.write_CHU_file(self.excel_rows, chu_file, self.COL.barcode.value)
-
-        if self.settings.create_excel_file:
-            excel_file = file_name_with_path.with_suffix(".xlsx")
-        marc_21.write_data_to_excel([self.headers, *self.excel_rows], excel_file)
-
-        marc_records = marc_21.build_marc_records(
-            marc_21.parse_rows_into_records(self.excel_rows)
-        )
-        marc_21.write_marc21_files(marc_records, Path(file_name_with_path))
-        msg = f'The {self.record_count} records in "{self.settings.files.in_file}" have been successfully saved as "{file_name_with_path.stem}.mrk" in *{self.settings.files.full_output_dir}*.'
+        files_successfully_created = marc_21.save_as_marc_files(self.headers, self.excel_rows, self.COL.barcode.value,  file_name_with_path, self.settings.create_excel_file, self.settings.create_chu_file)
+        if files_successfully_created:
+            msg = f'The {self.record_count} records in "{self.settings.files.in_file}" have been successfully saved as "{file_name_with_path.stem}.mrk" in *{self.settings.files.full_output_dir}*.'
+        else:
+            msg = "Not all files were successfully created."
         logger.info(msg)
         msg_box = QMessageBox()
         msg_box.setText(msg)
         msg_box.exec()
+
+
+
+    # def save_as_marc(self) -> None:
+    #     """
+    #     Saves the record set as .mrk & .mrc files;
+    #     depending on settings, also creates an excel CHU file
+    #     for once the marc files have been uploaded to ALMA
+    #     """
+    #     file_name_with_path = (
+    #         self.settings.files.full_output_dir / self.settings.files.out_file
+    #     )
+    #     if self.settings.create_chu_file:
+    #         chu_file = file_name_with_path.with_suffix(".CHU.xlsx")
+    #         marc_21.write_CHU_file(self.excel_rows, chu_file, self.COL.barcode.value)
+
+    #     if self.settings.create_excel_file:
+    #         excel_file = file_name_with_path.with_suffix(".xlsx")
+    #     marc_21.write_data_to_excel([self.headers, *self.excel_rows], excel_file)
+
+    #     marc_records = marc_21.build_marc_records(
+    #         marc_21.parse_rows_into_records(self.excel_rows)
+    #     )
+    #     marc_21.write_marc21_files(marc_records, Path(file_name_with_path))
+    #     msg = f'The {self.record_count} records in "{self.settings.files.in_file}" have been successfully saved as "{file_name_with_path.stem}.mrk" in *{self.settings.files.full_output_dir}*.'
+    #     logger.info(msg)
+    #     msg_box = QMessageBox()
+    #     msg_box.setText(msg)
+    #     msg_box.exec()
 
     def choose_to_save_on_barcode(self) -> None:
         # print("unsaved text alert...", s)
@@ -1452,6 +1463,12 @@ class Editor(QWidget):
     def update_csv_fields(
         self, headers: list[str], rows: list[list[str]]
     ) -> tuple[list[str], list[list[str]]]:
+        """
+        Adds the new 'has_illustrations' field with the default of True
+        if the record set is (old-style) i.e. does not have 29 columns
+        PROBLEMATIC: this only refers to art catalogues and only for a short window.
+        REMOVE ONCE UPGRADE IS COMPLETE
+        """
         index_of_illustrations = 19
         if len(headers) < 29:
             headers = [
@@ -1467,25 +1484,6 @@ class Editor(QWidget):
                 )
             rows = new_rows
         return (headers, rows)
-
-    def get_filename_only(self, file_path: str) -> str:
-        if name_start_index := file_path.rfind("/") + 1:
-            file_name = file_path[name_start_index:]
-        else:
-            file_name = file_path
-        return file_name
-
-    def drop_csv_suffix(self, name: str) -> str:
-        file_name = name.split(".")
-        index = 0
-        for el in reversed(file_name):
-            if el in ["csv", "tsv", "new"]:
-                index -= 1
-                continue
-            break
-        out = ".".join(file_name[:index])
-        return out
-
 
 class DialogueOkCancel(QDialog):
     def __init__(self, parent, text):
@@ -1520,73 +1518,36 @@ def create_max_lengths(rows: list[list[str]]) -> list[int]:
     return [max(col) for col in max_lengths]
 
 
-def write_to_csv(file_name: Path, data: list[list[str]], headers: list[str]) -> None:
-    # def write_to_csv(file_name: str, data: list[list[str]], headers: list[str]) -> None:
-    # out_file = Path(settings.files.full_output_dir) / Path(file_name)
-    # with open(out_file, "w", newline="", encoding="utf-8") as f:
-    logger.info(f"Exporting records as csv to {file_name}")
-    with open(file_name, "w", newline="", encoding="utf-8") as f:
-        csvwriter = csv.writer(f)
-        csvwriter.writerow(headers)
-        csvwriter.writerows(data)
+## TODO: if this functionality is needed: write a separate wrapper file around this file to inject cli parameters
+# def read_cli_into_settings(settings: Default_settings) -> None:
+#     parser = argparse.ArgumentParser()
 
-
-def load_text_from_file(file_name: str) -> str:
-    """Reads the plaintext content of the specified file, returning a default message on error. The plaintext could also encode markdown or html (as is the case here)."""
-    path = Path(file_name)
-    if path.exists():
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                return f.read()
-        except IOError as e:
-            return f"<h1>Error loading help content!</h1><p>Could not read file: {path}. Error: {e}</p>"
-    else:
-        return f"<h1>Help File Not Found</h1><p>Please create a file named '<b>{file_name}</b>' in the current directory.</p>"
-
-
-def read_cli_into_settings(settings: Default_settings) -> None:
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        "--file",
-        "-f",
-        type=str,
-        required=False,
-        help="file to edit",
-    )
-    # parser.add_argument(
-    #     "--out",
-    #     "-o",
-    #     type=str,
-    #     required=False,
-    #     help="name to give saved file",)
-    args = parser.parse_args()
-    settings.files.in_file = args.file
-    if file := args.file:
-        settings.files.in_file = file
-    else:
-        settings.is_existing_file = False
-        # settings.files.in_file = settings.files.default_output_filename
-        settings.files.in_file = settings.files.out_file
-    # settings.layout_template = default_template
-
-
-def save_as_yaml(file: str, data) -> None:
-    with open(file, mode="wt", encoding="utf-8") as f:
-        yaml.dump(data, f, sort_keys=False)
-
-
-# def open_yaml_file(file:str):
-def open_yaml_file(file_path: Path):
-    # with open(file, mode="rt", encoding="utf-8") as f:
-    # file_path = settings.files.app_dir / Path(file)
-    # file_path = Path(file)
-    with open(file_path, mode="rt", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+#     parser.add_argument(
+#         "--file",
+#         "-f",
+#         type=str,
+#         required=False,
+#         help="file to edit",
+#     )
+#     # parser.add_argument(
+#     #     "--out",
+#     #     "-o",
+#     #     type=str,
+#     #     required=False,
+#     #     help="name to give saved file",)
+#     args = parser.parse_args()
+#     settings.files.in_file = args.file
+#     if file := args.file:
+#         settings.files.in_file = file
+#         settings.is_existing_file = True
+#     else:
+#         settings.files.in_file = settings.files.out_file
+#         settings.is_existing_file = False
+#     # settings.layout_template = default_template
 
 
 def setup_environment(settings: Default_settings):
-    read_cli_into_settings(settings)
+    # read_cli_into_settings(settings)
     grid = Grid()
     headers = []
     if settings.is_existing_file:
@@ -1615,7 +1576,7 @@ def setup_environment(settings: Default_settings):
 def run(settings: Default_settings, COL):
 
     if settings.combos.data_file:
-        settings.combos.data = open_yaml_file(
+        settings.combos.data = io.open_yaml_file(
             settings.files.app_dir / settings.combos.data_file
         )
     # print(f"run: {settings.default_template=}")
