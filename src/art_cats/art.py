@@ -10,7 +10,7 @@ from . import utils
 from enum import Enum
 from pathlib import Path
 from .settings import Default_settings
-from . import common
+from . import form_gui
 
 
 logger = logging.getLogger(__name__)
@@ -96,8 +96,9 @@ def main():
         COL.size.name,
         COL.barcode.name,
     ]
-    settings.validation.validate_always = [COL.barcode.name]
-    settings.validation.validate_if_present = [COL.isbn.name]
+    # settings.validation.validate_always = [COL.barcode.name]
+    # settings.validation.validate_if_present = [COL.isbn.name]
+    settings.validation.must_validate = [COL.barcode.name, COL.isbn.name]
     settings.validation.validation_skip_fieldname = COL.barcode.name
 
     settings.default_template = [
@@ -146,7 +147,7 @@ def main():
         settings.files.full_output_dir / f"logger.{settings.timestamp}.log"
     )
     utils.setup_app_logging(log_file_path=CUSTOM_LOG_FILE)
-    common.run(settings, COL)
+    form_gui.run(settings, COL)
 
 
 if __name__ == "__main__":

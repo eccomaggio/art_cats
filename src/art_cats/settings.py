@@ -38,8 +38,9 @@ class Validation:
         [],
     ]
     required_fields = []
-    validate_always = []
-    validate_if_present = []
+    must_validate = []
+    # validate_always = []
+    # validate_if_present = []
     # validation_skip_field: 'COL' = field(default=None)
     validation_skip_fieldname = ""
     validation_skip_text = "*dummy*"

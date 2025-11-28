@@ -17,6 +17,10 @@ rationalize:
 
 To do:
 
+make it so that barcode submits when the lineEdit loses focus, not when text changes (otherwise can't type it in manually!)
+DONE - moved common.py validation code into validation.py
+DONE - moved file functions from common.py into io.py
+
 NEW DIRECTIVES:
 analyse common.py & refactor to focus on gui
 create validation and io files:

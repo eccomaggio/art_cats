@@ -3,6 +3,7 @@ Common resources
 """
 
 import logging
+from re import I
 from . import utils
 
 
@@ -11,6 +12,7 @@ from . import utils
 from enum import Enum
 from .settings import Default_settings
 from . import marc_21
+from . import validation
 
 # import argparse
 from datetime import datetime
@@ -61,8 +63,9 @@ from PySide6.QtGui import (
     QDesktopServices,
 )
 
-from art_cats import settings
+# from art_cats import settings
 from . import io
+from art_cats import settings
 
 logger = logging.getLogger(__name__)
 
@@ -581,7 +584,8 @@ class Editor(QWidget):
                 and isinstance(tmp_input, QLineEdit)
             ):
                 # print("Adding submit on barcode connection...")
-                tmp_input.textEdited.connect(self.choose_to_save_on_barcode)
+                # tmp_input.textEdited.connect(self.choose_to_save_on_barcode)
+                tmp_input.editingFinished.connect(self.choose_to_save_on_barcode)
             # print(f" >>>> {name}-> {title}")
             tmp_label = ClickableLabel(self.settings, title)
             tmp_label.help_txt = name
@@ -873,23 +877,25 @@ class Editor(QWidget):
         """
         Gather data from form & save it to file
         """
-        if not optional_msg:
-            optional_msg = ""
-        data = []
-        data_are_valid = self.data_is_valid(optional_msg)
-        # print(f">>>>>>>>>> {data_are_valid=}")
-        if not data_are_valid:
+        record_as_dict = {
+            input.objectName() : self.get_content(input)
+            for input in self.inputs
+            }
+        problem_items, msg = validation.validate(record_as_dict, self.settings, optional_msg)
+        if problem_items:
+            alert = QMessageBox()
+            alert.setText(msg)
+            alert.exec()
             return False
+
+        record_as_data_row = list(record_as_dict.values())
         # print("OK... data passes as valid for submission...")
-        for input_widget in self.inputs:
-            # data.append(self.get_input_data(input_widget))
-            data.append(self.get_content(input_widget))
         if self.current_record_is_new:
             # print(f"***{self.has_records=}, record count: {self.record_count} {data=}")
             if self.has_records:
-                self.excel_rows.append(data)
+                self.excel_rows.append(record_as_data_row)
             else:
-                self.excel_rows = [data]
+                self.excel_rows = [record_as_data_row]
                 # self.headers = []
                 # self.headers = self.headers_backup
                 self.has_records = True
@@ -897,7 +903,7 @@ class Editor(QWidget):
             self.update_title_with_record_number()
         else:
             ## Update existing record
-            self.current_row = data
+            self.current_row = record_as_data_row
         # self.save_as_csv(self.settings.files.out_file)
         csv_file = (
             self.settings.files.full_output_dir / f"{self.settings.files.out_file}.csv"
@@ -908,88 +914,24 @@ class Editor(QWidget):
         self.load_record_into_gui(self.current_row)
         return True
 
-    def data_is_valid(self, optional_msg="") -> bool:
-        ## TODO: tweak rules to fit art cats
-        missing = []
-        invalid = []
-        errors = []
-        rules = self.settings.validation
-        for widget in self.inputs:
-            name = widget.objectName()
-            if (
-                name == rules.validation_skip_fieldname
-                and self.get_content(widget).strip().lower()
-                == rules.validation_skip_text
-            ):
-                return True
-            # print(f"....{name} in {rules["required_fields"]}-> {name in rules['required_fields']}")
-            if name in rules.required_fields:
-                if not self.get_content(widget):
-                    missing.append(name)
-                    continue
-            if name in rules.validate_always or name in rules.validate_if_present:
-                if error_msg := self.validate_input(widget):
-                    invalid.append(f"{name}: {error_msg}")
-        if missing:
-            count = len(missing)
-            add_s = "s" if count > 1 else ""
-            errors.append(
-                f"The following {count} field{add_s} are missing: {', '.join(missing)}"
-            )
-        if invalid:
-            count = len(invalid)
-            add_s = "s" if count > 1 else ""
-            errors.append(
-                f"Please correct the {count} following problem{add_s}: {'; '.join(invalid)}"
-            )
-        msg = "\n".join(errors)
-        if msg:
-            alert = QMessageBox()
-            alert.setText(msg)
-            alert.exec()
-            return False
-        # print(f"%%% {msg}")
-        return True
-
-    def validate_input(self, widget: QWidget) -> str:
-        ## Valid = empty string
-        # error_msg = ""
-        match widget.objectName():
-            case "hold_for" | "notify":
-                uni_number = self.get_content(widget)
-                if uni_number and (
-                    len(uni_number) != 7 or int(uni_number[0]) in [1, 3, 6, 7]
-                ):
-                    return "This is not a valid University number."
-            case "isbn":
-                isbn = self.get_content(widget)
-                if 10 > len(isbn) > 13:
-                    return "The ISBN is not valid."
-            case "barcode":
-                barcode = self.get_content(widget)
-                if len(barcode) != 9:
-                    return "A barcode must have 9 digits"
-                if barcode[0] not in "367":
-                    return "A barcode needs to start with 3, 6 or 7"
-        return ""
-
     def get_content(self, widget: QWidget) -> str:
         content = ""
-        if isinstance(widget, QLineEdit):
-            content = widget.text()
-        elif isinstance(widget, QTextEdit):
-            content = widget.toPlainText()
-        elif isinstance(widget, QComboBox):
-            content = widget.currentText()
-            if content == self.settings.combos.default_text or content.startswith(
-                self.settings.combos.following_default_text
-            ):
-                content = ""
-        elif isinstance(widget, QCheckBox):
-            content = "True" if widget.isChecked() else "False"
-        else:
-            msg = f"No reader set up for {widget}!"
-            logger.critical(msg)
+        match widget:
+            case QLineEdit():
+                content = widget.text()
+            case QTextEdit():
+                content = widget.toPlainText()
+            case QComboBox():
+                content = widget.currentText()
+                if content == self.settings.combos.default_text or content.startswith(
+                    self.settings.combos.following_default_text
+                ):
+                    content = ""
+            case QCheckBox():
+                content = "True" if widget.isChecked() else "False"
+            case _ :
+                msg = f"No reader set up for {widget}!"
+                logger.critical(msg)
         return content.strip()
 
     def handle_close(self) -> None:
@@ -1346,7 +1288,6 @@ class Editor(QWidget):
         self.all_text_is_saved = True
         # print(f"*** records saved as {self.settings.out_file}")
 
-
     def handle_marc_files(self) -> None:
         file_name_with_path = (
             self.settings.files.full_output_dir / self.settings.files.out_file
@@ -1360,8 +1301,6 @@ class Editor(QWidget):
         msg_box = QMessageBox()
         msg_box.setText(msg)
         msg_box.exec()
-
-
 
     # def save_as_marc(self) -> None:
     #     """
