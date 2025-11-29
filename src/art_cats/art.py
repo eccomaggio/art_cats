@@ -135,7 +135,7 @@ def main():
         (COL.barcode, "1:2", 16, 4, "line"),
     ]
 
-    settings.files.help_file = "help_art_cats.html"
+    settings.files.help_file = "html/help_art_cats.html"
     settings.files.output_dir = Path("your_marc_files")
     settings.files.full_output_dir = (
         settings.files.module_dir / settings.files.output_dir

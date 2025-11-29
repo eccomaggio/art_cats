@@ -1587,7 +1587,7 @@ def setup_environment(settings: Default_settings):
     grid = Grid()
     headers = []
     if settings.is_existing_file:
-        print(f"processing file: {settings.files.in_file}")
+        logging.info(f"processing file: {settings.files.in_file}")
         headers, rows = marc_21.parse_file_into_rows(
             Path(settings.files.in_file), settings.first_row_is_header
         )

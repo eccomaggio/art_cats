@@ -54,7 +54,7 @@ def main():
     settings.headers = [member.display_title for member in COL]
     settings.show_table_view = True
     settings.locking_is_enabled = False
-    settings.combos.data_file = "combo_data.yaml"
+    settings.combos.data_file = "data/combo_data.yaml"
 
     settings.validation.fields_to_clear = [
         COL.Isbn,
