@@ -1464,24 +1464,28 @@ class Editor(QWidget):
             filter="Database Files (*.xls *.xlsx *.xlsm *.csv *.tsv)",
         )
         if file:
-            # self.short_file_name = self.get_filename_only(file_path)
             file_path = Path(file)
-            # self.settings.files.in_file_full = file_path
-            # self.settings.files.in_file = self.get_filename_only(file_path)
-            # self.settings.files.out_file = self.settings.files.in_file
-            self.settings.files.in_file = file_path.name
-            self.settings.files.out_file = (
-                # f"{self.settings.files.in_file}.new{file_path.suffix}"
-                f"{file_path.stem}.new{file_path.suffix}"
-            )
             logger.info(f"File Selected: {self.settings.files.in_file} ({file_path})")
-            self.headers, self.excel_rows = marc_21.parse_file_into_rows(
+            tmp_headers, tmp_excel_rows = marc_21.parse_file_into_rows(
                 Path(file_path), self.settings.first_row_is_header
             )
-            if self.settings.title == "art_catalogue":
-                self.headers, self.excel_rows = self.update_csv_fields(
-                    self.headers, self.excel_rows
+            if self.analyse_new_file(tmp_headers):
+                self.headers = tmp_headers
+                self.excel_rows = tmp_excel_rows
+                self.settings.files.in_file = file_path.name
+                self.settings.files.out_file = (
+                    f"{file_path.stem}.new{file_path.suffix}"
                 )
+            else:
+                msg = f"This template expects {len(self.COL)} fields, \nbut {file_path.name} has {len(tmp_headers)}. \nPlease try with another file."
+                self.show_alert_box(msg)
+                logger.error(msg)
+                return
+
+            # if self.settings.title == "art_catalogue":
+            #     self.headers, self.excel_rows = self.update_csv_fields(
+            #         self.headers, self.excel_rows
+            #     )
             if not self.settings.use_default_layout:
                 logger.warning("Haven't coded for non-default layout yet!")
                 ## TODO: code for change of layout on file loading (i.e. make a standalone: 'load file and update grid' function)
@@ -1496,30 +1500,38 @@ class Editor(QWidget):
         #     print("File selection cancelled.")
 
 
-    def update_csv_fields(
-        self, headers: list[str], rows: list[list[str]]
-    ) -> tuple[list[str], list[list[str]]]:
-        """
-        Adds the new 'has_illustrations' field with the default of True
-        if the record set is (old-style) i.e. does not have 29 columns
-        PROBLEMATIC: this only refers to art catalogues and only for a short window.
-        REMOVE ONCE UPGRADE IS COMPLETE
-        """
-        index_of_illustrations = 19
-        if len(headers) < 29:
-            headers = [
-                *headers[:index_of_illustrations],
-                "Illustrated",
-                *headers[index_of_illustrations:],
-            ]
-        if len(rows[0]) < 29:
-            new_rows = []
-            for row in rows:
-                new_rows.append(
-                    [*row[:index_of_illustrations], True, *row[index_of_illustrations:]]
-                )
-            rows = new_rows
-        return (headers, rows)
+    def analyse_new_file(self, headers):
+        expected_col_count = len(self.COL)
+        file_resembles_expectations = len(headers) == expected_col_count
+        # print(f">>> >> > {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}")
+        return file_resembles_expectations
+
+
+    # def update_csv_fields(
+    #     self, headers: list[str], rows: list[list[str]]
+    # ) -> tuple[list[str], list[list[str]]]:
+    #     """
+    #     NOT NEEDED: using standalone to do this now "tmp_update.py"
+    #     Adds the new 'has_illustrations' field with the default of True
+    #     if the record set is (old-style) i.e. does not have 29 columns
+    #     PROBLEMATIC: this only refers to art catalogues and only for a short window.
+    #     REMOVE ONCE UPGRADE IS COMPLETE
+    #     """
+    #     index_of_illustrations = 19
+    #     if len(headers) < 29:
+    #         headers = [
+    #             *headers[:index_of_illustrations],
+    #             "Illustrated",
+    #             *headers[index_of_illustrations:],
+    #         ]
+    #     if len(rows[0]) < 29:
+    #         new_rows = []
+    #         for row in rows:
+    #             new_rows.append(
+    #                 [*row[:index_of_illustrations], True, *row[index_of_illustrations:]]
+    #             )
+    #         rows = new_rows
+    #     return (headers, rows)
 
 class DialogueOkCancel(QDialog):
     def __init__(self, parent, text):
@@ -1582,15 +1594,18 @@ def create_max_lengths(rows: list[list[str]]) -> list[int]:
 #     # settings.layout_template = default_template
 
 
-def setup_environment(settings: Default_settings):
+def setup_environment(settings: Default_settings, expected_col_count:int):
     # read_cli_into_settings(settings)
     grid = Grid()
     headers = []
     if settings.is_existing_file:
+        ## NB. this is never used as no command line arguments
         logging.info(f"processing file: {settings.files.in_file}")
         headers, rows = marc_21.parse_file_into_rows(
             Path(settings.files.in_file), settings.first_row_is_header
         )
+        file_resembles_expectations = len(headers) == expected_col_count
+        print(f">>> >> > {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}")
         if settings.use_default_layout:
             settings.layout_template = settings.default_template
             grid.add_bricks_by_template(settings.layout_template)
@@ -1616,7 +1631,7 @@ def run(settings: Default_settings, COL):
             settings.files.app_dir / settings.combos.data_file
         )
     # print(f"run: {settings.default_template=}")
-    grid, rows, headers = setup_environment(settings)
+    grid, rows, headers = setup_environment(settings, len(COL))
     # print(f"{headers=}, {rows=}")
     app = QApplication(sys.argv)
     # print(f"headers: {headers}")
