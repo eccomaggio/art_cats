@@ -3,15 +3,15 @@ Order form for TAY / ART libraries to replace excel-based form.
 Contact: Ross Jones, Osney One
 """
 
-import logging
-from . import utils
+# import logging
+from . import log_setup
 
 from enum import Enum
 from pathlib import Path
 from .settings import Default_settings
 from . import form_gui
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 
 def main():
@@ -139,7 +139,7 @@ def main():
     CUSTOM_LOG_FILE = (
         settings.files.full_output_dir / f"logger.{settings.timestamp}.log"
     )
-    utils.setup_app_logging(log_file_path=CUSTOM_LOG_FILE)
+    log_setup.setup_app_logging(log_file_path=CUSTOM_LOG_FILE)
     form_gui.run(settings, COL)
 
 

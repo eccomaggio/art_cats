@@ -17,7 +17,12 @@ rationalize:
 
 To do:
 
-make it so that barcode submits when the lineEdit loses focus, not when text changes (otherwise can't type it in manually!)
+- allow blank records to be saved & then delete them (allows user to delete a record by clearing it)
+- stop submit record alert appearing twice
+- robust indication of 1) changed field, 2) error in field
+- make sure 'algorithmic display' still works for new csvs: if record[0].name != 'sublib' and len(record) < 28 or > 29 then use algorithm to build gui
+
+DONE - make it so that barcode submits when the lineEdit loses focus, not when text changes (otherwise can't type it in manually!)
 DONE - moved common.py validation code into validation.py
 DONE - moved file functions from common.py into io.py
 

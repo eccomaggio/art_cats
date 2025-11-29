@@ -4,7 +4,7 @@ import from / export to csv / excel files
 """
 
 import logging
-from . import utils
+from . import log_setup
 
 from string import punctuation
 from unittest import result

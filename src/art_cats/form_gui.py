@@ -4,7 +4,7 @@ Common resources
 
 import logging
 from re import I
-from . import utils
+from . import log_setup
 
 
 # import inspect  ## for debugging only
@@ -1015,51 +1015,105 @@ class Editor(QWidget):
         # for input in self.inputs:
         for i, input in enumerate(self.inputs):
             # print(f">>>> {self.labels[i].text()} {input=}")
-            if isinstance(input, QLineEdit):
-                input.textEdited.connect(self.handle_text_change)
-            elif isinstance(input, QTextEdit):
-                input.textChanged.connect(self.handle_text_change)
-            elif isinstance(input, QComboBox):
-                input.currentTextChanged.connect(self.handle_text_change)
-            elif isinstance(input, QCheckBox):
-                input.checkStateChanged.connect(self.handle_text_change)
+            match input:
+                case QLineEdit():
+                    input.textEdited.connect(self.handle_text_change)
+                case QTextEdit():
+                    input.textChanged.connect(self.handle_text_change)
+                case QComboBox():
+                    input.currentTextChanged.connect(self.handle_text_change)
+                case QCheckBox():
+                    input.checkStateChanged.connect(self.handle_text_change)
+
 
     def handle_text_change(self) -> None:
         # print(f"Text changed...{datetime.datetime.now()}")
         sender:QObject = self.sender()
         style = "text_changed"
-        if isinstance(sender, QLineEdit):
-            # sender.setStyleSheet(self.settings.styles[style])
-            sender.textEdited.disconnect(self.handle_text_change)
-        elif isinstance(sender, QTextEdit):
-            # sender.setStyleSheet(self.settings.styles[style])
-            sender.textChanged.disconnect(self.handle_text_change)
-        elif isinstance(sender, QComboBox):
-            # sender.setStyleSheet(self.settings.styles[style])
-            sender.currentTextChanged.disconnect(self.handle_text_change)
-        elif isinstance(sender, QCheckBox):
-            sender.checkStateChanged.disconnect(self.handle_text_change)
-        else:
-            logger.warning("Huston, we have a problem with text input...")
+        match sender:
+            case QLineEdit():
+                # sender.setStyleSheet(self.settings.styles[style])
+                sender.textEdited.disconnect(self.handle_text_change)
+            case QTextEdit():
+                # sender.setStyleSheet(self.settings.styles[style])
+                sender.textChanged.disconnect(self.handle_text_change)
+            case QComboBox():
+                # sender.setStyleSheet(self.settings.styles[style])
+                sender.currentTextChanged.disconnect(self.handle_text_change)
+            case QCheckBox():
+                sender.checkStateChanged.disconnect(self.handle_text_change)
+            case _ :
+                logger.warning("Huston, we have a problem with text input...")
         self.update_input_styling(sender, style)
         self.all_text_is_saved = False
 
+
     def update_input_styling(self, widget: QObject, style: str) -> None:
         # print(f"Text changed...{datetime.datetime.now()}")
-        if isinstance(widget, QLineEdit):
-            widget.setStyleSheet(style)
-        elif isinstance(widget, QTextEdit):
-            widget.setStyleSheet(style)
-        elif isinstance(widget, QComboBox):
-            widget.setStyleSheet(style)
-        elif isinstance(widget, QCheckBox):
-            if style == "text_changed":
-                style = "text_changed_border_only"
-            else:
-                style = "border_only_active"
-            widget.setStyleSheet(style)
-        else:
-            logger.warning("Huston, we have a problem with input styling")
+        match widget:
+            case QLineEdit():
+                widget.setStyleSheet(style)
+            case QTextEdit():
+                widget.setStyleSheet(style)
+            case QComboBox():
+                widget.setStyleSheet(style)
+            case QCheckBox():
+                if style == "text_changed":
+                    style = "text_changed_border_only"
+                else:
+                    style = "border_only_active"
+                widget.setStyleSheet(style)
+            case _ :
+                logger.warning("Huston, we have a problem with input styling")
+    # def add_signal_to_fire_on_text_change(self):
+    #     # for input in self.inputs:
+    #     for i, input in enumerate(self.inputs):
+    #         # print(f">>>> {self.labels[i].text()} {input=}")
+    #         if isinstance(input, QLineEdit):
+    #             input.textEdited.connect(self.handle_text_change)
+    #         elif isinstance(input, QTextEdit):
+    #             input.textChanged.connect(self.handle_text_change)
+    #         elif isinstance(input, QComboBox):
+    #             input.currentTextChanged.connect(self.handle_text_change)
+    #         elif isinstance(input, QCheckBox):
+    #             input.checkStateChanged.connect(self.handle_text_change)
+
+    # def handle_text_change(self) -> None:
+    #     # print(f"Text changed...{datetime.datetime.now()}")
+    #     sender:QObject = self.sender()
+    #     style = "text_changed"
+    #     if isinstance(sender, QLineEdit):
+    #         # sender.setStyleSheet(self.settings.styles[style])
+    #         sender.textEdited.disconnect(self.handle_text_change)
+    #     elif isinstance(sender, QTextEdit):
+    #         # sender.setStyleSheet(self.settings.styles[style])
+    #         sender.textChanged.disconnect(self.handle_text_change)
+    #     elif isinstance(sender, QComboBox):
+    #         # sender.setStyleSheet(self.settings.styles[style])
+    #         sender.currentTextChanged.disconnect(self.handle_text_change)
+    #     elif isinstance(sender, QCheckBox):
+    #         sender.checkStateChanged.disconnect(self.handle_text_change)
+    #     else:
+    #         logger.warning("Huston, we have a problem with text input...")
+    #     self.update_input_styling(sender, style)
+    #     self.all_text_is_saved = False
+
+    # def update_input_styling(self, widget: QObject, style: str) -> None:
+    #     # print(f"Text changed...{datetime.datetime.now()}")
+    #     if isinstance(widget, QLineEdit):
+    #         widget.setStyleSheet(style)
+    #     elif isinstance(widget, QTextEdit):
+    #         widget.setStyleSheet(style)
+    #     elif isinstance(widget, QComboBox):
+    #         widget.setStyleSheet(style)
+    #     elif isinstance(widget, QCheckBox):
+    #         if style == "text_changed":
+    #             style = "text_changed_border_only"
+    #         else:
+    #             style = "border_only_active"
+    #         widget.setStyleSheet(style)
+    #     else:
+    #         logger.warning("Huston, we have a problem with input styling")
 
     def load_record_into_gui(self, row_to_load: list | None = None) -> None:
         """
@@ -1106,19 +1160,36 @@ class Editor(QWidget):
     def load_record(self, input_widget: QWidget, value: Any, options=[]) -> None:
         # caller = inspect.stack()[1].function
         # print(f"++++++ [load rec] {input_widget.objectName()}: <{input_widget.__class__.__name__}> {value=}, {caller=}")
-        if isinstance(input_widget, QComboBox):
-            self.load_combo_box(input_widget, value)
-        elif isinstance(input_widget, QLineEdit):
-            self.load_line_edit(input_widget, value)
-        elif isinstance(input_widget, QTextEdit):
-            self.load_text_edit(input_widget, value)
-        elif isinstance(input_widget, QCheckBox):
-            self.load_checkbox(input_widget, value)
-        # elif isinstance(input_widget, QTableWidget):
-        #     ## the entire table is loaded from scratch, not just a single value, as for others
-        #     self.load_table(input_widget, value)
-        else:
-            logger.warning(f"!!!! Problem: current widget ({type(input_widget)})")
+        match input_widget:
+            case QComboBox():
+                self.load_combo_box(input_widget, value)
+            case QLineEdit():
+                self.load_line_edit(input_widget, value)
+            case QTextEdit():
+                self.load_text_edit(input_widget, value)
+            case QCheckBox():
+                self.load_checkbox(input_widget, value)
+            # elif isinstance(input_widget, QTableWidget):
+            #     ## the entire table is loaded from scratch, not just a single value, as for others
+            #     self.load_table(input_widget, value)
+            case _ :
+                logger.warning(f"!!!! Problem: current widget ({type(input_widget)})")
+    # def load_record(self, input_widget: QWidget, value: Any, options=[]) -> None:
+    #     # caller = inspect.stack()[1].function
+    #     # print(f"++++++ [load rec] {input_widget.objectName()}: <{input_widget.__class__.__name__}> {value=}, {caller=}")
+    #     if isinstance(input_widget, QComboBox):
+    #         self.load_combo_box(input_widget, value)
+    #     elif isinstance(input_widget, QLineEdit):
+    #         self.load_line_edit(input_widget, value)
+    #     elif isinstance(input_widget, QTextEdit):
+    #         self.load_text_edit(input_widget, value)
+    #     elif isinstance(input_widget, QCheckBox):
+    #         self.load_checkbox(input_widget, value)
+    #     # elif isinstance(input_widget, QTableWidget):
+    #     #     ## the entire table is loaded from scratch, not just a single value, as for others
+    #     #     self.load_table(input_widget, value)
+    #     else:
+    #         logger.warning(f"!!!! Problem: current widget ({type(input_widget)})")
 
     def load_checkbox(self, widget: QCheckBox, value="") -> None:
         if value == "True" or value == True:
@@ -1233,13 +1304,21 @@ class Editor(QWidget):
         for label in self.labels:
             label.setStyleSheet(status.label_style)
         for input in self.inputs:
-            if isinstance(input, QCheckBox) or isinstance(input, QComboBox):
-                input.setEnabled(not status.locked_status)
-            elif isinstance(input, QLineEdit) or isinstance(input, QTextEdit):
-                input.setStyleSheet(status.input_style)
-                input.setReadOnly(status.locked_status)
-            else:
-                logger.warning("Widget type {input} isn't fully supported.")
+            match input:
+                case QCheckBox() | QComboBox():
+                    input.setEnabled(not status.locked_status)
+                case QLineEdit() | QTextEdit():
+                    input.setStyleSheet(status.input_style)
+                    input.setReadOnly(status.locked_status)
+                case _ :
+                    logger.warning("Widget type {input} isn't fully supported.")
+            # if isinstance(input, QCheckBox) or isinstance(input, QComboBox):
+            #     input.setEnabled(not status.locked_status)
+            # elif isinstance(input, QLineEdit) or isinstance(input, QTextEdit):
+            #     input.setStyleSheet(status.input_style)
+            #     input.setReadOnly(status.locked_status)
+            # else:
+            #     logger.warning("Widget type {input} isn't fully supported.")
         self.unlock_btn.setText(status.btn_text)
         self.submit_btn.setEnabled(not status.locked_status)
 
