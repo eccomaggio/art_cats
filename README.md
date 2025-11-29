@@ -9,18 +9,13 @@
 5. **fields** contain: subfields, or blanks or punctuation; bare strings are coded as subfields with no subcode
 6. **marc_record** = list[Field]
 
-rationalize:
-
-- edit.py & orderForm.py
-- settings
-- add_custom_behaviour()
-
 To do:
 
-- allow blank records to be saved & then delete them (allows user to delete a record by clearing it)
-- stop submit record alert appearing twice
-- robust indication of 1) changed field, 2) error in field
 - make sure 'algorithmic display' still works for new csvs: if record[0].name != 'sublib' and len(record) < 28 or > 29 then use algorithm to build gui
+
+DONE - allow blank records to be saved & then delete them (allows user to delete a record by clearing it)
+DONE - stop submit record alert appearing twice
+DONE - robust indication of 1) changed field, 2) error in field
 
 DONE - make it so that barcode submits when the lineEdit loses focus, not when text changes (otherwise can't type it in manually!)
 DONE - moved common.py validation code into validation.py

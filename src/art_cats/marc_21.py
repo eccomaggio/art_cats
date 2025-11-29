@@ -5,6 +5,7 @@ import from / export to csv / excel files
 
 import logging
 from . import log_setup
+from . import validation
 
 from string import punctuation
 from unittest import result
@@ -1679,17 +1680,27 @@ def extract_from_csv(file_address: Path, first_row_is_header) -> tuple[list[str]
     return (headers, sheet)
 
 
-def save_as_marc_files(headers: list[str], excel_rows:list[list[str]], barcode_index:int, file_name_with_path: Path, create_excel_file=True, create_chu_file=True) -> bool:
+def save_as_marc_files(
+        headers: list[str],
+        excel_rows:list[list[str]],
+        barcode_index:int,
+        file_name_with_path: Path,
+        # settings,
+        create_excel_file=True,
+        create_chu_file=True
+        ) -> bool:
     """
     Saves the record set as .mrk & .mrc files;
     depending on settings, also creates an excel CHU file
     for once the marc files have been uploaded to ALMA
     """
     if create_chu_file:
+    # if settings.create_chu_file:
         chu_file = file_name_with_path.with_suffix(".CHU.xlsx")
         write_CHU_file(excel_rows, chu_file, barcode_index)
 
     if create_excel_file:
+    # if settings.create_excel_file:
         excel_file = file_name_with_path.with_suffix(".xlsx")
     write_data_to_excel([headers, *excel_rows], excel_file)
 
@@ -1874,45 +1885,6 @@ def make_directory(directory_path):
         except Exception as e:
             logger.warning(f"An error occurred: {e}")
     return directory
-
-
-# @dataclass
-# class Settings:
-#     in_file_full = ""
-#     in_file = ""
-#     out_file = ""
-#     default_output_filename = "output"
-#     # data_dir = "excel_files"
-#     # output_dir = "marc21_files"
-#     app_dir = "app"
-#     data_dir = "input_files"
-#     output_dir = "output_files"
-#     use_default_layout = True
-#     is_existing_file = True
-#     layout_template: tuple = ()
-#     first_row_is_header = True
-#     flavour: dict[str, Any] = field(default_factory=dict)
-#     styles: dict[str, str] = field(default_factory=dict)
-#     help_file = ""
-#     backup_file = "backup.bak"
-#     alt_title_signifier = "*//*"
-#     # TMP_is_illustrated = False
-#     combo_default_text = " >> Choose <<"
-#     combo_following_default_text = " (first select "
-#     show_table_view = True
-
-
-# settings = Settings()
-
-# # excel_file_path = "excel_files"
-# # excel_file_dir = make_directory(excel_file_path)
-# # output_files_path = "marc21_files"
-# # output_file_dir = make_directory(output_files_path)
-# BLANK = " "
-# # logger = logging.getLogger(__name__)
-# excel_file_dir = make_directory(settings.data_dir)
-# output_file_dir = make_directory(settings.output_dir)
-
 
 
 ## TODO: rethink this CLI version; not up-to-date

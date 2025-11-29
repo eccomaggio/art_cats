@@ -36,7 +36,8 @@ def setup_app_logging(log_file_path: Path, level=logging.INFO):
 
     # 4. Add a File Handler using the custom path
     try:
-        file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
+        # file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
+        file_handler = logging.FileHandler(log_file_path, mode="w", encoding="utf-8")
         file_handler.setLevel(level)
         file_handler.setFormatter(formatter)
         ROOT_LOGGER.addHandler(file_handler)

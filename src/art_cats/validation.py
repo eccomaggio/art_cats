@@ -35,9 +35,9 @@ def validate(record_as_dict: dict[str, str], settings:Default_settings, optional
             test = tests_by_name.get(name, None)
             if test:
                 error_msg = test(name, content)
-            if error_msg:
-                invalid.append(f"{name}: {error_msg}")
-                problem_items.append(name)
+                if error_msg:
+                    invalid.append(f"{name}: {error_msg}")
+                    problem_items.append(name)
     if missing:
         count = len(missing)
         add_s = "s" if count > 1 else ""
@@ -60,14 +60,30 @@ def validate(record_as_dict: dict[str, str], settings:Default_settings, optional
     return (problem_items, msg)
 
 
-def is_a_dummy_record(name, content, rules):
-      if (
-          name == rules.validation_skip_fieldname
-          and content.lower()
-          == rules.validation_skip_text):
-          return True
-      else:
-          return False
+def is_a_dummy_record(name:str, content:str, rules) -> bool:
+    if (
+        name == rules.validation_skip_fieldname
+        and
+        # content.lower().startswith(rules.validation_skip_text.lower())
+        is_dummy_content(content, rules.validation_skip_text)
+        ):
+        return True
+    else:
+        return False
+
+
+def is_a_dummy_record_by_index(index:int, content:str, target_index:int, target_content:str) -> bool:
+    # if index == target_index and content.lower().startswith(target_content.lower()):
+    if index == target_index and is_dummy_content(content, target_content):
+        return True
+    else:
+        return False
+
+def is_dummy_content(content:str, target_content:str) -> bool:
+    if content.lower().startswith(target_content.lower()):
+        return True
+    else:
+        return False
 
 
 def university_id_number(name: str, content: str) -> str:

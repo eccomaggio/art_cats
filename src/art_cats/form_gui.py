@@ -873,19 +873,43 @@ class Editor(QWidget):
     def current_row(self, row: list) -> None:
         self.excel_rows[self.current_row_index] = row
 
+
+
     def handle_submit(self, optional_msg="") -> bool:
         """
         Gather data from form & save it to file
         """
-        record_as_dict = {
-            input.objectName() : self.get_content(input)
-            for input in self.inputs
-            }
-        problem_items, msg = validation.validate(record_as_dict, self.settings, optional_msg)
+        record_as_dict = {}
+        is_empty = True
+        is_dummy = False
+        for input in self.inputs:
+            name = input.objectName()
+            value = self.get_content(input)
+            record_as_dict[name] = value
+            if value and not isinstance(input, QCheckBox):
+                is_empty = False
+            if validation.is_a_dummy_record(name, value, self.settings.validation):
+                is_dummy = True
+        # print(f">>>>>>>>>>> {is_dummy=}, {is_empty=}\n{record_as_dict}")
+
+        if is_dummy:
+            problem_items = []
+        else:
+            problem_items, msg = validation.validate(record_as_dict, self.settings, optional_msg)
+
+        if is_empty:
+            if self.current_record_is_new:
+                self.show_alert_box("There is no information to save. You can either enter a record or simply close the app.")
+                return False
+            else:
+                self.delete_record()
+                return True
+
         if problem_items:
-            alert = QMessageBox()
-            alert.setText(msg)
-            alert.exec()
+            for input in self.inputs:
+                if input.objectName() in problem_items:
+                    self.update_input_styling(input, "validation_error")
+            self.show_alert_box(msg)
             return False
 
         record_as_data_row = list(record_as_dict.values())
@@ -896,8 +920,6 @@ class Editor(QWidget):
                 self.excel_rows.append(record_as_data_row)
             else:
                 self.excel_rows = [record_as_data_row]
-                # self.headers = []
-                # self.headers = self.headers_backup
                 self.has_records = True
             self.current_row_index = self.index_of_last_record
             self.update_title_with_record_number()
@@ -913,6 +935,20 @@ class Editor(QWidget):
         self.update_nav_buttons()
         self.load_record_into_gui(self.current_row)
         return True
+
+
+    def show_alert_box(self, msg:str) -> None:
+        alert = QMessageBox()
+        alert.setText(msg)
+        alert.exec()
+
+
+    def delete_record(self, index=-1) -> None:
+        if index == -1:
+            index = self.current_row_index
+        del self.excel_rows[index]
+        ## Choose record to display
+
 
     def get_content(self, widget: QWidget) -> str:
         content = ""
@@ -933,6 +969,28 @@ class Editor(QWidget):
                 msg = f"No reader set up for {widget}!"
                 logger.critical(msg)
         return content.strip()
+
+
+    # def is_dummy_record(self, row_to_check:list|None = None) -> bool:
+    #     """
+    #     Decides whether a record/row sent to it fulfills the definition of a 'dummy' record laid out in the settings
+    #     i.e. it has the correct text in the correct column
+    #     The whole row is sent, not the index, to allow record sets that have not been saved can be parsed first.
+    #     """
+    #     if not row_to_check:
+    #         row_to_check = self.current_row
+    #     target_fieldname = self.settings.validation.validation_skip_fieldname
+    #     if target_fieldname:
+    #         try:
+    #             column_index = self.COL[target_fieldname].value
+    #         except KeyError:
+    #             column_index = -1
+    #             logger.critical(f"**The fieldname which allows dummy files to be created does not exist. (It must be exactly the same as the name defined in COL.) Please check and update the settings file.")
+    #         if column_index >= 0:
+    #             fits_dummy_pattern = row_to_check[column_index] == self.settings.validation.validation_skip_text
+    #             return fits_dummy_pattern
+    #     return False
+
 
     def handle_close(self) -> None:
         # self.close()
@@ -998,18 +1056,23 @@ class Editor(QWidget):
         # status = " **locked**" if self.record_is_locked else " (editable)"
         if self.settings.locking_is_enabled:
             if self.record_is_locked:
-                status = " **locked**"
+                # status = " **locked**"
+                status = "locked"
             else:
-                status = " (editable)"
+                # status = " (editable)"
+                status = "editable"
         else:
             status = ""
         # print(f"title >>> {self.record_is_locked=}, {status}")
         if self.has_records:
             # file = self.settings.in_file
             file = self.settings.files.out_file
+            # file = f"file:{self.settings.files.out_file}"
         else:
             file = "*unsaved*"
-        self.caller.setWindowTitle(f"FILE: {file} -- {prefix}{text}{status}")
+        # status_line = f"FILE: {file} -- {prefix}{text}{status}"
+        status_line = f"{prefix}{text} in {file}          [{status}]"
+        self.caller.setWindowTitle(status_line)
 
     def add_signal_to_fire_on_text_change(self):
         # for input in self.inputs:
@@ -1032,13 +1095,10 @@ class Editor(QWidget):
         style = "text_changed"
         match sender:
             case QLineEdit():
-                # sender.setStyleSheet(self.settings.styles[style])
                 sender.textEdited.disconnect(self.handle_text_change)
             case QTextEdit():
-                # sender.setStyleSheet(self.settings.styles[style])
                 sender.textChanged.disconnect(self.handle_text_change)
             case QComboBox():
-                # sender.setStyleSheet(self.settings.styles[style])
                 sender.currentTextChanged.disconnect(self.handle_text_change)
             case QCheckBox():
                 sender.checkStateChanged.disconnect(self.handle_text_change)
@@ -1048,8 +1108,9 @@ class Editor(QWidget):
         self.all_text_is_saved = False
 
 
-    def update_input_styling(self, widget: QObject, style: str) -> None:
-        # print(f"Text changed...{datetime.datetime.now()}")
+    def update_input_styling(self, widget: QObject, style_name: str) -> None:
+        style = getattr(self.settings.styles, style_name)
+        # print(f"Text changed for {widget.objectName()} to '{style_name}' <{style}>")
         match widget:
             case QLineEdit():
                 widget.setStyleSheet(style)
@@ -1058,62 +1119,17 @@ class Editor(QWidget):
             case QComboBox():
                 widget.setStyleSheet(style)
             case QCheckBox():
-                if style == "text_changed":
-                    style = "text_changed_border_only"
-                else:
-                    style = "border_only_active"
-                widget.setStyleSheet(style)
+                ## styling overwrites the check itself!
+                # if style_name == "text_changed":
+                #     style = getattr(self.settings.styles, "text_changed_checkbox")
+                # else:
+                #     style = getattr(self.settings.styles, "border_only_active")
+                #     # style = "border_only_active"
+                # widget.setStyleSheet(style)
+                pass
             case _ :
                 logger.warning("Huston, we have a problem with input styling")
-    # def add_signal_to_fire_on_text_change(self):
-    #     # for input in self.inputs:
-    #     for i, input in enumerate(self.inputs):
-    #         # print(f">>>> {self.labels[i].text()} {input=}")
-    #         if isinstance(input, QLineEdit):
-    #             input.textEdited.connect(self.handle_text_change)
-    #         elif isinstance(input, QTextEdit):
-    #             input.textChanged.connect(self.handle_text_change)
-    #         elif isinstance(input, QComboBox):
-    #             input.currentTextChanged.connect(self.handle_text_change)
-    #         elif isinstance(input, QCheckBox):
-    #             input.checkStateChanged.connect(self.handle_text_change)
 
-    # def handle_text_change(self) -> None:
-    #     # print(f"Text changed...{datetime.datetime.now()}")
-    #     sender:QObject = self.sender()
-    #     style = "text_changed"
-    #     if isinstance(sender, QLineEdit):
-    #         # sender.setStyleSheet(self.settings.styles[style])
-    #         sender.textEdited.disconnect(self.handle_text_change)
-    #     elif isinstance(sender, QTextEdit):
-    #         # sender.setStyleSheet(self.settings.styles[style])
-    #         sender.textChanged.disconnect(self.handle_text_change)
-    #     elif isinstance(sender, QComboBox):
-    #         # sender.setStyleSheet(self.settings.styles[style])
-    #         sender.currentTextChanged.disconnect(self.handle_text_change)
-    #     elif isinstance(sender, QCheckBox):
-    #         sender.checkStateChanged.disconnect(self.handle_text_change)
-    #     else:
-    #         logger.warning("Huston, we have a problem with text input...")
-    #     self.update_input_styling(sender, style)
-    #     self.all_text_is_saved = False
-
-    # def update_input_styling(self, widget: QObject, style: str) -> None:
-    #     # print(f"Text changed...{datetime.datetime.now()}")
-    #     if isinstance(widget, QLineEdit):
-    #         widget.setStyleSheet(style)
-    #     elif isinstance(widget, QTextEdit):
-    #         widget.setStyleSheet(style)
-    #     elif isinstance(widget, QComboBox):
-    #         widget.setStyleSheet(style)
-    #     elif isinstance(widget, QCheckBox):
-    #         if style == "text_changed":
-    #             style = "text_changed_border_only"
-    #         else:
-    #             style = "border_only_active"
-    #         widget.setStyleSheet(style)
-    #     else:
-    #         logger.warning("Huston, we have a problem with input styling")
 
     def load_record_into_gui(self, row_to_load: list | None = None) -> None:
         """
@@ -1139,6 +1155,7 @@ class Editor(QWidget):
         # print(f">>>>>{mode=}, {row_to_load=} {self.has_records=}, {self.headers}")
         self.all_text_is_saved = True
 
+
     def clear_form(self) -> None:
         if not self.current_record_is_new and self.abort_on_clearing_existing_record(
             self
@@ -1146,6 +1163,7 @@ class Editor(QWidget):
             return
         self.load_record_into_gui()
         # self.toggle_record_editable("edit")
+
 
     def handle_new_record(self) -> None:
         self.current_row_index = -1
@@ -1156,6 +1174,7 @@ class Editor(QWidget):
         self.all_text_is_saved = True
         self.toggle_record_editable("edit")
         self.update_title_with_record_number()
+
 
     def load_record(self, input_widget: QWidget, value: Any, options=[]) -> None:
         # caller = inspect.stack()[1].function
@@ -1174,22 +1193,7 @@ class Editor(QWidget):
             #     self.load_table(input_widget, value)
             case _ :
                 logger.warning(f"!!!! Problem: current widget ({type(input_widget)})")
-    # def load_record(self, input_widget: QWidget, value: Any, options=[]) -> None:
-    #     # caller = inspect.stack()[1].function
-    #     # print(f"++++++ [load rec] {input_widget.objectName()}: <{input_widget.__class__.__name__}> {value=}, {caller=}")
-    #     if isinstance(input_widget, QComboBox):
-    #         self.load_combo_box(input_widget, value)
-    #     elif isinstance(input_widget, QLineEdit):
-    #         self.load_line_edit(input_widget, value)
-    #     elif isinstance(input_widget, QTextEdit):
-    #         self.load_text_edit(input_widget, value)
-    #     elif isinstance(input_widget, QCheckBox):
-    #         self.load_checkbox(input_widget, value)
-    #     # elif isinstance(input_widget, QTableWidget):
-    #     #     ## the entire table is loaded from scratch, not just a single value, as for others
-    #     #     self.load_table(input_widget, value)
-    #     else:
-    #         logger.warning(f"!!!! Problem: current widget ({type(input_widget)})")
+
 
     def load_checkbox(self, widget: QCheckBox, value="") -> None:
         if value == "True" or value == True:
@@ -1321,6 +1325,7 @@ class Editor(QWidget):
             #     logger.warning("Widget type {input} isn't fully supported.")
         self.unlock_btn.setText(status.btn_text)
         self.submit_btn.setEnabled(not status.locked_status)
+        self.update_title_with_record_number()
 
     def update_nav_buttons(self) -> str:
         # print(f"nav status: {self.record_count=}")
@@ -1371,9 +1376,19 @@ class Editor(QWidget):
         file_name_with_path = (
             self.settings.files.full_output_dir / self.settings.files.out_file
         )
-        files_successfully_created = marc_21.save_as_marc_files(self.headers, self.excel_rows, self.COL.barcode.value,  file_name_with_path, self.settings.create_excel_file, self.settings.create_chu_file)
+        records_to_export = self.remove_dummy_records(self.excel_rows)
+        files_successfully_created = marc_21.save_as_marc_files(
+            self.headers,
+            # self.excel_rows,
+            records_to_export,
+            self.COL.barcode.value,
+            file_name_with_path,
+            # self.settings,
+            self.settings.create_excel_file,
+            self.settings.create_chu_file
+            )
         if files_successfully_created:
-            msg = f'The {self.record_count} records in "{self.settings.files.in_file}" have been successfully saved as "{file_name_with_path.stem}.mrk" in *{self.settings.files.full_output_dir}*.'
+            msg = f'The {len(records_to_export)} records in "{self.settings.files.in_file}" have been successfully saved as "{file_name_with_path.stem}.mrk" in *{self.settings.files.full_output_dir}*.'
         else:
             msg = "Not all files were successfully created."
         logger.info(msg)
@@ -1381,32 +1396,29 @@ class Editor(QWidget):
         msg_box.setText(msg)
         msg_box.exec()
 
-    # def save_as_marc(self) -> None:
-    #     """
-    #     Saves the record set as .mrk & .mrc files;
-    #     depending on settings, also creates an excel CHU file
-    #     for once the marc files have been uploaded to ALMA
-    #     """
-    #     file_name_with_path = (
-    #         self.settings.files.full_output_dir / self.settings.files.out_file
-    #     )
-    #     if self.settings.create_chu_file:
-    #         chu_file = file_name_with_path.with_suffix(".CHU.xlsx")
-    #         marc_21.write_CHU_file(self.excel_rows, chu_file, self.COL.barcode.value)
 
-    #     if self.settings.create_excel_file:
-    #         excel_file = file_name_with_path.with_suffix(".xlsx")
-    #     marc_21.write_data_to_excel([self.headers, *self.excel_rows], excel_file)
+    def remove_dummy_records(self, records:list[list[str]]) -> list:
+        target_col_name = self.settings.validation.validation_skip_fieldname
+        if not target_col_name:
+            return records
+        # print(f">>>>>>>>>>>>>{target_col_name}")
+        target_col_index = self.COL[target_col_name].value
+        list_without_dummies = []
+        for record in records:
+            is_dummy = validation.is_dummy_content(record[target_col_index], self.settings.validation.validation_skip_text)
+            if is_dummy:
+                continue
+            else:
+                list_without_dummies.append(record)
+        # print(f">>>> {len(records)=} vs {len(list_without_dummies)=}")
+        number_of_records_removed = len(records) - len(list_without_dummies)
+        if number_of_records_removed > 0:
+            logging.info(f"{number_of_records_removed} dummy records were removed from the export to Marc 21 format.")
+        return list_without_dummies
 
-    #     marc_records = marc_21.build_marc_records(
-    #         marc_21.parse_rows_into_records(self.excel_rows)
-    #     )
-    #     marc_21.write_marc21_files(marc_records, Path(file_name_with_path))
-    #     msg = f'The {self.record_count} records in "{self.settings.files.in_file}" have been successfully saved as "{file_name_with_path.stem}.mrk" in *{self.settings.files.full_output_dir}*.'
-    #     logger.info(msg)
-    #     msg_box = QMessageBox()
-    #     msg_box.setText(msg)
-    #     msg_box.exec()
+
+
+
 
     def choose_to_save_on_barcode(self) -> None:
         # print("unsaved text alert...", s)
@@ -1417,6 +1429,7 @@ class Editor(QWidget):
         if dialogue.exec() == 1:
             self.handle_submit()
 
+
     def choose_to_abort_on_unsaved_text(self) -> int:
         # print("unsaved text alert...", s)
         dialogue = DialogueOkCancel(
@@ -1425,13 +1438,16 @@ class Editor(QWidget):
         )
         return dialogue.exec() != 1
 
+
     def abort_on_clearing_existing_record(self, s) -> int:
         # print("unsaved text alert...", s)
         dialogue = DialogueOkCancel(
             self,
-            "This wipes the existing record when you save it. Are you OK to contine and lose this text?",
+            "If you save this record now, it will be deleted. If you simply navigate away or close the app, the record will remain as it was before you cleared the form.",
+            # "This wipes the existing record when you save it. Are you OK to contine and lose this text?",
         )
         return dialogue.exec() != 1
+
 
     def handle_file_dialog(self):
         """Opens the native file selection dialog and processes the result."""
@@ -1455,7 +1471,8 @@ class Editor(QWidget):
             # self.settings.files.out_file = self.settings.files.in_file
             self.settings.files.in_file = file_path.name
             self.settings.files.out_file = (
-                f"{self.settings.files.in_file}.new{file_path.suffix}"
+                # f"{self.settings.files.in_file}.new{file_path.suffix}"
+                f"{file_path.stem}.new{file_path.suffix}"
             )
             logger.info(f"File Selected: {self.settings.files.in_file} ({file_path})")
             self.headers, self.excel_rows = marc_21.parse_file_into_rows(
@@ -1477,6 +1494,7 @@ class Editor(QWidget):
             )
         # else:
         #     print("File selection cancelled.")
+
 
     def update_csv_fields(
         self, headers: list[str], rows: list[list[str]]

@@ -48,8 +48,11 @@ class Validation:
 
 @dataclass
 class Styles:
-    text_changed = "border: 1px solid red; background-color: white;"
+    text_changed = "background-color: mistyrose; border: 1px solid silver;"
+    text_changed_OLD = "border: 1px solid red; background-color: white;"
+    # text_changed_checkbox = "QCheckBox::indicator {background-color: mistyrose; border: 1px solid silver;}"
     text_changed_border_only = "border: 1px solid red;"
+    validation_error = "border: 2px solid red;"
     border_only_active = "border: 1px solid whitesmoke;"
     labels = "font-weight: bold;"
     label_active = "color: #7c6241;"

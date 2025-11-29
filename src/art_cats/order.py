@@ -137,7 +137,8 @@ def main():
         settings.files.full_output_dir.mkdir(exist_ok=True)
 
     CUSTOM_LOG_FILE = (
-        settings.files.full_output_dir / f"logger.{settings.timestamp}.log"
+        # settings.files.full_output_dir / f"logger.{settings.timestamp}.log"
+        settings.files.full_output_dir / "logger.log"
     )
     log_setup.setup_app_logging(log_file_path=CUSTOM_LOG_FILE)
     form_gui.run(settings, COL)
