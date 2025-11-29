@@ -11,7 +11,7 @@
 
 To do:
 
-- make sure 'algorithmic display' still works for new csvs: if record[0].name != 'sublib' and len(record) < 28 or > 29 then use algorithm to build gui
+- make sure 'algorithmic display' still works for new csvs: create a "general" entry point which uses the algorithm to build gui
 
 DONE - allow blank records to be saved & then delete them (allows user to delete a record by clearing it)
 DONE - stop submit record alert appearing twice

@@ -3,7 +3,7 @@ Common resources
 """
 
 import logging
-from re import I
+# from re import I
 from . import log_setup
 
 
@@ -370,7 +370,7 @@ class WindowWithRightTogglePanel(QWidget):
                 self.edit_panel_widget.setFixedWidth(16777215)  # QWIDGETSIZE_MAX
 
                 # 3. Force a layout update to make the editor stretch immediately
-                self.layout().invalidate()
+                self.layout().invalidate() # type: ignore
                 self.update()
 
     def toggle_help_panel(self):
@@ -1466,7 +1466,8 @@ class Editor(QWidget):
         if file:
             file_path = Path(file)
             logger.info(f"File Selected: {self.settings.files.in_file} ({file_path})")
-            tmp_headers, tmp_excel_rows = marc_21.parse_file_into_rows(
+            # tmp_headers, tmp_excel_rows = marc_21.parse_file_into_rows(
+            tmp_headers, tmp_excel_rows = io.parse_file_into_rows(
                 Path(file_path), self.settings.first_row_is_header
             )
             if self.analyse_new_file(tmp_headers):
@@ -1601,7 +1602,8 @@ def setup_environment(settings: Default_settings, expected_col_count:int):
     if settings.is_existing_file:
         ## NB. this is never used as no command line arguments
         logging.info(f"processing file: {settings.files.in_file}")
-        headers, rows = marc_21.parse_file_into_rows(
+        # headers, rows = marc_21.parse_file_into_rows(
+        headers, rows = io.parse_file_into_rows(
             Path(settings.files.in_file), settings.first_row_is_header
         )
         file_resembles_expectations = len(headers) == expected_col_count

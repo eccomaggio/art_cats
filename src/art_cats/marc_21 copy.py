@@ -6,7 +6,6 @@ import from / export to csv / excel files
 import logging
 from . import log_setup
 from . import validation
-from . import io
 
 from string import punctuation
 from unittest import result
@@ -770,6 +769,40 @@ def create_date_list(dates_raw: str) -> list[str]:
     dates_raw = re.sub(r"\s|\.0", "", dates_raw)
     dates = dates_raw.split(",")
     return dates
+
+
+def extract_from_excel(excel_sheet, first_row_is_header:bool) -> tuple[list[str], list[worksheet_row]]:
+    """
+    excel seems pretty random in how it assigns string/int/float, so...
+    this routine coerces everything into a string,
+    strips ".0" from misrecognised floats
+    & removes trailing spaces
+    """
+    sheet = []
+    headers = []
+    # for excel_row in excel_sheet.iter_rows(min_row=2, values_only=True):
+    for i, excel_row in enumerate(excel_sheet.iter_rows(min_row=1, values_only=True)):
+        if not excel_row[0] and not excel_row[1]:
+            break  ## needed as openpyxl keeps spitting out empty rows at the end
+        row = normalize_row(excel_row)
+        # if i == 0 and settings.first_row_is_header:
+        if i == 0 and first_row_is_header:
+            headers = row
+        else:
+            sheet.append(row)
+    return (headers, sheet)
+
+
+def normalize_row(row: list) -> list:
+    clean_row = []
+    for col in row:
+        if col:
+            data = str(col).strip()
+            data = trim_mistaken_decimals(data)
+        else:
+            data = ""
+        clean_row.append(data)
+    return clean_row
 
 
 def parse_rows_into_records(sheet: list[worksheet_row]) -> list[Record]:
@@ -1575,6 +1608,57 @@ def apply_marc_logic(record: Record) -> PyRecord:
     return pymarc_record
 
 
+# def write_mrk_files(data: list[PyRecord], file_name: str = "output.mrk") -> None:
+#     # out_file = output_file_dir / file_name
+#     # writer = TextWriter(open(out_file, "w", newline="", encoding="utf-8"))
+#     print(f">>>>>>>> {file_name}")
+#     writer = TextWriter(open(file_name, "w", newline="", encoding="utf-8"))
+#     for record in data:
+#         writer.write(record)
+#     writer.close()
+
+
+# def write_mrc_binaries(data: list[PyRecord], file_name: str = "output.mrc") -> None:
+#     # out_file = output_file_dir / file_name
+#     # writer = MARCWriter(open(out_file, "wb"))
+#     writer = MARCWriter(open(file_name, "wb"))
+#     for record in data:
+#         # if record.
+#         writer.write(record)
+#     writer.close()
+
+
+def parse_file_into_rows(
+    file_path: Path,
+    first_row_is_header
+) -> tuple[list[str], list[worksheet_row]]:
+    is_excel_file = file_path.suffix.startswith(".xl")
+    if is_excel_file:
+        excel_file_name = str(file_path.resolve())
+        worksheet = openpyxl.load_workbook(filename=excel_file_name).active
+        headers, raw_rows = extract_from_excel(worksheet, first_row_is_header)
+    else:
+        headers, raw_rows = extract_from_csv(file_path, first_row_is_header)
+    return (headers, raw_rows)
+
+
+## TODO: split this between in-file validation & io.py
+def extract_from_csv(file_address: Path, first_row_is_header) -> tuple[list[str], list[worksheet_row]]:
+    sheet = []
+    headers = []
+    delimiter = "," if file_address.suffix == ".csv" else "\t"
+    with open(file_address.resolve(), mode="r", encoding="utf-8") as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=delimiter)
+        for i, row in enumerate(csv_reader):
+            row = normalize_row(row)
+            # if i == 0 and settings.first_row_is_header:
+            if i == 0 and first_row_is_header:
+                headers = row
+            else:
+                sheet.append(row)
+    return (headers, sheet)
+
+
 def save_as_marc_files(
         headers: list[str],
         excel_rows:list[list[str]],
@@ -1592,20 +1676,18 @@ def save_as_marc_files(
     if create_chu_file:
     # if settings.create_chu_file:
         chu_file = file_name_with_path.with_suffix(".CHU.xlsx")
-        # io.write_CHU_file_1(excel_rows, chu_file, barcode_index)
-        chu_rows = [[row[barcode_index], "", "", "", "Relocating to CSF", ""] for row in excel_rows]
-        io.write_CHU_file(chu_rows, chu_file)
+        write_CHU_file(excel_rows, chu_file, barcode_index)
 
     if create_excel_file:
     # if settings.create_excel_file:
         excel_file = file_name_with_path.with_suffix(".xlsx")
-    io.write_data_to_excel([headers, *excel_rows], excel_file)
+    write_data_to_excel([headers, *excel_rows], excel_file)
 
     marc_records = build_marc_records(
         parse_rows_into_records(excel_rows)
     )
     write_marc21_files(marc_records, Path(file_name_with_path))
-    ## TODO: code for this value!
+    ## TODO: code this value!
     file_operations_successful = True
     return file_operations_successful
 
@@ -1632,20 +1714,156 @@ def write_mrc_binaries(data: list[PyRecord], file_name=Path("out.mrc")) -> None:
     writer.close()
 
 
-# def make_directory(directory_path):
-#     directory = Path(directory_path)
-#     if not directory.is_dir():
-#         directory.mkdir()
-#         try:
-#             directory.mkdir()
-#             logger.info(f"Directory '{directory}' created successfully.")
-#         except FileExistsError:
-#             logger.info(f"Directory '{directory}' already exists.")
-#         except PermissionError:
-#             logger.warning(f"Permission denied: Unable to create '{directory}'.")
-#         except Exception as e:
-#             logger.warning(f"An error occurred: {e}")
-#     return directory
+def write_CHU_file(records: list, file_name: Path, barcode_index: int) -> None:
+    """
+    Write out CHU file, including formatting (for the craic)
+    """
+    wb = openpyxl.Workbook()
+    ws: Worksheet = wb.active
+    ws.title = "Recorded data"
+
+    dark_blue = "24069B"
+    lighter_dark_blue = "366092"
+    light_cyan = "D2EEE7"
+
+    # Merge cells for the header title
+    ws.merge_cells("A1:E1")
+    ws["A1"] = "Alma holdings information update form"
+
+    # Style for the header
+    header_font = openpyxl.styles.Font(
+        name="Arial", size=16, bold=True, color=dark_blue
+    )  # Dark blue
+    header_fill = openpyxl.styles.PatternFill(
+        start_color=light_cyan, end_color=light_cyan, fill_type="solid"
+    )  # Light cyan
+    header_alignment = openpyxl.styles.Alignment(horizontal="center", vertical="center")
+
+    cell = ws["A1"]
+    cell.font = header_font
+    cell.fill = header_fill
+    cell.alignment = header_alignment
+    ws.row_dimensions[1].height = 45
+
+    # Sub-row details
+    # today = date.today()
+    # today = today.strftime("%d %b %Y")
+    today = date.today().strftime("%d %b %Y")
+    initials = "PTW"
+    email = "paul.wakelin@bodleian.ox.ac.uk"
+    ws["A2"] = f"Date: {today}"
+    ws["C2"] = "Initials:"
+    ws["C2"].alignment = openpyxl.styles.Alignment(horizontal="right")
+    ws["D2"] = initials
+    ws["E2"] = "Contact e-mail:"
+    ws["E2"].alignment = openpyxl.styles.Alignment(horizontal="right")
+    ws["F2"] = email
+    ws["G2"] = "(Always e-mail)"
+    # for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G']:
+    for col in ["A", "B", "C", "D", "E", "F"]:
+        cell = ws[f"{col}2"]
+        cell.fill = header_fill
+        cell.font = openpyxl.styles.Font(
+            name="Arial", size=8, bold=False, color=lighter_dark_blue
+        )
+        # cell.alignment = Alignment(horizontal="left")
+    ws["F1"].fill = header_fill
+    ws["G2"].fill = openpyxl.styles.PatternFill()
+    ws["G2"].font = openpyxl.styles.Font(
+        name="Arial", size=7, bold=False, color=lighter_dark_blue
+    )
+    ws.row_dimensions[2].height = 10  # Height in points
+
+    # Adjust column widths for better layout
+    ws.column_dimensions["A"].width = 12  # Barcode
+    ws.column_dimensions["B"].width = 10  # Library
+    ws.column_dimensions["C"].width = 20  # Location
+    ws.column_dimensions["D"].width = 12  # Item policy
+    ws.column_dimensions["E"].width = 20  # Process
+    ws.column_dimensions["F"].width = 30  # Shelfmark
+
+    default_row_height = 13
+    headers = ["Barcode", "Library", "Location", "Item Policy", "Process", "Shelfmark"]
+    # Write headers to row 3 (assuming rows 1 and 2 are for the title and sub-header)
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(row=3, column=col, value=header)
+        cell.font = openpyxl.styles.Font(name="Arial", bold=True, size=10)
+        cell.alignment = openpyxl.styles.Alignment(horizontal="left")
+    ws.row_dimensions[3].height = default_row_height  # Height in points
+
+    for row_count, r in enumerate(records, 4):
+        row = [r[barcode_index], "", "", "", "Relocating to CSF", ""]
+        for col, value in enumerate(row, 1):
+            cell = ws.cell(row=row_count, column=col, value=value)
+            cell.alignment = openpyxl.styles.Alignment(horizontal="left")
+            cell.font = openpyxl.styles.Font(name="Arial", bold=False, size=10)
+        ws.row_dimensions[row_count].height = default_row_height  # Height in points
+    print(file_name)
+    wb.save(file_name)
+
+
+def write_data_to_excel(
+    data: list[worksheet_row],
+    filename=Path("output_data.xlsx"),
+    sheet_name: str = "Sheet1",
+) -> None:
+    """
+    Writes a list of lists (including headers) to a new Excel file using openpyxl.
+
+    The first inner list is treated as the header row.
+    Handles Unicode text, including Chinese characters.
+
+    Args:
+        data: The structured data as list[list[str]].
+        filename: The name of the Excel file to create/overwrite.
+        sheet_name: The name of the worksheet to write to.
+    """
+
+    if not data or not data[0]:
+        print("Error: Input data is empty or malformed. Cannot create file.")
+        return
+
+    # 1. Create a new Workbook and get the active worksheet
+    try:
+        workbook = openpyxl.Workbook()
+        sheet: Worksheet = workbook.active
+        sheet.title = sheet_name
+
+        # 2. Iterate through the rows in the data structure
+        for row_index, row_data in enumerate(data):
+            # Rows in openpyxl are 1-indexed, not 0-indexed
+            excel_row_num = row_index + 1
+
+            # 3. Iterate through the cells in the current row
+            for col_index, cell_value in enumerate(row_data):
+                # Columns are also 1-indexed
+                excel_col_num = col_index + 1
+
+                # Write the value to the cell
+                sheet.cell(row=excel_row_num, column=excel_col_num, value=cell_value)
+
+        # 4. Save the Workbook
+        workbook.save(filename)
+        print(f"Successfully wrote data to '{filename}' on sheet '{sheet_name}'.")
+
+    except Exception as e:
+        print(f"An error occurred while writing the Excel file: {e}")
+
+
+def make_directory(directory_path):
+    directory = Path(directory_path)
+    if not directory.is_dir():
+        directory.mkdir()
+        try:
+            directory.mkdir()
+            logger.info(f"Directory '{directory}' created successfully.")
+        except FileExistsError:
+            logger.info(f"Directory '{directory}' already exists.")
+        except PermissionError:
+            logger.warning(f"Permission denied: Unable to create '{directory}'.")
+        except Exception as e:
+            logger.warning(f"An error occurred: {e}")
+    return directory
 
 
 ## TODO: rethink this CLI version; not up-to-date
