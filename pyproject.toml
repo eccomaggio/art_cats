@@ -20,5 +20,9 @@ dev = [
 [project.entry-points."console_scripts"]
 # Format: <name-for-command> = "<package>.<module>:<function>"
 # This allows the cmds: uv run artcats & uv run order
-artcats = "art_cats.art:main"
+# artcats = "art_cats.art:main"
+# command to update the system when you change an entry point:
+# uv pip install -e .
+cat = "art_cats.art:main"
 order = "art_cats.order:main"
+update = "art_cats.tmp_update:main"

@@ -4,7 +4,7 @@ import from / export to csv / excel files
 """
 
 import logging
-from . import log_setup
+# from . import log_setup
 from . import validation
 from . import io
 
@@ -686,11 +686,6 @@ def norm_dates(raw: str) -> list[str]:
     return result
 
 
-# def norm_size(raw: str) -> int:
-#     raw = strip_unwanted(r"cm",raw)
-#     return int(raw)
-
-
 def norm_size(raw: str) -> int:
     raw = strip_unwanted(r"cm", raw)
     clean_value = int(raw) if raw.isnumeric() else -1
@@ -705,16 +700,12 @@ def norm_illustrations(raw: str) -> bool:
     return is_illustrated
 
 
-# def norm_pages(pages_raw: str) -> tuple[str, bool, bool]:
 def norm_pages(pages_raw: str) -> tuple[str, bool]:
-    # is_illustrated = pages_raw.find("illus") != -1
-    # print(f">>>> {is_illustrated=}")
     pages = strip_unwanted(r"pages|\[|\]", pages_raw)
     if "approx" in pages:
         pages = re.sub(r"[^\d]", "", pages)
         pages = pages + "?"
     extent, extent_is_approx = check_for_approx(pages)
-    # return (extent, extent_is_approx, is_illustrated)
     return (extent, extent_is_approx)
 
 
@@ -736,9 +727,12 @@ def norm_isbn(raw_isbn: str, row_num:int) -> str:
 
 
 def norm_barcode(raw_barcode: str, row_num:int) -> str:
-    if not re.match(r"^[367]\d{8}", raw_barcode):
-        msg = f"Record {row_num + 1} has the non-standard barcode {raw_barcode}"
-        logger.warning(msg)
+    error_msg = validation.barcode("", raw_barcode)
+    if error_msg:
+        logger.warning(f"Record {row_num + 1}: {error_msg}")
+    # if not re.match(r"^[367]\d{8}", raw_barcode):
+    #     msg = f"Record {row_num + 1} has the non-standard barcode {raw_barcode}"
+    #     logger.warning(msg)
     return raw_barcode
 
 
@@ -754,16 +748,17 @@ def check_for_approx(raw_string: str) -> tuple[str, bool]:
     # clean, is_approx =  re.subn(r"\?", "", raw_string)
     # return (clean.strip(), bool(is_approx))
     clean, is_approx = re.subn(r"\?", "", raw_string)
-    clean = trim_mistaken_decimals(clean).strip()
+    # clean = trim_mistaken_decimals(clean).strip()
+    clean = io.trim_mistaken_decimals(clean).strip()
     return (clean, bool(is_approx))
 
 
-def trim_mistaken_decimals(value: str | int) -> str:
-    if not isinstance(value, str):
-        value = str(value)
-    if value.endswith(".0"):
-        value = value[:-2]
-    return value
+# def trim_mistaken_decimals(value: str | int) -> str:
+#     if not isinstance(value, str):
+#         value = str(value)
+#     if value.endswith(".0"):
+#         value = value[:-2]
+#     return value
 
 
 def create_date_list(dates_raw: str) -> list[str]:

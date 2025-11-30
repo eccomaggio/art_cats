@@ -104,10 +104,18 @@ def isbn(name: str, content: str) -> str:
 
 def barcode(name:str, content:str) -> str:
     error_msg = ""
+    errors = []
     if len(content) != 9:
-        error_msg = "A barcode must have 9 digits"
+        errors.append("have 9 digits")
     if content[0] not in "367":
-        error_msg = "A barcode needs to start with 3, 6 or 7"
+        errors.append("start with 3, 6 or 7")
+    error_count = len(errors)
+    if error_count:
+        if error_count == 2:
+          error_msg = " and ".join(errors)
+        else:
+          error_msg = errors[0]
+        error_msg = f"The barcode must {error_msg}"
     return error_msg
 
 
