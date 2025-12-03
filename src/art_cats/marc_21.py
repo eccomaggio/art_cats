@@ -4,6 +4,7 @@ import from / export to csv / excel files
 """
 
 import logging
+
 # from . import log_setup
 from . import validation
 from . import io
@@ -110,8 +111,493 @@ class MissingFieldError(Exception):
     pass
 
 
+code_by_state = {
+    "england": "enk",
+    "northernireland": "nik",
+    "ni": "nik",
+    "scotland": "stk",
+    "wales": "wlk",
+    "alberta": "abc",
+    "britishcolumbia": "bcc",
+    "manitoba": "mbc",
+    "newbrunswick": "nkc",
+    "newfoundland": "nfc",
+    "labrador": "nfc",
+    "newfoundlandlabrador": "nfc",
+    "northwestterritories": "ntc",
+    "novascotia": "nsc",
+    "nunavut": "nuc",
+    "ontario": "onc",
+    "princeedwardisland": "pic",
+    "québecprovince": "quc",
+    "québec": "quc",
+    "quebecprovince": "quc",
+    "quebec": "quc",
+    "saskatchewan": "snc",
+    "yukonterritory": "ykc",
+    "yukon": "ykc",
+    "alabama": "alu",
+    "alaska": "aku",
+    "arizona": "azu",
+    "arkansas": "aru",
+    "california": "cau",
+    "colorado": "cou",
+    "connecticut": "ctu",
+    "delaware": "deu",
+    "districtcolumbia": "dcu",
+    "columbia": "dcu",
+    "florida": "flu",
+    "georgia": "gau",
+    "hawaii": "hiu",
+    "idaho": "idu",
+    "illinois": "ilu",
+    "indiana": "inu",
+    "iowa": "iau",
+    "kansas": "ksu",
+    "kentucky": "kyu",
+    "louisiana": "lau",
+    "maine": "meu",
+    "maryland": "mdu",
+    "massachusetts": "mau",
+    "michigan": "miu",
+    "minnesota": "mnu",
+    "mississippi": "msu",
+    "missouri": "mou",
+    "montana": "mtu",
+    "nebraska": "nbu",
+    "nevada": "nvu",
+    "newhampshire": "nhu",
+    "newjersey": "nju",
+    "newmexico": "nmu",
+    "newyork": "nyu",
+    "newyorkstate": "nyu",
+    "northcarolina": "ncu",
+    "northdakota": "ndu",
+    "ohio": "ohu",
+    "oklahoma": "oku",
+    "oregon": "oru",
+    "pennsylvania": "pau",
+    "rhodeisland": "riu",
+    "southcarolina": "scu",
+    "southdakota": "sdu",
+    "tennessee": "tnu",
+    "texas": "txu",
+    "utah": "utu",
+    "vermont": "vtu",
+    "virginia": "vau",
+    "washington": "wau",
+    "washingtonstate": "wau",
+    "westvirginia": "wvu",
+    "wisconsin": "wiu",
+    "wyoming": "wyu",
+    "australiancapitalterritory": "aca",
+    "queensland": "qea",
+    "tasmania": "tma",
+    "victoria": "vra",
+    "westernaustralia": "wea",
+    "newsouthwales": "xna",
+    "northernterritory": "xoa",
+    "southaustralia": "xra",
+    "al": "alu",
+    "ak": "aku",
+    "az": "azu",
+    "ar": "aru",
+    "ca": "cau",
+    "co": "cou",
+    "ct": "ctu",
+    "de": "deu",
+    "dc": "dcu",
+    "fl": "flu",
+    "ga": "gau",
+    "hi": "hiu",
+    "id": "idu",
+    "il": "ilu",
+    "in": "inu",
+    "ia": "iau",
+    "ks": "ksu",
+    "ky": "kyu",
+    "la": "lau",
+    "me": "meu",
+    "md": "mdu",
+    "ma": "mau",
+    "mi": "miu",
+    "mn": "mnu",
+    "ms": "msu",
+    "mo": "mou",
+    "mt": "mtu",
+    "ne": "nbu",
+    "nv": "nvu",
+    "nh": "nhu",
+    "nj": "nju",
+    "nm": "nmu",
+    "ny": "nyu",
+    "nc": "ncu",
+    "nd": "ndu",
+    "oh": "ohu",
+    "ok": "oku",
+    "or": "oru",
+    "pa": "pau",
+    "ri": "riu",
+    "sc": "scu",
+    "sd": "sdu",
+    "tn": "tnu",
+    "tx": "txu",
+    "ut": "utu",
+    "vt": "vtu",
+    "va": "vau",
+    "wa": "wau",
+    "wv": "wvu",
+    "wi": "wiu",
+    "wy": "wyu",
+    "act": "aca",
+    "qld": "qea",
+    "tas": "tma",
+    "vic": "vra",
+    "wa": "wea",
+    "nsw": "xna",
+    "nt": "xoa",
+    "sa": "xra",
+    "alb": "abc",
+    "bc": "bcc",
+    "man": "mbc",
+    "nb": "nkc",
+    "nfd": "nfc",
+    "lab": "nfc",
+    "nwt": "ntc",
+    "ns": "nsc",
+    "nu": "nuc",
+    "ont": "onc",
+    "pei": "pic",
+    "que": "quc",
+    "sas": "snc",
+    "yt": "ykc",
+}
+
+code_by_country = {
+    "usa": "xxu",
+    "unitedstates": "xxu",
+    "unitedstatesamerica": "xxu",
+    "uk": "xxk",
+    "unitedkingdom": "xxk",
+    "england": "enk",
+    "scotland": "stk",
+    "wales": "wlk",
+    "northernireland": "nik",
+    "ni": "nik",
+    "canada": "xxc",
+    # "australia": "xxa",  # dummy 3-digit value to trigger detail; swap to "at" at output
+    "australia": "at",
+    "algeria": "ae",
+    "angola": "ao",
+    "benin": "dm",
+    "botswana": "bs",
+    "burkinafaso": "uv",
+    "burundi": "bd",
+    "cameroon": "cm",
+    "centralafricanrepublic": "cx",
+    "chad": "cd",
+    "congo": "cf",
+    "democraticrepubliccongo": "cg",
+    "côtedivoire": "iv",
+    "cotedivoire": "iv",
+    "djibouti": "ft",
+    "egypt": "ua",
+    "equatorialguinea": "eg",
+    "eritrea": "ea",
+    "ethiopia": "et",
+    "gabon": "go",
+    "gambia": "gm",
+    "ghana": "gh",
+    "guinea": "gv",
+    "guineabissau": "pg",
+    "kenya": "ke",
+    "lesotho": "lo",
+    "liberia": "lb",
+    "libya": "ly",
+    "madagascar": "mg",
+    "malawi": "mw",
+    "mali": "ml",
+    "mauritania": "mu",
+    "morocco": "mr",
+    "mozambique": "mz",
+    "namibia": "sx",
+    "niger": "ng",
+    "nigeria": "nr",
+    "rwanda": "rw",
+    "saotomeprincipe": "sf",
+    "senegal": "sg",
+    "sierraleone": "sl",
+    "somalia": "so",
+    "southafrica": "sa",
+    "southsudan": "sd",
+    "spanishnorthafrica": "sh",
+    "sudan": "sj",
+    "swaziland": "sq",
+    "tanzania": "tz",
+    "togo": "tg",
+    "tunisia": "ti",
+    "uganda": "ug",
+    "westernsahara": "ss",
+    "zambia": "za",
+    "zimbabwe": "rh",
+    "afghanistan": "af",
+    "armenia": "ai",
+    "republicarmenia": "ar",
+    "azerbaijan": "aj",
+    "bahrain": "ba",
+    "bangladesh": "bg",
+    "bhutan": "bt",
+    "brunei": "bx",
+    "burma": "br",
+    "cambodia": "cb",
+    "china": "cc",
+    "cyprus": "cy",
+    "easttimor": "em",
+    "gazastrip": "gz",
+    "georgia": "gs",
+    "georgianrepublic": "gs",
+    "republicgeorgia": "gs",
+    "india": "ii",
+    "indonesia": "io",
+    "iran": "ir",
+    "iraq": "iq",
+    "israel": "is",
+    "japan": "ja",
+    "jordan": "jo",
+    "kazakhstan": "kz",
+    "northkorea": "kn",
+    "korea": "ko",
+    "southkorea": "ko",
+    "kuwait": "ku",
+    "kyrgyzstan": "kg",
+    "laos": "ls",
+    "lebanon": "le",
+    "malaysia": "my",
+    "mongolia": "mp",
+    "nepal": "np",
+    "oman": "mk",
+    "pakistan": "pk",
+    "papuanewguinea": "pp",
+    "paracelislands": "pf",
+    "philippines": "ph",
+    "qatar": "qa",
+    "saudiarabia": "su",
+    "singapore": "si",
+    "spratlyisland": "xp",
+    "srilanka": "ce",
+    "syria": "sy",
+    "tajikistan": "ta",
+    "thailand": "th",
+    "turkey": "tu",
+    "turkmenistan": "tk",
+    "unitedarabemirates": "ts",
+    "uae": "ts",
+    "uzbekistan": "uz",
+    "vietnam": "vm",
+    "westbankjordanriver": "wj",
+    "westbank": "wj",
+    "yemen": "ye",
+    "bermudaislands": "bm",
+    "bermuda": "bm",
+    "bouvetisland": "bv",
+    "caboverde": "cv",
+    "faroeislands": "fa",
+    "faroes": "fa",
+    "falklandislands": "fk",
+    "falklands": "fk",
+    "sainthelena": "xj",
+    "southgeorgiasouthsandwichislands": "xs",
+    "southgeorgia": "xs",
+    "southsandwichislands": "xs",
+    "belize": "bh",
+    "costarica": "cr",
+    "elsalvador": "es",
+    "guatemala": "gt",
+    "honduras": "ho",
+    "nicaragua": "nq",
+    "panama": "pn",
+    "albania": "aa",
+    "andorra": "an",
+    "austria": "au",
+    "belarus": "bw",
+    "belgium": "be",
+    "bosniaherzegovina": "bn",
+    "bosnia": "bn",
+    "bosniaherzegovina": "bn",
+    "herzegovina": "bn",
+    "bulgaria": "bu",
+    "croatia": "ci",
+    "czechrepublic": "xr",
+    "czechia": "xr",
+    "denmark": "dk",
+    "estonia": "er",
+    "finland": "fi",
+    "france": "fr",
+    "germany": "gw",
+    "gibraltar": "gi",
+    "greece": "gr",
+    "guernsey": "gg",
+    "hungary": "hu",
+    "iceland": "ic",
+    "ireland": "ie",
+    "eire": "ie",
+    "isleman": "im",
+    "italy": "it",
+    "jersey": "je",
+    "kosovo": "kv",
+    "latvia": "lv",
+    "liechtenstein": "lh",
+    "lithuania": "li",
+    "luxembourg": "lu",
+    "macedonia": "xn",
+    "malta": "mm",
+    "montenegro": "mo",
+    "moldova": "mv",
+    "monaco": "mc",
+    "netherlands": "ne",
+    "norway": "no",
+    "poland": "pl",
+    "portugal": "po",
+    "serbia": "rb",
+    "romania": "rm",
+    "russia": "ru",
+    "russianfederation": "ru",
+    "sanmarino": "sm",
+    "slovakia": "xo",
+    "slovenia": "xv",
+    "spain": "sp",
+    "sweden": "sw",
+    "switzerland": "sz",
+    "ukraine": "un",
+    "vaticancity": "vc",
+    "serbiamontenegro": "yu",
+    "britishindianoceanterritory": "bi",
+    "christmasisland": "xa",
+    "cocosislands": "xb",
+    "keelingislands": "xb",
+    "comoros": "cq",
+    "heardmcdonaldislands": "hm",
+    "maldives": "xc",
+    "mauritius": "mf",
+    "mayotte": "ot",
+    "réunion": "re",
+    "reunion": "re",
+    "seychelles": "se",
+    "americansamoa": "as",
+    "cookislands": "cw",
+    "fiji": "fj",
+    "frenchpolynesia": "fp",
+    "guam": "gu",
+    "johnstonatoll": "ji",
+    "kiribati": "gb",
+    "marshallislands": "xe",
+    "micronesia": "fm",
+    "federatedstatesmicronesia": "fm",
+    "midwayislands": "xf",
+    "nauru": "nu",
+    "newcaledonia": "nl",
+    "niue": "xh",
+    "northernmarianaislands": "nw",
+    "palau": "pw",
+    "pitcairnisland": "pc",
+    "samoa": "ws",
+    "solomonislands": "bp",
+    "tokelau": "tl",
+    "tonga": "to",
+    "tuvalu": "tv",
+    "vanuatu": "nn",
+    "wakeisland": "wk",
+    "wallisfutuna": "wf",
+    "wallis": "wf",
+    "futuna": "wf",
+    "argentina": "ag",
+    "bolivia": "bo",
+    "brazil": "bl",
+    "chile": "cl",
+    "colombia": "ck",
+    "ecuador": "ec",
+    "frenchguiana": "fg",
+    "guyana": "gy",
+    "paraguay": "py",
+    "peru": "pe",
+    "surinam": "sr",
+    "uruguay": "uy",
+    "venezuela": "ve",
+    "anguilla": "am",
+    "antiguabarbuda": "aq",
+    "antigua": "aq",
+    "barbuda": "aq",
+    "aruba": "aw",
+    "bahamas": "bf",
+    "barbados": "bb",
+    "britishvirginislands": "vb",
+    "caribbeannetherlands": "ca",
+    "caymanislands": "cj",
+    "cuba": "cu",
+    "curaçao": "co",
+    "curacao": "co",
+    "dominica": "dq",
+    "dominicanrepublic": "dr",
+    "grenada": "gd",
+    "guadeloupe": "gp",
+    "haiti": "ht",
+    "jamaica": "jm",
+    "martinique": "mq",
+    "montserrat": "mj",
+    "puertorico": "pr",
+    "saintbarthélemy": "sc",
+    "saintbarthelemy": "sc",
+    "saintkittsnevis": "xd",
+    "saintkitts": "xd",
+    "nevis": "xd",
+    "saintlucia": "xk",
+    "saintmartin": "st",
+    "saintvincentgrenadines": "xm",
+    "saintvincent": "xm",
+    "grenadines": "xm",
+    "sintmaarten": "sn",
+    "trinidadtobago": "tr",
+    "trinidad": "tr",
+    "tobago": "tr",
+    "turkscaicosislands": "tc",
+    "virginislandsunitedstates": "vi",
+    "antarctica": "ay",
+    "noplace": "xx",
+    "unknown": "xx",
+    "undetermined": "xx",
+    "variousplaces": "vp",
+    "various": "vp",
+}
+
+all_country_codes = set(code_by_state.values())
+all_country_codes.update(code_by_country.values())
+
+code_by_city = {
+    "newyork": "nyu",
+    "london":"enk",
+    "edinburgh":"stk",
+    "glasgow":"stk",
+    "belfast": "nik",
+    "cardiff": "wlk",
+    "toronto": "onc",
+    "montreal": "quc",
+    "montréal": "quc",
+    "vancouver": "bcc",
+    "calgary": "abc",
+    "ottawa": "onc",
+    "edmonton": "abc",
+    "winnipeg": "mbc",
+    "Sydney": "xna",
+    "Melbourne": "vra",
+    "Brisbane": "qea",
+    "Perth": "wea",
+    "Adelaide": "xra",
+}
+
+code_can_be_expanded = set(["xxu", "xxk", "xxc", "at"])
+
 def norm_langs(raw: str) -> list[str]:
-    language_codes = {
+    code_by_language = {
         "english": "eng",
         "chinese": "chi",
         "german": "ger",
@@ -123,534 +609,83 @@ def norm_langs(raw: str) -> list[str]:
         "norwegian": "nor",
         "dutch": "dut",
     }
+    list_of_language_codes = set(code_by_language.values())
     list_of_languages = []
     languages: list[str] = re.split("[,/]", raw.replace(" ", "").lower())
     for language in languages:
-        try:
-            list_of_languages.append(language_codes[language])
-        except KeyError as e:
+        lang_code = code_by_language.get(language, "")
+        if not lang_code and language in list_of_language_codes:
+            lang_code = language
+        if lang_code:
+            list_of_languages.append(lang_code)
+        else:
             logger.warning(
-                f"Warning: {e} is not a recognised language; it has been passed on unchanged."
+                f"Warning: {language} is not a recognised language; it has been passed on unchanged."
             )
-            list_of_languages.append(language)
+        # try:
+        #     list_of_languages.append(code_by_language[language])
+        # except KeyError as e:
+        #     logger.warning(
+        #         f"Warning: {e} is not a recognised language; it has been passed on unchanged."
+        #     )
+        #     list_of_languages.append(language)
     return list_of_languages
 
 
-def norm_geographical_name(name: str) -> str:
-    return re.sub(r"[\s\-\.']", "", name).lower()
-
-
-def norm_country(country_raw: str) -> str:
-    country_codes = {
-        "usa": "xxu",
-        "unitedstates": "xxu",
-        "unitedstatesofamerica": "xxu",
-        "uk": "xxk",
-        "unitedkingdom": "xxk",
-        "canada": "xxc",
-        "australia": "xxa",  # dummy 3-digit value to trigger detail; swap to "at" at output
-        "algeria": "ae",
-        "angola": "ao",
-        "benin": "dm",
-        "botswana": "bs",
-        "burkinafaso": "uv",
-        "burundi": "bd",
-        "cameroon": "cm",
-        "centralafricanrepublic": "cx",
-        "chad": "cd",
-        "congo": "cf",
-        "democraticrepublicofcongo": "cg",
-        "côtedivoire": "iv",
-        "cotedivoire": "iv",
-        "djibouti": "ft",
-        "egypt": "ua",
-        "equatorialguinea": "eg",
-        "eritrea": "ea",
-        "ethiopia": "et",
-        "gabon": "go",
-        "gambia": "gm",
-        "ghana": "gh",
-        "guinea": "gv",
-        "guineabissau": "pg",
-        "kenya": "ke",
-        "lesotho": "lo",
-        "liberia": "lb",
-        "libya": "ly",
-        "madagascar": "mg",
-        "malawi": "mw",
-        "mali": "ml",
-        "mauritania": "mu",
-        "morocco": "mr",
-        "mozambique": "mz",
-        "namibia": "sx",
-        "niger": "ng",
-        "nigeria": "nr",
-        "rwanda": "rw",
-        "saotomeandprincipe": "sf",
-        "senegal": "sg",
-        "sierraleone": "sl",
-        "somalia": "so",
-        "southafrica": "sa",
-        "southsudan": "sd",
-        "spanishnorthafrica": "sh",
-        "sudan": "sj",
-        "swaziland": "sq",
-        "tanzania": "tz",
-        "togo": "tg",
-        "tunisia": "ti",
-        "uganda": "ug",
-        "westernsahara": "ss",
-        "zambia": "za",
-        "zimbabwe": "rh",
-        "afghanistan": "af",
-        "armenia": "ai",
-        "republicofarmenia": "ar",
-        "azerbaijan": "aj",
-        "bahrain": "ba",
-        "bangladesh": "bg",
-        "bhutan": "bt",
-        "brunei": "bx",
-        "burma": "br",
-        "cambodia": "cb",
-        "china": "cc",
-        "cyprus": "cy",
-        "easttimor": "em",
-        "gazastrip": "gz",
-        "georgia": "gs",
-        "georgianrepublic": "gs",
-        "republicofgeorgia": "gs",
-        "india": "ii",
-        "indonesia": "io",
-        "iran": "ir",
-        "iraq": "iq",
-        "israel": "is",
-        "japan": "ja",
-        "jordan": "jo",
-        "kazakhstan": "kz",
-        "northkorea": "kn",
-        "korea": "ko",
-        "southkorea": "ko",
-        "kuwait": "ku",
-        "kyrgyzstan": "kg",
-        "laos": "ls",
-        "lebanon": "le",
-        "malaysia": "my",
-        "mongolia": "mp",
-        "nepal": "np",
-        "oman": "mk",
-        "pakistan": "pk",
-        "papuanewguinea": "pp",
-        "paracelislands": "pf",
-        "philippines": "ph",
-        "qatar": "qa",
-        "saudiarabia": "su",
-        "singapore": "si",
-        "spratlyisland": "xp",
-        "srilanka": "ce",
-        "syria": "sy",
-        "tajikistan": "ta",
-        "thailand": "th",
-        "turkey": "tu",
-        "turkmenistan": "tk",
-        "unitedarabemirates": "ts",
-        "uae": "ts",
-        "uzbekistan": "uz",
-        "vietnam": "vm",
-        "westbankofthejordanriver": "wj",
-        "westbank": "wj",
-        "yemen": "ye",
-        "bermudaislands": "bm",
-        "bermuda": "bm",
-        "bouvetisland": "bv",
-        "caboverde": "cv",
-        "faroeislands": "fa",
-        "faroes": "fa",
-        "falklandislands": "fk",
-        "falklands": "fk",
-        "sainthelena": "xj",
-        "southgeorgiaandthesouthsandwichislands": "xs",
-        "southgeorgia": "xs",
-        "southsandwichislands": "xs",
-        "belize": "bh",
-        "costarica": "cr",
-        "elsalvador": "es",
-        "guatemala": "gt",
-        "honduras": "ho",
-        "nicaragua": "nq",
-        "panama": "pn",
-        "albania": "aa",
-        "andorra": "an",
-        "austria": "au",
-        "belarus": "bw",
-        "belgium": "be",
-        "bosniaandherzegovina": "bn",
-        "bosnia": "bn",
-        "bosniaherzegovina": "bn",
-        "herzegovina": "bn",
-        "bulgaria": "bu",
-        "croatia": "ci",
-        "czechrepublic": "xr",
-        "czechia": "xr",
-        "denmark": "dk",
-        "estonia": "er",
-        "finland": "fi",
-        "france": "fr",
-        "germany": "gw",
-        "gibraltar": "gi",
-        "greece": "gr",
-        "guernsey": "gg",
-        "hungary": "hu",
-        "iceland": "ic",
-        "ireland": "ie",
-        "isleofman": "im",
-        "italy": "it",
-        "jersey": "je",
-        "kosovo": "kv",
-        "latvia": "lv",
-        "liechtenstein": "lh",
-        "lithuania": "li",
-        "luxembourg": "lu",
-        "macedonia": "xn",
-        "malta": "mm",
-        "montenegro": "mo",
-        "moldova": "mv",
-        "monaco": "mc",
-        "netherlands": "ne",
-        "norway": "no",
-        "poland": "pl",
-        "portugal": "po",
-        "serbia": "rb",
-        "romania": "rm",
-        "russia": "ru",
-        "russianfederation": "ru",
-        "sanmarino": "sm",
-        "slovakia": "xo",
-        "slovenia": "xv",
-        "spain": "sp",
-        "sweden": "sw",
-        "switzerland": "sz",
-        "ukraine": "un",
-        "vaticancity": "vc",
-        "serbiaandmontenegro": "yu",
-        "britishindianoceanterritory": "bi",
-        "christmasisland": "xa",
-        "cocosislands": "xb",
-        "keelingislands": "xb",
-        "comoros": "cq",
-        "heardandmcdonaldislands": "hm",
-        "maldives": "xc",
-        "mauritius": "mf",
-        "mayotte": "ot",
-        "réunion": "re",
-        "reunion": "re",
-        "seychelles": "se",
-        "americansamoa": "as",
-        "cookislands": "cw",
-        "fiji": "fj",
-        "frenchpolynesia": "fp",
-        "guam": "gu",
-        "johnstonatoll": "ji",
-        "kiribati": "gb",
-        "marshallislands": "xe",
-        "micronesia": "fm",
-        "federatedstatesofmicronesia": "fm",
-        "midwayislands": "xf",
-        "nauru": "nu",
-        "newcaledonia": "nl",
-        "niue": "xh",
-        "northernmarianaislands": "nw",
-        "palau": "pw",
-        "pitcairnisland": "pc",
-        "samoa": "ws",
-        "solomonislands": "bp",
-        "tokelau": "tl",
-        "tonga": "to",
-        "tuvalu": "tv",
-        "vanuatu": "nn",
-        "wakeisland": "wk",
-        "wallisandfutuna": "wf",
-        "wallis": "wf",
-        "futuna": "wf",
-        "argentina": "ag",
-        "bolivia": "bo",
-        "brazil": "bl",
-        "chile": "cl",
-        "colombia": "ck",
-        "ecuador": "ec",
-        "frenchguiana": "fg",
-        "guyana": "gy",
-        "paraguay": "py",
-        "peru": "pe",
-        "surinam": "sr",
-        "uruguay": "uy",
-        "venezuela": "ve",
-        "anguilla": "am",
-        "antiguaandbarbuda": "aq",
-        "antigua": "aq",
-        "barbuda": "aq",
-        "aruba": "aw",
-        "bahamas": "bf",
-        "barbados": "bb",
-        "britishvirginislands": "vb",
-        "caribbeannetherlands": "ca",
-        "caymanislands": "cj",
-        "cuba": "cu",
-        "curaçao": "co",
-        "curacao": "co",
-        "dominica": "dq",
-        "dominicanrepublic": "dr",
-        "grenada": "gd",
-        "guadeloupe": "gp",
-        "haiti": "ht",
-        "jamaica": "jm",
-        "martinique": "mq",
-        "montserrat": "mj",
-        "puertorico": "pr",
-        "saintbarthélemy": "sc",
-        "saintbarthelemy": "sc",
-        "saintkittsnevis": "xd",
-        "saintkitts": "xd",
-        "nevis": "xd",
-        "saintlucia": "xk",
-        "saintmartin": "st",
-        "saintvincentandthegrenadines": "xm",
-        "saintvincent": "xm",
-        "thegrenadines": "xm",
-        "grenadines": "xm",
-        "sintmaarten": "sn",
-        "trinidadandtobago": "tr",
-        "trinidad": "tr",
-        "tobago": "tr",
-        "turksandcaicosislands": "tc",
-        "virginislandsoftheunitedstates": "vi",
-        "antarctica": "ay",
-        "noplace": "xx",
-        "unknown": "xx",
-        "undetermined": "xx",
-        "variousplaces": "vp",
-        "various": "vp",
-    }
-    country = norm_geographical_name(country_raw)
-    try:
-        result = country_codes[country]
-    except KeyError as e:
-        if len({e}) < 4:
-            logger.info(
-                f"Advisory: assuming country name ({e}) has already been processed."
-            )
-        else:
-            logger.warning(
-                f"Warning: {e} is not a recognised country name; it has been passed on unchanged."
-            )
-        result = country_raw
-    return result
-
-
-def norm_place(place_raw: str) -> str:
-    long_country_codes = {
-        "england": "enk",
-        "northernireland": "nik",
-        "scotland": "stk",
-        "wales": "wlk",
-        "alberta": "abc",
-        "britishcolumbia": "bcc",
-        "manitoba": "mbc",
-        "newbrunswick": "nkc",
-        "newfoundland": "nfc",
-        "labrador": "nfc",
-        "newfoundlandandlabrador": "nfc",
-        "northwestterritories": "ntc",
-        "novascotia": "nsc",
-        "nunavut": "nuc",
-        "ontario": "onc",
-        "princeedwardisland": "pic",
-        "québecprovince": "quc",
-        "québec": "quc",
-        "quebecprovince": "quc",
-        "quebec": "quc",
-        "saskatchewan": "snc",
-        "yukonterritory": "ykc",
-        "yukon": "ykc",
-        "alabama": "alu",
-        "alaska": "aku",
-        "arizona": "azu",
-        "arkansas": "aru",
-        "california": "cau",
-        "colorado": "cou",
-        "connecticut": "ctu",
-        "delaware": "deu",
-        "districtofcolumbia": "dcu",
-        "columbia": "dcu",
-        "florida": "flu",
-        "georgia": "gau",
-        "hawaii": "hiu",
-        "idaho": "idu",
-        "illinois": "ilu",
-        "indiana": "inu",
-        "iowa": "iau",
-        "kansas": "ksu",
-        "kentucky": "kyu",
-        "louisiana": "lau",
-        "maine": "meu",
-        "maryland": "mdu",
-        "massachusetts": "mau",
-        "michigan": "miu",
-        "minnesota": "mnu",
-        "mississippi": "msu",
-        "missouri": "mou",
-        "montana": "mtu",
-        "nebraska": "nbu",
-        "nevada": "nvu",
-        "newhampshire": "nhu",
-        "newjersey": "nju",
-        "newmexico": "nmu",
-        "newyork": "nyu",
-        "newyorkstate": "nyu",
-        "northcarolina": "ncu",
-        "northdakota": "ndu",
-        "ohio": "ohu",
-        "oklahoma": "oku",
-        "oregon": "oru",
-        "pennsylvania": "pau",
-        "rhodeisland": "riu",
-        "southcarolina": "scu",
-        "southdakota": "sdu",
-        "tennessee": "tnu",
-        "texas": "txu",
-        "utah": "utu",
-        "vermont": "vtu",
-        "virginia": "vau",
-        "washington": "wau",
-        "washingtonstate": "wau",
-        "westvirginia": "wvu",
-        "wisconsin": "wiu",
-        "wyoming": "wyu",
-        "australiancapitalterritory": "aca",
-        "queensland": "qea",
-        "tasmania": "tma",
-        "victoria": "vra",
-        "westernaustralia": "wea",
-        "newsouthwales": "xna",
-        "northernterritory": "xoa",
-        "southaustralia": "xra",
-        "al": "alu",
-        "ak": "aku",
-        "az": "azu",
-        "ar": "aru",
-        "ca": "cau",
-        "co": "cou",
-        "ct": "ctu",
-        "de": "deu",
-        "dc": "dcu",
-        "fl": "flu",
-        "ga": "gau",
-        "hi": "hiu",
-        "id": "idu",
-        "il": "ilu",
-        "in": "inu",
-        "ia": "iau",
-        "ks": "ksu",
-        "ky": "kyu",
-        "la": "lau",
-        "me": "meu",
-        "md": "mdu",
-        "ma": "mau",
-        "mi": "miu",
-        "mn": "mnu",
-        "ms": "msu",
-        "mo": "mou",
-        "mt": "mtu",
-        "ne": "nbu",
-        "nv": "nvu",
-        "nh": "nhu",
-        "nj": "nju",
-        "nm": "nmu",
-        "ny": "nyu",
-        "nc": "ncu",
-        "nd": "ndu",
-        "oh": "ohu",
-        "ok": "oku",
-        "or": "oru",
-        "pa": "pau",
-        "ri": "riu",
-        "sc": "scu",
-        "sd": "sdu",
-        "tn": "tnu",
-        "tx": "txu",
-        "ut": "utu",
-        "vt": "vtu",
-        "va": "vau",
-        "wa": "wau",
-        "wv": "wvu",
-        "wi": "wiu",
-        "wy": "wyu",
-        "act": "aca",
-        "qld": "qea",
-        "tas": "tma",
-        "vic": "vra",
-        "wa": "wea",
-        "nsw": "xna",
-        "nt": "xoa",
-        "sa": "xra",
-        "alb": "abc",
-        "bc": "bcc",
-        "man": "mbc",
-        "nb": "nkc",
-        "nfd": "nfc",
-        "lab": "nfc",
-        "nwt": "ntc",
-        "ns": "nsc",
-        "nu": "nuc",
-        "ont": "onc",
-        "pei": "pic",
-        "que": "quc",
-        "sas": "snc",
-        "yt": "ykc",
-    }
-    place = norm_geographical_name(place_raw)
-    try:
-        result = long_country_codes[place]
-    except KeyError as e:
-        if len({e}) == 3:
-            logger.info(
-                f"Advisory: assuming place name ({e}) has already been processed."
-            )
-        else:
-            logger.warning(
-                f"Warning: {e} is not a recognised place name; it has been passed on unchanged."
-            )
-        result = place_raw
-    return result
-
-
-def norm_state(state_raw: str) -> str:
-    if state_raw:
-        return norm_place(state_raw)
-    else:
+def norm_location(name: str) -> str:
+    name = name.strip()
+    if not name:
         return ""
+    wip = name.lower()
+    for word in ["the", "of", "in", "and"]:
+        regex = re.compile(r"\b%s\b" % re.escape(word))
+        wip = re.sub(regex, "", wip)
+    wip = re.sub(r"[\s\-\.'&]", "", wip)
+    return wip
 
 
-def check_for_detailed_region(country: str, state: str, place: str) -> str:
-    """
-    The country code for USA, Australia, Canada & UK is 3 digit, based on the state
-    Australia, however, only has a 2 digit superordinate code ('at')
-    """
-    region = country
-    if len(region) == 3:
-        if state:
-            region = norm_state(state)
-        else:
-            tmp = norm_state(place)  # maybe state entered as city by mistake
-            if len(tmp) == 3:
-                region = tmp
-        if (
-            region == "xxa"
-        ):  # unlike other 3-digit regions, australia only has 2 digits :S
-            region = "at"
-    return region
+def check_country(country:str) -> str:
+    normed = norm_location(country)
+    print(f"normed country: {normed}")
+    return code_by_country.get(normed, "")
+
+def check_state(state:str) -> str:
+    normed = norm_location(state)
+    print(f"normed state: {normed}")
+    return code_by_state.get(normed, "")
+
+def check_city(place:str) -> str:
+    normed = norm_location(place)
+    print(f"normed place: {normed}")
+    return code_by_city.get(normed, "")
+
+def get_country_code(country:str, state:str, place:str) -> str:
+    short_code = check_country(country)
+    # print(f"step 1: {short_code=}")
+    if short_code:
+        # if len(short_code) == 3 or short_code == "at":
+        # if short_code in ["xxu", "xxk", "xxc", "at"]:
+        if short_code in code_can_be_expanded:
+            if state:
+                long_code = check_state(state)
+                if long_code:
+                    return long_code
+            elif place:
+                long_code = check_city(place)
+                if long_code:
+                    return long_code
+        return short_code
+    else:
+        # print(f"{country} matched no country...")
+        if len(country) < 4:
+            ## Check to see if full LCC country code has been given by cataloguer (overrides state...)
+            country = country.lower()
+            if country in all_country_codes:
+                return country
+    return ""
 
 
-def validate_record(record: Record, record_num:int) -> bool:
+def validate_record(record: Record, record_num: int) -> bool:
     mandatory = [
         "sublib",
         "langs",
@@ -672,7 +707,9 @@ def validate_record(record: Record, record_num:int) -> bool:
         if name in ("place", "state"):
             place_state_check += 1
         if name in mandatory and not getattr(record, name):
-            logger.warning(f"Record no. {record_num} is missing the mandatory field '{name}'.")
+            logger.warning(
+                f"Record no. {record_num} is missing the mandatory field '{name}'."
+            )
             is_valid = False
     if not place_state_check:
         logger.warning(
@@ -718,7 +755,7 @@ def norm_year(year_raw: str) -> str:
     return year
 
 
-def norm_isbn(raw_isbn: str, row_num:int) -> str:
+def norm_isbn(raw_isbn: str, row_num: int) -> str:
     isbn = re.sub(r"[\s-]", "", raw_isbn)
     if 10 > len(isbn) > 13:
         msg = f"Record {row_num + 1} has the non-standard isbn {raw_isbn}"
@@ -726,7 +763,7 @@ def norm_isbn(raw_isbn: str, row_num:int) -> str:
     return isbn
 
 
-def norm_barcode(raw_barcode: str, row_num:int) -> str:
+def norm_barcode(raw_barcode: str, row_num: int) -> str:
     error_msg = validation.barcode("", raw_barcode)
     if error_msg:
         logger.warning(f"Record {row_num + 1}: {error_msg}")
@@ -777,7 +814,7 @@ def parse_rows_into_records(sheet: list[worksheet_row]) -> list[Record]:
     return records
 
 
-def parse_row(row: list[str], row_num:int, current_time: datetime) -> Record:
+def parse_row(row: list[str], row_num: int, current_time: datetime) -> Record:
     cols = iter(row)
     sublibrary = next(cols)
     langs = norm_langs(next(cols))
@@ -787,9 +824,12 @@ def parse_row(row: list[str], row_num:int, current_time: datetime) -> Record:
     parallel_title = Title(next(cols), next(cols))
     parallel_subtitle = Title(next(cols), next(cols))
     country_name = next(cols)
-    country = norm_country(country_name)
+    # country = norm_country(country_name)
     state = next(cols)
     place = next(cols)
+    country_code = get_country_code(country_name, state, place)
+    if not country_code:
+        logger.error(f"{country_name} is not recognized as a valid country name.")
     publisher = next(cols)
     pub_date, pub_date_is_approx = check_for_approx(norm_year(next(cols)))
     copyright_ = norm_copyright(next(cols))
@@ -815,7 +855,7 @@ def parse_row(row: list[str], row_num:int, current_time: datetime) -> Record:
         parallel_title,
         parallel_subtitle,
         country_name,
-        country,
+        country_code,
         state,
         place,
         publisher,
@@ -908,7 +948,8 @@ def build_008(record: Record) -> Result:
     pub_status = "s"
     date_1 = record.pub_year
     date_2 = 4 * "|"
-    region = check_for_detailed_region(record.country_code, record.state, record.place)
+    # region = check_for_detailed_region(record.country_code, record.state, record.place)
+    region = record.country_code
     place_of_pub = f"{region:{blank}<3}"
 
     # books_configuration = [14*"|", " ", 2*"|"]
@@ -1571,34 +1612,35 @@ def apply_marc_logic(record: Record) -> PyRecord:
 
 
 def save_as_marc_files(
-        headers: list[str],
-        excel_rows:list[list[str]],
-        barcode_index:int,
-        file_name_with_path: Path,
-        # settings,
-        create_excel_file=True,
-        create_chu_file=True
-        ) -> bool:
+    headers: list[str],
+    excel_rows: list[list[str]],
+    barcode_index: int,
+    file_name_with_path: Path,
+    # settings,
+    create_excel_file=True,
+    create_chu_file=True,
+) -> bool:
     """
     Saves the record set as .mrk & .mrc files;
     depending on settings, also creates an excel CHU file
     for once the marc files have been uploaded to ALMA
     """
     if create_chu_file:
-    # if settings.create_chu_file:
+        # if settings.create_chu_file:
         chu_file = file_name_with_path.with_suffix(".CHU.xlsx")
         # io.write_CHU_file_1(excel_rows, chu_file, barcode_index)
-        chu_rows = [[row[barcode_index], "", "", "", "Relocating to CSF", ""] for row in excel_rows]
+        chu_rows = [
+            [row[barcode_index], "", "", "", "Relocating to CSF", ""]
+            for row in excel_rows
+        ]
         io.write_CHU_file(chu_rows, chu_file)
 
     if create_excel_file:
-    # if settings.create_excel_file:
+        # if settings.create_excel_file:
         excel_file = file_name_with_path.with_suffix(".xlsx")
     io.write_data_to_excel([headers, *excel_rows], excel_file)
 
-    marc_records = build_marc_records(
-        parse_rows_into_records(excel_rows)
-    )
+    marc_records = build_marc_records(parse_rows_into_records(excel_rows))
     write_marc21_files(marc_records, Path(file_name_with_path))
     ## TODO: code for this value!
     file_operations_successful = True
@@ -1606,7 +1648,9 @@ def save_as_marc_files(
 
 
 def write_marc21_files(records: list[PyRecord], file_name_and_path: Path) -> None:
-    logger.info(f"Writing {len(records)} marc21 record(s) to {file_name_and_path.with_suffix("")}.mrk / .mrc")
+    logger.info(
+        f"Writing {len(records)} marc21 record(s) to {file_name_and_path.with_suffix("")}.mrk / .mrc"
+    )
     # print(f"Writing {len(records)} record(s) to {file_name_and_path}")
     write_mrk_files(records, file_name_and_path.with_suffix(".mrk"))
     write_mrc_binaries(records, file_name_and_path.with_suffix(".mrc"))
@@ -1678,3 +1722,29 @@ def write_mrc_binaries(data: list[PyRecord], file_name=Path("out.mrc")) -> None:
 #     # logger = logging.getLogger(__name__)
 #     run()
 #     # main()
+
+# def test_country_code():
+#     """
+#     Move these to a test module
+#     """
+#     print(all_country_codes)
+#     tests = [
+#         ["the UK", "England", "Oxford", "enk"],
+#         ["australia","victoria","melbourne", "vra"],
+#         ["the united states of america","illinois","chicago", "ilu"],
+#         ["the united states of america","new york state","new york", "nyu"],
+#         ["Canada","british columbia","Vancouver", "bcc"],
+#         ["France","","Paris", "fr"],
+#         ["canada", "quebec", "Quebec", "quc"],
+#         ["xxc", "", "Quebec", "xxc"],
+#         ["xxc", "", "Quebec", "quc"],
+#         ["quc", "", "Quebec", "quc"],
+#         ["England", "", "London", "enk"],
+#         ["UK", "", "London", "enk"],
+
+#         ]
+#     for i, test in enumerate(tests):
+#         country, state, place, expected = test
+#         *data, _ = test
+#         result = get_country_code(country, state, place)
+#         print(f"*** {' + '.join([el for el in data if el])} -> ({expected}): {result} ... {result == expected}\n")

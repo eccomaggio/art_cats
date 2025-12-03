@@ -971,27 +971,6 @@ class Editor(QWidget):
         return content.strip()
 
 
-    # def is_dummy_record(self, row_to_check:list|None = None) -> bool:
-    #     """
-    #     Decides whether a record/row sent to it fulfills the definition of a 'dummy' record laid out in the settings
-    #     i.e. it has the correct text in the correct column
-    #     The whole row is sent, not the index, to allow record sets that have not been saved can be parsed first.
-    #     """
-    #     if not row_to_check:
-    #         row_to_check = self.current_row
-    #     target_fieldname = self.settings.validation.validation_skip_fieldname
-    #     if target_fieldname:
-    #         try:
-    #             column_index = self.COL[target_fieldname].value
-    #         except KeyError:
-    #             column_index = -1
-    #             logger.critical(f"**The fieldname which allows dummy files to be created does not exist. (It must be exactly the same as the name defined in COL.) Please check and update the settings file.")
-    #         if column_index >= 0:
-    #             fits_dummy_pattern = row_to_check[column_index] == self.settings.validation.validation_skip_text
-    #             return fits_dummy_pattern
-    #     return False
-
-
     def handle_close(self) -> None:
         # self.close()
         self.app.quit()

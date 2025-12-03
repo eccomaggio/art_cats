@@ -1,4 +1,6 @@
 from collections.abc import Callable
+
+from art_cats import marc_21
 from .settings import Default_settings
 import logging
 logger = logging.getLogger(__name__)
@@ -38,6 +40,18 @@ def validate(record_as_dict: dict[str, str], settings:Default_settings, optional
                 if error_msg:
                     invalid.append(f"{name}: {error_msg}")
                     problem_items.append(name)
+    if settings.title == "art_catalogue":
+        country = record_as_dict["country_name"]
+        state = record_as_dict["state"]
+        place = record_as_dict["place"]
+        country_code = marc_21.get_country_code(country, state, place)
+        print(f">>> {country}->{country_code}")
+        if country and not country_code:
+            invalid.append(f"country of publication is not recognized.")
+            problem_items.append(country)
+        # elif country_code in marc_21.code_can_be_expanded:
+        #     ## But this will disallow entry if you don't know the state
+        #     invalid.append(f"{country} should be expanded if possible with a state.")
     if missing:
         count = len(missing)
         add_s = "s" if count > 1 else ""

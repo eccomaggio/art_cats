@@ -11,12 +11,14 @@ from enum import Enum
 from pathlib import Path
 from .settings import Default_settings
 from . import form_gui
-
+from . import marc_21
 
 # logger = logging.getLogger(__name__)
 
 
 def main():
+    # marc_21.test_country_code()
+    # quit()
     class COL(Enum):
         ## need pto be in same order as CSV / excel fields
         @staticmethod
