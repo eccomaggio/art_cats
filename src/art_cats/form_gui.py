@@ -545,7 +545,8 @@ class Editor(QWidget):
         self.master_layout.addWidget(self.nav_grouped_layout)
         self.setLayout(self.master_layout)
 
-        self.add_custom_behaviour()
+        self.customize_fields()
+        self.load_record_into_gui()
         self.update_title_with_record_number()
         self.update_nav_buttons()
         self.add_signal_to_fire_on_text_change()
@@ -699,7 +700,7 @@ class Editor(QWidget):
             nav_grid.addWidget(self.tableView, last_row, 0, 1, 6)
         self.nav_grouped_layout.setLayout(nav_grid)
 
-    def add_custom_behaviour(self) -> None:
+    def customize_fields(self) -> None:
         if self.settings.title == "art_catalogue":
             sale_dates = self.inputs[self.COL.sale_dates.value]
             if isinstance(sale_dates, QLineEdit):
@@ -1121,6 +1122,9 @@ class Editor(QWidget):
         # need_to_load_table = True
         for col_i, input_widget in enumerate(self.inputs):
             cell_contents = "" if not row_to_load else row_to_load[col_i]
+            # print(f">>>..>>{input_widget.objectName()}={cell_contents}")
+            # if not cell_contents and input_widget.objectName() in self.settings.validation.fields_to_fill:
+            #     cell_contents = self.settings.validation.fields_to_fill_info[input_widget.objectName()]
             self.load_record(input_widget, cell_contents)
             # input_widget.setStyleSheet(self.settings.styles["input_active"])
             self.update_input_styling(input_widget, "input_active")
@@ -1147,6 +1151,8 @@ class Editor(QWidget):
     def handle_new_record(self) -> None:
         self.current_row_index = -1
         # if self.settings.flavour["title"] == "order_form":
+        # for field_name in self.settings.validation.fields_to_clear:
+        #     input_widget = self.inputs[field_name]
         for field in self.settings.validation.fields_to_clear:
             input_widget = self.inputs[field.value]
             self.load_record(input_widget, "")
@@ -1158,6 +1164,9 @@ class Editor(QWidget):
     def load_record(self, input_widget: QWidget, value: Any, options=[]) -> None:
         # caller = inspect.stack()[1].function
         # print(f"++++++ [load rec] {input_widget.objectName()}: <{input_widget.__class__.__name__}> {value=}, {caller=}")
+        print(f">>>..>>{input_widget.objectName()}={value} ({self.settings.validation.fields_to_fill})")
+        if not value and input_widget.objectName() in self.settings.validation.fields_to_fill:
+            value = self.settings.validation.fields_to_fill_info[input_widget.objectName()]
         match input_widget:
             case QComboBox():
                 self.load_combo_box(input_widget, value)

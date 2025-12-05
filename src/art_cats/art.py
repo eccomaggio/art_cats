@@ -83,9 +83,10 @@ def main():
         COL.sale_dates,
         COL.sales_code,
     ]
-    settings.validation.fields_to_fill = [
-        [COL.sublib, "ARTBL"],
-    ]
+    settings.validation.fields_to_fill_info = {
+        COL.sublib.name : "ARTBL",
+    }
+    settings.validation.fields_to_fill = list(settings.validation.fields_to_fill_info.keys())
     settings.validation.required_fields = [
         COL.langs.name,
         COL.title.name,

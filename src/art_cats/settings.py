@@ -33,10 +33,10 @@ class Files:
 @dataclass
 class Validation:
     fields_to_clear = []
-    fields_to_fill = [
-        # E.G. [COL.sublib, "ARTBL"],
-        [],
-    ]
+    fields_to_fill_info = {
+        # [COL.sublib.name : "ARTBL",
+    }
+    fields_to_fill = []
     required_fields = []
     must_validate = []
     # validate_always = []

@@ -66,9 +66,7 @@ def main():
         COL.Bib_info,
         COL.Additional_info,
     ]
-    settings.validation.fields_to_fill = [
-        [],
-    ]
+    # settings.validation.fields_to_fill = {}
     settings.validation.required_fields = [
         COL.Subject_consultant.name,
         COL.Fund_code.name,
@@ -128,7 +126,7 @@ def main():
     ]
     # print(f"++++ ++++ ++++ {settings.combos.dict_by_follower=}")
 
-    settings.files.help_file = "help_order_form.html"
+    settings.files.help_file = "html/help_order_form.html"
     settings.files.output_dir = Path("your_order")
     settings.files.full_output_dir = (
         settings.files.module_dir / settings.files.output_dir
