@@ -88,59 +88,64 @@ class Cell:
         return f"<{f'@{self.brick_id}' if is_occupied else "##"}> 1 else " "}>"
 
 
-class BRICK(Enum):
-    ## format: row-column
-    oneone = Brick(1, 1)
-    onetwo = Brick(1, 2)
-    onethree = Brick(1, 3)
-    onefour = Brick(1, 4)
-    twoone = Brick(2, 1)
-    twotwo = Brick(2, 2)
-    twothree = Brick(2, 3)
-    twofour = Brick(2, 4)
-    twosix = Brick(2, 6)
-    threeone = Brick(3, 1)
-    threetwo = Brick(3, 2)
-    threethree = Brick(3, 3)
-    threefour = Brick(3, 4)
-    fourone = Brick(4, 1)
-    fourtwo = Brick(4, 2)
-    fourthree = Brick(4, 3)
-    fourfour = Brick(4, 4)
-    foursix = Brick(4, 6)
+# class BRICK(Enum):
+#     ## format: row-column
+#     oneone = Brick(1, 1)
+#     onetwo = Brick(1, 2)
+#     onethree = Brick(1, 3)
+#     onefour = Brick(1, 4)
+#     twoone = Brick(2, 1)
+#     twotwo = Brick(2, 2)
+#     twothree = Brick(2, 3)
+#     twofour = Brick(2, 4)
+#     twosix = Brick(2, 6)
+#     threeone = Brick(3, 1)
+#     threetwo = Brick(3, 2)
+#     threethree = Brick(3, 3)
+#     threefour = Brick(3, 4)
+#     fourone = Brick(4, 1)
+#     fourtwo = Brick(4, 2)
+#     fourthree = Brick(4, 3)
+#     fourfour = Brick(4, 4)
+#     foursix = Brick(4, 6)
 
 
-brick_lookup = {
-    "1:1": BRICK.oneone,
-    "1:2": BRICK.onetwo,
-    "1:3": BRICK.onethree,
-    "1:4": BRICK.onefour,
-    "2:1": BRICK.twoone,
-    "2:2": BRICK.twotwo,
-    "2:3": BRICK.twothree,
-    "2:4": BRICK.twofour,
-    "2:6": BRICK.twosix,
-    "3:1": BRICK.threeone,
-    "3:2": BRICK.threetwo,
-    "3:3": BRICK.threethree,
-    "3:4": BRICK.threefour,
-    "4:1": BRICK.fourone,
-    "4:2": BRICK.fourtwo,
-    "4:3": BRICK.fourthree,
-    "4:4": BRICK.fourfour,
-    "4:6": BRICK.foursix,
-}
+# brick_lookup = {
+#     "1:1": BRICK.oneone,
+#     "1:2": BRICK.onetwo,
+#     "1:3": BRICK.onethree,
+#     "1:4": BRICK.onefour,
+#     "2:1": BRICK.twoone,
+#     "2:2": BRICK.twotwo,
+#     "2:3": BRICK.twothree,
+#     "2:4": BRICK.twofour,
+#     "2:6": BRICK.twosix,
+#     "3:1": BRICK.threeone,
+#     "3:2": BRICK.threetwo,
+#     "3:3": BRICK.threethree,
+#     "3:4": BRICK.threefour,
+#     "4:1": BRICK.fourone,
+#     "4:2": BRICK.fourtwo,
+#     "4:3": BRICK.fourthree,
+#     "4:4": BRICK.fourfour,
+#     "4:6": BRICK.foursix,
+# }
 
 
-def select_brick_by_content_length(length: int) -> BRICK:
+# def select_brick_by_content_length(length: int) -> BRICK:
+def select_brick_by_content_length(length: int) -> Brick:
     if length < 50:
-        return BRICK.oneone
+        # return BRICK.oneone
+        return Brick(1, 1)
     elif length < 100:
-        return BRICK.onetwo
+        # return BRICK.onetwo
+        return Brick(1, 2)
     elif length < 400:
-        return BRICK.twotwo
+        # return BRICK.twotwo
+        return Brick(2, 2)
     else:
-        return BRICK.fourtwo
+        # return BRICK.fourtwo
+        return Brick(4, 2)
 
 
 class STATUS(Enum):
@@ -153,9 +158,8 @@ class Grid:
     def __init__(self, width: int = 6) -> None:
         self.grid_width = width
         self.current_row = 0
-        self.rows: list[list[int]] = (
-            []
-        )  ## each row is a list of brick ids OR -1 to indicate cell is unoccupied
+        ## each row is a list of brick ids OR -1 to indicate cell is unoccupied
+        self.rows: list[list[int]] = ([])
         self.add_a_row()
         ## dict[id: (start_row, start_col, Brick(height, width), title, name, widget-type)]
         self.widget_info: dict[int, tuple[int, int, Brick, str, str, str]] = {}
@@ -227,21 +231,23 @@ class Grid:
     def add_bricks_by_template(self, template: list) -> None:
         # print(f"add bricks by template: {template=}")
         last_brick = template[-1]
-        _, lb_brick_type, lb_start_row, _, _ = last_brick
-        lb_height = brick_lookup[lb_brick_type].value.height
+        _, (lb_height, lb_length), lb_start_row, _, _ = last_brick
+        # lb_height = brick_lookup[lb_brick_type].value.height
         max_row = lb_start_row + lb_height
         # print(f"@@@ {lb_height=}, {lb_start_row} -> {max_row=}")
         self.rows = [self.make_row() for _ in range(max_row)]
         for brick_id, (
             brick_enum,
-            brick_type,
+            # brick_type,
+            (brick_height, brick_length),
             start_row,
             start_col,
             widget_type,
         ) in enumerate(template):
             title = brick_enum.display_title
             name = brick_enum.name
-            brick = brick_lookup[brick_type].value
+            # brick = brick_lookup[brick_type].value
+            brick = Brick(brick_height, brick_length)
             self.place_brick_in_grid(brick, brick_id, start_row, start_col)
             self.widget_info[brick_id] = (
                 start_row,
@@ -251,6 +257,33 @@ class Grid:
                 name,
                 widget_type,
             )
+    # def add_bricks_by_template(self, template: list) -> None:
+    #     # print(f"add bricks by template: {template=}")
+    #     last_brick = template[-1]
+    #     _, lb_brick_type, lb_start_row, _, _ = last_brick
+    #     lb_height = brick_lookup[lb_brick_type].value.height
+    #     max_row = lb_start_row + lb_height
+    #     # print(f"@@@ {lb_height=}, {lb_start_row} -> {max_row=}")
+    #     self.rows = [self.make_row() for _ in range(max_row)]
+    #     for brick_id, (
+    #         brick_enum,
+    #         brick_type,
+    #         start_row,
+    #         start_col,
+    #         widget_type,
+    #     ) in enumerate(template):
+    #         title = brick_enum.display_title
+    #         name = brick_enum.name
+    #         brick = brick_lookup[brick_type].value
+    #         self.place_brick_in_grid(brick, brick_id, start_row, start_col)
+    #         self.widget_info[brick_id] = (
+    #             start_row,
+    #             start_col,
+    #             brick,
+    #             title,
+    #             name,
+    #             widget_type,
+    #         )
 
     def count_free_spaces_across(self, row, start_col):
         free_spaces = 0
@@ -1163,8 +1196,7 @@ class Editor(QWidget):
 
     def load_record(self, input_widget: QWidget, value: Any, options=[]) -> None:
         # caller = inspect.stack()[1].function
-        # print(f"++++++ [load rec] {input_widget.objectName()}: <{input_widget.__class__.__name__}> {value=}, {caller=}")
-        print(f">>>..>>{input_widget.objectName()}={value} ({self.settings.validation.fields_to_fill})")
+        # print(f"++++ load record: {input_widget.objectName()}={value} ({self.settings.validation.fields_to_fill})")
         if not value and input_widget.objectName() in self.settings.validation.fields_to_fill:
             value = self.settings.validation.fields_to_fill_info[input_widget.objectName()]
         match input_widget:
@@ -1603,8 +1635,9 @@ def setup_environment(settings: Default_settings, expected_col_count:int):
             headers = settings.headers
             max_lengths = create_max_lengths(rows)
             layout = [select_brick_by_content_length(length) for length in max_lengths]
-            for id, brick_enum in enumerate(layout):
-                brick = brick_enum.value
+            # for id, brick_enum in enumerate(layout):
+            #     brick = brick_enum.value
+            for id, brick in enumerate(layout):
                 grid.add_brick_algorithmically(id, brick, headers[id])
     else:
         print("creating new file")

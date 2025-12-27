@@ -114,10 +114,9 @@ def process_csv(path: Path, outpath: Path):
     # Determine number of columns based on maximum row length (conservative)
     max_cols = max(len(r) for r in rows)
     if max_cols != 28:
-        print(
-            f"No change: CSV has {max_cols} columns (expected 28). Writing a copy to: {outpath}"
-        )
-        shutil.copy2(path, outpath)
+        print( f"No change: CSV has {max_cols} columns (expected 28).")
+        # print( f"No change: CSV has {max_cols} columns (expected 28). Writing a copy to: {outpath}")
+        # shutil.copy2(path, outpath)
         return
 
     insert_at = INSERT_INDEX_ZERO_BASE
@@ -184,9 +183,9 @@ def process_excel(path: Path, outpath: Path):
 
     if max_cols != 28:
         print(
-            f"No change: Excel sheet has {max_cols} columns (expected 28). Saving copy to: {outpath}"
-        )
-        wb.save(str(outpath))
+            f"No change: Excel sheet has {max_cols} columns (expected 28).")
+        #print(" Saving copy to: {outpath}")
+        # wb.save(str(outpath))
         return
 
     insert_at_1_based = INSERT_INDEX_ZERO_BASE + 1
