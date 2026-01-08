@@ -11,7 +11,7 @@ from enum import Enum
 from pathlib import Path
 from .settings import Default_settings
 from . import form_gui
-from . import marc_21
+# from . import marc_21
 
 # logger = logging.getLogger(__name__)
 

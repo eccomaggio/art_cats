@@ -941,7 +941,8 @@ def build_005(record: Record) -> Result:
 def build_008(record: Record) -> Result:
     """place & year of pub & main language"""
     # blank = "\\"
-    blank = " "
+    # blank = " "
+    blank = ISBD["BLANK"]
     tag = 8
     t = record.timestamp
     date_entered_on_file = str(t.year)[2:] + str(t.month).zfill(2) + str(t.day).zfill(2)
@@ -1252,9 +1253,11 @@ def build_876(record: Record) -> Result:
 def build_904(record: Record) -> Result:
     """authority (boilerplate)"""
     tag = 904
+    i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
     content = [Subfield(value="Oxford Local Record", code="a")]
     result = Result(
-        Field(tag=seq_num(tag), indicators=Indicators("\\", "\\"), subfields=content),
+        # Field(tag=seq_num(tag), indicators=Indicators("\\", "\\"), subfields=content),
+        Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content),
         None,
     )
     return result
@@ -1476,8 +1479,11 @@ def build_880(
     looks like: =880  31$6246-01$a中國書畫、陶瓷及藝術品拍賣會
     """
     tag = 880
+    # blank = "\\"
+    blank = ISBD["BLANK"]
     record.sequence_number += 1
-    content = [Subfield(value=f"{str(caller):{"\\"}<3}-{sequence_number}", code="6")]
+    # content = [Subfield(value=f"{str(caller):{"\\"}<3}-{sequence_number}", code="6")]
+    content = [Subfield(value=f"{str(caller):{blank}<3}-{sequence_number}", code="6")]
     content.extend(title_subfield)
     field = Field(tag=str(tag), indicators=Indicators(i1, i2), subfields=content)
     record.links.append(field)
