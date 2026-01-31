@@ -63,7 +63,6 @@ from PySide6.QtGui import (
     QMouseEvent,
     QEnterEvent,
     QDesktopServices,
-    QFont,
 )
 
 # from art_cats import settings
@@ -1350,8 +1349,7 @@ class Editor(QWidget):
             self.data.headers,
             # self.excel_rows,
             records_to_export,
-            # self.COL.barcode.value,
-            self.COL.hol_notes.value,
+            self.COL.barcode.value,
             file_name_with_path,
             # self.settings,
             self.settings.create_excel_file,
@@ -1609,13 +1607,5 @@ def run(settings: Default_settings, COL):
     app = QApplication(sys.argv)
     # print(f"headers: {headers}")
     window = WindowWithRightTogglePanel(grid, rows, settings, COL, app)
-    if sys.platform == "darwin":
-        font = QFont("Menlo")
-    elif sys.platform.startswith("win"):
-        font = QFont("Consolas")
-    else:
-        font = QFont("DejaVu Sans Mono")
-    font.setStyleHint(QFont.StyleHint.Monospace)
-    app.setFont(font)
     window.show()
     sys.exit(app.exec())

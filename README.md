@@ -11,7 +11,16 @@
 
 To do:
 
-- make sure 'algorithmic display' still works for new csvs: create a "general" entry point which uses the algorithm to build gui
+- make sure 'algorithmic display' still works for new csvs: create a "general" entry point which uses the algorithm to build gui:
+
+EITHER
+select a file pattern
+OR
+open csv / xlsx file and establish number of cols; text of selected columns
+use this to identify file pattern
+
+apply pattern accordingly either to open the file or to create a new one
+
 
 DONE - allow blank records to be saved & then delete them (allows user to delete a record by clearing it)
 DONE - stop submit record alert appearing twice

@@ -3,7 +3,6 @@ Resources to build Marc 21 files and
 import from / export to csv / excel files
 """
 
-import enum
 import logging
 
 # from . import log_setup
@@ -83,7 +82,6 @@ class Record:
     pub_year_is_approx: bool
     extent_is_approx: bool
     timestamp: datetime
-    item_policy: str
 
     sequence_number: int
     links: list[Field | None]
@@ -737,8 +735,7 @@ def norm_illustrations(raw: str) -> bool:
     if isinstance(raw, bool):
         is_illustrated = raw
     else:
-        # is_illustrated = raw.strip() == "True"
-        is_illustrated = raw.strip().lower() == "true"
+        is_illustrated = raw.strip() == "True"
     return is_illustrated
 
 
@@ -766,15 +763,6 @@ def norm_isbn(raw_isbn: str, row_num: int) -> str:
         msg = f"Record {row_num + 1} has the non-standard isbn {raw_isbn}"
         logger.warning(msg)
     return isbn
-
-
-def get_item_policy_from_hol_notes(raw_note: str) -> tuple[str, str]:
-    ## TODO: if keeping, put trigger_string into settings
-    trigger_string = "**lib only**"
-    if raw_note.lower().startswith(trigger_string.lower()):
-        return (raw_note[len(trigger_string):], "Use_in_Library_Only")
-    else:
-        return (raw_note, "Fixed_Week_Loan")
 
 
 def norm_barcode(raw_barcode: str, row_num: int) -> str:
@@ -856,8 +844,7 @@ def parse_row(row: list[str], row_num: int, current_time: datetime) -> Record:
     note = next(cols)
     sale_code = next(cols)
     date_of_sale = create_date_list(next(cols))
-    # hol_notes = next(cols)
-    hol_notes, item_policy = get_item_policy_from_hol_notes(next(cols))
+    hol_notes = next(cols)
     donation = next(cols)
     barcode = norm_barcode(next(cols), row_num)
 
@@ -891,7 +878,6 @@ def parse_row(row: list[str], row_num: int, current_time: datetime) -> Record:
         pub_date_is_approx,
         extent_is_approx,
         current_time,
-        item_policy,
         sequence_number=1,
         links=[],
     )
@@ -1620,10 +1606,7 @@ def apply_marc_logic(record: Record) -> PyRecord:
     )
     pymarc_record = PyRecord()
     for builder, is_mandatory in fields_to_deploy:
-        build_output: Result = builder(record)
-        # returned_fields = check_if_mandatory(builder(record), is_mandatory)
-        returned_fields = check_if_mandatory(build_output, is_mandatory)
-        # print(f"apply logic: {build_output=},{returned_fields}")
+        returned_fields = check_if_mandatory(builder(record), is_mandatory)
         if returned_fields:
             if builder.__name__ == "build_leader":
                 # print(f">>>>>>>>>?>>>>>> {returned_fields[0].value()}")
@@ -1639,8 +1622,7 @@ def apply_marc_logic(record: Record) -> PyRecord:
 def save_as_marc_files(
     headers: list[str],
     excel_rows: list[list[str]],
-    # barcode_index: int,
-    hol_index: int,
+    barcode_index: int,
     file_name_with_path: Path,
     # settings,
     create_excel_file=True,
@@ -1651,56 +1633,26 @@ def save_as_marc_files(
     depending on settings, also creates an excel CHU file
     for once the marc files have been uploaded to ALMA
     """
-    # if create_chu_file:
-    #     # if settings.create_chu_file:
-    #     chu_file = file_name_with_path.with_suffix(".CHU.xlsx")
-    #     # io.write_CHU_file_1(excel_rows, chu_file, barcode_index)
-    #     chu_rows = [
-    #         [row[barcode_index], "", "", "", "Relocating to CSF", ""]
-    #         for row in excel_rows
-    #     ]
-    #     io.write_CHU_file(chu_rows, chu_file)
-
-    # if create_excel_file:
-    #     io.write_data_to_excel([headers, *excel_rows], file_name_with_path.with_suffix(".xlsx"))
-        # if settings.create_excel_file:
-    #     excel_file = file_name_with_path.with_suffix(".xlsx")
-    # io.write_data_to_excel([headers, *excel_rows], excel_file)
-
-    records = parse_rows_into_records(excel_rows)
     if create_chu_file:
-        write_chu_file(records, file_name_with_path)
-    if create_excel_file:
-        # excel_rows = add_policy_into_hol_notes(records, excel_rows, hol_index)
-        io.write_data_to_excel([headers, *excel_rows], file_name_with_path.with_suffix(".xlsx"))
-    # marc_records = build_marc_records(parse_rows_into_records(excel_rows))
-    marc_records = build_marc_records(records)
-    write_marc21_files(marc_records, Path(file_name_with_path))
+        # if settings.create_chu_file:
+        chu_file = file_name_with_path.with_suffix(".CHU.xlsx")
+        # io.write_CHU_file_1(excel_rows, chu_file, barcode_index)
+        chu_rows = [
+            [row[barcode_index], "", "", "", "Relocating to CSF", ""]
+            for row in excel_rows
+        ]
+        io.write_CHU_file(chu_rows, chu_file)
 
+    if create_excel_file:
+        # if settings.create_excel_file:
+        excel_file = file_name_with_path.with_suffix(".xlsx")
+    io.write_data_to_excel([headers, *excel_rows], excel_file)
+
+    marc_records = build_marc_records(parse_rows_into_records(excel_rows))
+    write_marc21_files(marc_records, Path(file_name_with_path))
     ## TODO: code for this value!
     file_operations_successful = True
     return file_operations_successful
-
-
-# def add_policy_into_hol_notes(records: list[Record], excel_rows: list[list[str]], hol_index: int) -> list[list[str]]:
-#     updated = []
-#     ## TODO: if keeping, take trigger_string from settings
-#     for i, row in enumerate(excel_rows):
-#         if records[i].item_policy.lower().startswith("use"):
-#             row[hol_index] = "**lib only**" + row[hol_index]
-#         updated.append(row)
-#     return updated
-
-
-def write_chu_file(marc_records: list[Record], file_name_with_path: Path) -> None:
-    # if settings.create_chu_file:
-    chu_file = file_name_with_path.with_suffix(".CHU.xlsx")
-    # io.write_CHU_file_1(excel_rows, chu_file, barcode_index)
-    chu_rows = [
-        [record.barcode, "", "", record.item_policy, "Relocating to CSF", ""]
-        for record in marc_records
-    ]
-    io.write_CHU_file(chu_rows, chu_file)
 
 
 def write_marc21_files(records: list[PyRecord], file_name_and_path: Path) -> None:

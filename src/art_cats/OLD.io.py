@@ -16,10 +16,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def get_base_filename(filepath: Path) -> str:
-    base = f"{filepath.stem}.new{filepath.suffix}"
-    print(f"{filepath.stem=}, {filepath.suffix=}")
-    return base
 
 def save_as_yaml(file: str, data) -> None:
     with open(file, mode="wt", encoding="utf-8") as f:
