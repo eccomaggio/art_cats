@@ -43,3 +43,20 @@ class Data:
 
 def gatekeeper(source: str) -> None:
     print(f"gatekeeping for {source=}")
+
+
+def analyse_new_file(headers, col_enum):
+    expected_col_count = len(col_enum)
+    file_resembles_expectations = len(headers) == expected_col_count
+    # print(f">>> >> > {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}")
+    return file_resembles_expectations
+
+
+def get_human_readable_record_number(current_row_index, number=-100):
+    if number == -100:
+        number = current_row_index
+    if number == -1:
+        out = "[new]"
+    else:
+        out = str(number + 1)
+    return out

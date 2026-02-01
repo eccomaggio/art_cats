@@ -3,6 +3,8 @@ Common resources
 """
 
 import logging
+
+# from dev.OLD_edit import COL
 # from re import I
 from . import log_setup
 
@@ -467,7 +469,6 @@ class Editor(QWidget):
         "checkbox": QCheckBox,
     }
 
-
     # def __init__(self, grid: Grid, excel_rows: list[list[str]], file_name: str, caller:WindowWithRightTogglePanel, settings:Settings, COL, app):
     def __init__(
         self,
@@ -723,7 +724,7 @@ class Editor(QWidget):
     def transform_into_yaml_lookup(self, object_name: str) -> str:
         ## transforms the objectName of the widget so that it matches the yaml file
         # name = combo_lookup[object_name]
-        # return name:w
+        # return name
         return object_name
 
     def get_combo_options_source(self, combo_box: QComboBox) -> str:
@@ -787,10 +788,22 @@ class Editor(QWidget):
             new_combo_options = [default_text, *raw_combo_options]
             if selected_item == default_text:
                 selected_item = ""
+            # print(f">>> 1: {selected_item=}, {type(selected_item)}")
+            # if isinstance(selected_item, bool):
+            #     selected_item = "True" if selected_item else "False"
+            # print(f">>> 2: {selected_item=}, {type(selected_item)}")
             if selected_item:
                 try:
-                    # index_in_list = new_combo_options.index(selected_item)
                     index = new_combo_options.index(selected_item)
+                    ## Case-insensitive index search for transitional data using True/TRUE
+                    # index = next(
+                    #     (
+                    #         i
+                    #         for i, x in enumerate(new_combo_options)
+                    #         if x.lower() == selected_item.lower()
+                    #     ),
+                    #     None,
+                    # )
                 except ValueError:
                     logger.warning(
                         f"The option *{selected_item}* is not an item in this combo box!"
@@ -818,35 +831,6 @@ class Editor(QWidget):
         self.caller.handle_internal_link(QUrl(f"#{link}"))
         # self.display.setText(link)
         # print(f"--- the link is: #{link}")
-
-    # @property
-    # def row_count(self) -> int:
-    #     return len(self.data.excel_rows)
-
-    # @property
-    # def column_count(self) -> int:
-    #     return len(self.data.excel_rows[0])
-
-    # @property
-    # def current_record_is_new(self) -> int:
-    #     return self.data.current_row_index == -1
-
-    # @property
-    # def record_count(self) -> int:
-    #     return len(self.data.excel_rows)
-
-    # @property
-    # def index_of_last_record(self) -> int:
-    #     return self.record_count - 1
-
-    # @property
-    # def current_row(self) -> list:
-    #     return self.data.excel_rows[self.data.current_row_index]
-
-    # @current_row.setter
-    # def current_row(self, row: list) -> None:
-    #     self.data.excel_rows[self.data.current_row_index] = row
-
 
 
     def handle_submit(self, optional_msg="") -> bool:
@@ -911,19 +895,16 @@ class Editor(QWidget):
         self.load_record_into_gui(self.data.current_row)
         return True
 
-
     def show_alert_box(self, msg:str) -> None:
         alert = QMessageBox()
         alert.setText(msg)
         alert.exec()
-
 
     def delete_record(self, index=-1) -> None:
         if index == -1:
             index = self.data.current_row_index
         del self.data.excel_rows[index]
         ## Choose record to display
-
 
     def get_content(self, widget: QWidget) -> str:
         content = ""
@@ -944,7 +925,6 @@ class Editor(QWidget):
                 msg = f"No reader set up for {widget}!"
                 logger.critical(msg)
         return content.strip()
-
 
     def handle_close(self) -> None:
         logic.gatekeeper("close")
@@ -987,7 +967,8 @@ class Editor(QWidget):
                 if self.data.current_row_index < self.data.index_of_last_record:
                     self.data.current_row_index += 1
         # msg = str(self.current_row)
-        msg = self.get_human_readable_record_number()
+        # msg = self.get_human_readable_record_number()
+        msg = logic.get_human_readable_record_number(self.data.current_row_index)
         msg += self.update_nav_buttons()
         self.update_title_with_record_number(msg)
         # self.load_record_into_gui(self.excel_rows[self.current_row_index])
@@ -1008,7 +989,8 @@ class Editor(QWidget):
             logger.warning("Can't access salecode or pubdate fields...")
 
     def update_title_with_record_number(self, prefix="Record no. ") -> None:
-        text = f"{self.get_human_readable_record_number()} of {self.data.record_count}"
+        # text = f"{self.get_human_readable_record_number()} of {self.data.record_count}"
+        text = f"{logic.get_human_readable_record_number(self.data.current_row_index)} of {self.data.record_count}"
         # status = " **locked**" if self.record_is_locked else " (editable)"
         if self.settings.locking_is_enabled:
             if self.data.record_is_locked:
@@ -1046,7 +1028,6 @@ class Editor(QWidget):
                 case QCheckBox():
                     input.checkStateChanged.connect(self.handle_text_change)
 
-
     def handle_text_change(self) -> None:
         # print(f"Text changed...{datetime.datetime.now()}")
         sender:QObject = self.sender()
@@ -1064,7 +1045,6 @@ class Editor(QWidget):
                 logger.warning("Huston, we have a problem with text input...")
         self.update_input_styling(sender, style)
         self.data.all_text_is_saved = False
-
 
     def update_input_styling(self, widget: QObject, style_name: str) -> None:
         style = getattr(self.settings.styles, style_name)
@@ -1087,7 +1067,6 @@ class Editor(QWidget):
                 pass
             case _ :
                 logger.warning("Huston, we have a problem with input styling")
-
 
     def load_record_into_gui(self, row_to_load: list | None = None) -> None:
         """
@@ -1116,16 +1095,14 @@ class Editor(QWidget):
         # print(f">>>>>{mode=}, {row_to_load=} {self.has_records=}, {self.headers}")
         self.data.all_text_is_saved = True
 
-
     def clear_form(self) -> None:
-        logic.gatekeeper(f"clear")
+        logic.gatekeeper("clear")
         if not self.data.current_record_is_new and self.abort_on_clearing_existing_record(
             self
         ):
             return
         self.load_record_into_gui()
         # self.toggle_record_editable("edit")
-
 
     def handle_new_record(self) -> None:
         logic.gatekeeper("new")
@@ -1139,7 +1116,6 @@ class Editor(QWidget):
         self.data.all_text_is_saved = True
         self.toggle_record_editable("edit")
         self.update_title_with_record_number()
-
 
     def load_record(self, input_widget: QWidget, value: Any, options=[]) -> None:
         # caller = inspect.stack()[1].function
@@ -1160,7 +1136,6 @@ class Editor(QWidget):
             #     self.load_table(input_widget, value)
             case _ :
                 logger.warning(f"!!!! Problem: current widget ({type(input_widget)})")
-
 
     def load_checkbox(self, widget: QCheckBox, value="") -> None:
         if value == "True" or value == True:
@@ -1322,14 +1297,14 @@ class Editor(QWidget):
             self.next_btn.setEnabled(True)
         return msg
 
-    def get_human_readable_record_number(self, number=-100):
-        if number == -100:
-            number = self.data.current_row_index
-        if number == -1:
-            out = "[new]"
-        else:
-            out = str(number + 1)
-        return out
+    # def get_human_readable_record_number(self, number=-100):
+    #     if number == -100:
+    #         number = self.data.current_row_index
+    #     if number == -1:
+    #         out = "[new]"
+    #     else:
+    #         out = str(number + 1)
+    #     return out
 
     def save_as_csv(self, file_name: Path) -> None:
         # def save_as_csv(self, file_name="") -> None:
@@ -1366,7 +1341,6 @@ class Editor(QWidget):
         msg_box.setText(msg)
         msg_box.exec()
 
-
     def remove_dummy_records(self, records:list[list[str]]) -> list:
         target_col_name = self.settings.validation.validation_skip_fieldname
         if not target_col_name:
@@ -1386,7 +1360,6 @@ class Editor(QWidget):
             logging.info(f"{number_of_records_removed} dummy records were removed from the export to Marc 21 format.")
         return list_without_dummies
 
-
     def choose_to_save_on_barcode(self) -> None:
         # print("unsaved text alert...", s)
         dialogue = DialogueOkCancel(
@@ -1396,7 +1369,6 @@ class Editor(QWidget):
         if dialogue.exec() == 1:
             self.handle_submit()
 
-
     def choose_to_abort_on_unsaved_text(self) -> int:
         # print("unsaved text alert...", s)
         dialogue = DialogueOkCancel(
@@ -1404,7 +1376,6 @@ class Editor(QWidget):
             "There is unsaved text in this record. Are you OK to contine and lose this text?",
         )
         return dialogue.exec() != 1
-
 
     def abort_on_clearing_existing_record(self, s) -> int:
         # print("unsaved text alert...", s)
@@ -1414,7 +1385,6 @@ class Editor(QWidget):
             # "This wipes the existing record when you save it. Are you OK to contine and lose this text?",
         )
         return dialogue.exec() != 1
-
 
     def handle_file_dialog(self):
         """Opens the native file selection dialog and processes the result."""
@@ -1438,7 +1408,8 @@ class Editor(QWidget):
             tmp_headers, tmp_excel_rows = io.parse_file_into_rows(
                 Path(file_path), self.settings.first_row_is_header
             )
-            if self.analyse_new_file(tmp_headers):
+            # if self.analyse_new_file(tmp_headers):
+            if logic.analyse_new_file(tmp_headers, self.COL):
                 self.data.headers = tmp_headers
                 self.data.excel_rows = tmp_excel_rows
                 self.settings.files.in_file = file_path.name
@@ -1470,13 +1441,11 @@ class Editor(QWidget):
             print("File selection cancelled.")
             logger.warning("File selection cancelled.")
 
-
-    def analyse_new_file(self, headers):
-        expected_col_count = len(self.COL)
-        file_resembles_expectations = len(headers) == expected_col_count
-        # print(f">>> >> > {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}")
-        return file_resembles_expectations
-
+    # def analyse_new_file(self, headers):
+    #     expected_col_count = len(self.COL)
+    #     file_resembles_expectations = len(headers) == expected_col_count
+    #     # print(f">>> >> > {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}")
+    #     return file_resembles_expectations
 
     # def update_csv_fields(
     #     self, headers: list[str], rows: list[list[str]]
@@ -1609,13 +1578,13 @@ def run(settings: Default_settings, COL):
     app = QApplication(sys.argv)
     # print(f"headers: {headers}")
     window = WindowWithRightTogglePanel(grid, rows, settings, COL, app)
-    if sys.platform == "darwin":
-        font = QFont("Menlo")
-    elif sys.platform.startswith("win"):
-        font = QFont("Consolas")
-    else:
-        font = QFont("DejaVu Sans Mono")
-    font.setStyleHint(QFont.StyleHint.Monospace)
-    app.setFont(font)
+    # if sys.platform == "darwin":
+    #     font = QFont("Menlo")
+    # elif sys.platform.startswith("win"):
+    #     font = QFont("Consolas")
+    # else:
+    #     font = QFont("DejaVu Sans Mono")
+    # font.setStyleHint(QFont.StyleHint.Monospace)
+    # app.setFont(font)
     window.show()
     sys.exit(app.exec())

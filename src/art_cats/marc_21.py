@@ -69,7 +69,8 @@ class Record:
     copyright: str
     extent: str
     size: int
-    is_illustrated: bool
+    # is_illustrated: bool
+    is_illustrated: str
     series_title: str
     series_enum: str
     volume: str
@@ -733,13 +734,13 @@ def norm_size(raw: str) -> int:
     return clean_value
 
 
-def norm_illustrations(raw: str) -> bool:
-    if isinstance(raw, bool):
-        is_illustrated = raw
-    else:
-        # is_illustrated = raw.strip() == "True"
-        is_illustrated = raw.strip().lower() == "true"
-    return is_illustrated
+# def norm_illustrations(raw: str) -> bool:
+#     if isinstance(raw, bool):
+#         is_illustrated = raw
+#     else:
+#         # is_illustrated = raw.strip() == "True"
+#         is_illustrated = raw.strip().lower() == "true"
+#     return is_illustrated
 
 
 def norm_pages(pages_raw: str) -> tuple[str, bool]:
@@ -821,7 +822,7 @@ def create_date_list(dates_raw: str) -> list[str]:
 def parse_rows_into_records(sheet: list[worksheet_row]) -> list[Record]:
     current_time = datetime.now()
     records = []
-    logger.info(f"\n\n++++ Validating records")
+    logger.info("\n\n++++ Validating records")
     for row_num, row in enumerate(sheet):
         record = parse_row(row, row_num, current_time)
         records.append(record)
@@ -849,7 +850,8 @@ def parse_row(row: list[str], row_num: int, current_time: datetime) -> Record:
     copyright_ = norm_copyright(next(cols))
     extent, extent_is_approx = norm_pages(next(cols))
     size = norm_size(next(cols))
-    is_illustrated = norm_illustrations(next(cols))
+    # is_illustrated = norm_illustrations(next(cols))
+    is_illustrated = next(cols)
     series_title = next(cols)
     series_enum = next(cols)
     volume = next(cols)
@@ -970,7 +972,8 @@ def build_008(record: Record) -> Result:
     place_of_pub = f"{region:{blank}<3}"
 
     # books_configuration = [14*"|", " ", 2*"|"]
-    illustrations = "|a||" if record.is_illustrated else "||||"  ## pos 18-21
+    # illustrations = "|a||" if record.is_illustrated else "||||"  ## pos 18-21
+    illustrations = "||||" if record.is_illustrated.lower() == "none" else "|a||"  ## pos 18-21
     target_audience = "|"  ## 22
     form_of_item = "|"  ## 23
     nature_of_contents = "||||"  ## 24-27
@@ -1177,7 +1180,8 @@ def build_300(record: Record) -> Result:
     # size = Subfield(value=f"{ISBD[":"]}{record.size} cm", code="c")
     punctuation = ISBD["."] if record.series_title else ""
     size = Subfield(value=f"{record.size} cm{punctuation}", code="c")
-    if record.is_illustrated:
+    # if record.is_illustrated:
+    if record.is_illustrated.lower() != "none":
         pages = Subfield(value=pages_content + ISBD[":"], code="a")
         illustrations = Subfield(value=f"illustrations{ISBD[";"]}", code="b")
         content = [pages, illustrations, size]
@@ -1194,6 +1198,7 @@ def build_336(record: Record) -> Result:
     """content type (boilerplate)"""
     tag = 336
     i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
+
     text_content = [
         Subfield(value="text", code="a"),
         Subfield(value="rdacontent", code="2"),
@@ -1201,7 +1206,10 @@ def build_336(record: Record) -> Result:
     text_field = Field(
         tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=text_content
     )
-    if record.is_illustrated:
+
+    # if record.is_illustrated:
+    print(f">>>>> {record.is_illustrated.lower()=}, {record.is_illustrated.lower() == "full"}")
+    if record.is_illustrated.lower() == "full":
         illus_content = [
             Subfield(value="still image", code="a"),
             Subfield(value="rdacontent", code="2"),
@@ -1210,6 +1218,7 @@ def build_336(record: Record) -> Result:
             tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=illus_content
         )
         result = Result([text_field, illus_field], None)
+
     else:
         result = Result(text_field, None)
     # content = [Subfield(value = content_type, code="a"), Subfield(value="rdacontent", code="2")]

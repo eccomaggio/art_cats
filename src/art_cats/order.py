@@ -66,6 +66,7 @@ def main():
         COL.Bib_info,
         COL.Additional_info,
     ]
+
     # settings.validation.fields_to_fill = {}
     settings.validation.required_fields = [
         COL.Subject_consultant.name,
@@ -77,6 +78,7 @@ def main():
         COL.Item_policy.name,
         COL.Bib_info.name,
     ]
+
     # settings.validation.validate_always = []
     # settings.validation.validate_if_present = [
     settings.validation.must_validate = [
@@ -84,6 +86,7 @@ def main():
         COL.Hold_for.name,
         COL.Notify.name,
     ]
+
     settings.validation.validation_skip_fieldname = COL.Additional_info.name
 
     settings.combos.independents = [
@@ -95,22 +98,19 @@ def main():
         COL.Reporting_code_2.name,
         COL.Reporting_code_3.name,
     ]
+
     settings.combos.leaders = [COL.Subject_consultant.name, COL.Library.name]
+
     settings.combos.followers = [COL.Fund_code.name, COL.Location.name]
-    # settings.combos.dict_by_follower = {
-    #     key: value
-    #     for key, value in list(zip(settings.combos.followers, settings.combos.leaders))
-    # }
-    # settings.combos.dict_by_leader = {
-    #     key: value
-    #     for key, value in list(zip(settings.combos.leaders, settings.combos.followers))
-    # }
+
     settings.combos.dict_by_follower = dict(
         list(zip(settings.combos.followers, settings.combos.leaders))
     )
+
     settings.combos.dict_by_leader = dict(
         list(zip(settings.combos.leaders, settings.combos.followers))
     )
+
     settings.default_template = [
         ## non-algorithmic version needs to be: [title, brick-type, start-row, start-col, widget-type=line/area/drop]
         (COL.Subject_consultant, (1, 2), 0, 0, "combo"),
@@ -130,32 +130,13 @@ def main():
         (COL.Notify, (1, 2), 9, 0, "line"),
         (COL.Additional_info, (2, 4), 8, 2, "text"),
     ]
-    # settings.default_template = [
-    #     ## non-algorithmic version needs to be: [title, brick-type, start-row, start-col, widget-type=line/area/drop]
-    #     (COL.Subject_consultant, "1:2", 0, 0, "combo"),
-    #     (COL.Fund_code, "1:2", 1, 0, "combo"),
-    #     (COL.Order_type, "1:2", 2, 0, "combo"),
-    #     (COL.Bib_info, "2:6", 3, 0, "text"),
-    #     (COL.Creator, "1:2", 7, 0, "line"),
-    #     (COL.Date, "1:2", 7, 2, "line"),
-    #     (COL.Isbn, "1:2", 7, 4, "line"),
-    #     (COL.Library, "1:2", 0, 2, "combo"),
-    #     (COL.Location, "1:2", 1, 2, "combo"),
-    #     (COL.Item_policy, "1:2", 2, 2, "combo"),
-    #     (COL.Reporting_code_1, "1:2", 0, 4, "combo"),
-    #     (COL.Reporting_code_2, "1:2", 1, 4, "combo"),
-    #     (COL.Reporting_code_3, "1:2", 2, 4, "combo"),
-    #     (COL.Hold_for, "1:2", 8, 0, "line"),
-    #     (COL.Notify, "1:2", 9, 0, "line"),
-    #     (COL.Additional_info, "2:4", 8, 2, "text"),
-    # ]
-    # print(f"++++ ++++ ++++ {settings.combos.dict_by_follower=}")
 
     settings.files.help_file = "html/help_order_form.html"
     settings.files.output_dir = Path("your_order")
     settings.files.full_output_dir = (
         settings.files.module_dir / settings.files.output_dir
     )
+
     if settings.create_output_dir:
         settings.files.full_output_dir.mkdir(exist_ok=True)
 
@@ -163,6 +144,7 @@ def main():
         # settings.files.full_output_dir / f"logger.{settings.timestamp}.log"
         settings.files.full_output_dir / "logger.log"
     )
+
     log_setup.setup_app_logging(log_file_path=CUSTOM_LOG_FILE)
     form_gui.run(settings, COL)
 
