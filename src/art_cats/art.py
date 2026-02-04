@@ -77,7 +77,7 @@ def main():
 
     settings.validation.fields_to_clear = [
         COL.barcode,
-        COL.hol_notes,
+        # COL.hol_notes,  # temporarily contains 'item policy'
         COL.extent,
         COL.pub_year,
         COL.sale_dates,
@@ -87,7 +87,7 @@ def main():
     ]
 
     settings.validation.fields_to_fill_info = {
-        COL.sublib.name : "ARTBL",
+        # COL.sublib.name : "ARTBL",
     }
 
     settings.validation.fields_to_fill = list(settings.validation.fields_to_fill_info.keys())
@@ -102,6 +102,7 @@ def main():
         COL.extent.name,
         COL.size.name,
         COL.barcode.name,
+        COL.is_illustrated,
     ]
 
     settings.combos.independents = [
@@ -117,7 +118,8 @@ def main():
     settings.default_template = [
         ## non-algorithmic version needs to be: [title, (brick height, brick length), start-row, start-col]
         ## needs to be in same order as COL specification
-        (COL.sublib, (1,2), 0, 0, "line"),
+        # (COL.sublib, (1,2), 0, 0, "line"),
+        (COL.sublib, (1,2), 0, 0, "combo"),
         (COL.langs, (1,2), 0, 2, "line"),
         (COL.isbn, (1,2), 0, 4, "line"),
         (COL.title, (2,3), 1, 0, "text"),

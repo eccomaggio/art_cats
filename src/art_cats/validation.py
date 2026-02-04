@@ -6,7 +6,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def validate(record_as_dict: dict[str, str], settings:Default_settings, optional_msg="") -> tuple[list[str], str]:
+def validate(
+        record_as_dict: dict[str, str],
+        settings:Default_settings,
+        is_dummy,
+        optional_msg=""
+        ) -> tuple[list[str], str]:
     ## TODO: check out optional_msg
     ## TODO: tweak rules to fit art cats
     """
@@ -20,61 +25,61 @@ def validate(record_as_dict: dict[str, str], settings:Default_settings, optional
         None | tuple[list[str], str]: if empty, everything validated; otherwise return a list of the problematic field names and an error message containing the details
     """
     msg = ""
-    missing = []
-    invalid = []
     problem_items = []
-    errors = []
-    rules = settings.validation
-    for name, content in record_as_dict.items():
-        if is_a_dummy_record(name, content, rules):
-            # return None
-            continue
-        if name in rules.required_fields and not content:
-            missing.append(name)
-            problem_items.append(name)
-            continue
-        if name in rules.must_validate:
-            test = tests_by_name.get(name, None)
-            if test:
-                error_msg = test(name, content)
-                if error_msg:
-                    invalid.append(f"{name}: {error_msg}")
-                    problem_items.append(name)
-    if settings.title == "art_catalogue":
-        country = record_as_dict["country_name"]
-        state = record_as_dict["state"]
-        place = record_as_dict["place"]
-        country_code = marc_21.get_country_code(country, state, place)
-        print(f">>> {country}->{country_code}")
-        if country and not country_code:
-            invalid.append(f"country of publication is not recognized.")
-            problem_items.append(country)
-        # elif country_code in marc_21.code_can_be_expanded:
-        #     ## But this will disallow entry if you don't know the state
-        #     invalid.append(f"{country} should be expanded if possible with a state.")
-    if missing:
-        count = len(missing)
-        add_s = "s" if count > 1 else ""
-        errors.append(
-            f"The following {count} field{add_s} are missing: {', '.join(missing)}"
-        )
-    if invalid:
-        count = len(invalid)
-        add_s = "s" if count > 1 else ""
-        errors.append(
-            f"Please correct the {count} following problem{add_s}: {'; '.join(invalid)}"
-        )
-    if errors:
-        msg = "\n".join(errors)
 
-    # msg = "\n".join(errors)
-    # if msg:
-    #     return (problem_items, msg)
-    # return ()
+    if not is_dummy:
+        missing = []
+        invalid = []
+        errors = []
+        rules = settings.validation
+        for name, content in record_as_dict.items():
+            # if is_a_dummy_record(name, content, rules):
+            #     continue
+            if name in rules.required_fields and not content:
+                missing.append(name)
+                problem_items.append(name)
+                continue
+            if name in rules.must_validate:
+                test = tests_by_name.get(name, None)
+                if test:
+                    error_msg = test(name, content)
+                    if error_msg:
+                        invalid.append(f"{name}: {error_msg}")
+                        problem_items.append(name)
+        if settings.title == "art_catalogue":
+            country = record_as_dict["country_name"]
+            state = record_as_dict["state"]
+            place = record_as_dict["place"]
+            country_code = marc_21.get_country_code(country, state, place)
+            print(f">>> {country}->{country_code}")
+            if country and not country_code:
+                invalid.append(f"country of publication ({country}) is not recognized.")
+                problem_items.append(country)
+            # elif country_code in marc_21.code_can_be_expanded:
+            #     ## But this will disallow entry if you don't know the state
+            #     invalid.append(f"{country} should be expanded if possible with a state.")
+        if missing:
+            count = len(missing)
+            add_s = "s" if count > 1 else ""
+            errors.append(
+                f"The following {count} field{add_s} are missing: {', '.join(missing)}"
+            )
+        if invalid:
+            count = len(invalid)
+            add_s = "s" if count > 1 else ""
+            errors.append(
+                f"Please correct the {count} following problem{add_s}: {'; '.join(invalid)}"
+            )
+        if errors:
+            msg = "\n".join(errors)
+
     return (problem_items, msg)
 
 
 def is_a_dummy_record(name:str, content:str, rules) -> bool:
+    """
+    NB must inject 'rules' as this file only has access to default settings
+    """
     if (
         name == rules.validation_skip_fieldname
         and
@@ -86,15 +91,15 @@ def is_a_dummy_record(name:str, content:str, rules) -> bool:
         return False
 
 
-def is_a_dummy_record_by_index(index:int, content:str, target_index:int, target_content:str) -> bool:
+def is_a_dummy_record_by_index(index:int, content:str, target_index:int, dummy_content_marker:str) -> bool:
     # if index == target_index and content.lower().startswith(target_content.lower()):
-    if index == target_index and is_dummy_content(content, target_content):
+    if index == target_index and is_dummy_content(content, dummy_content_marker):
         return True
     else:
         return False
 
-def is_dummy_content(content:str, target_content:str) -> bool:
-    if content.lower().startswith(target_content.lower()):
+def is_dummy_content(content:str, dummy_content_marker:str) -> bool:
+    if content.lower().startswith(dummy_content_marker.lower()):
         return True
     else:
         return False

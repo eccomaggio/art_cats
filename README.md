@@ -11,7 +11,13 @@
 
 To do:
 
-- make sure 'algorithmic display' still works for new csvs: create a "general" entry point which uses the algorithm to build gui:
+- make sure 'algorithmic display' still works for new csvs: create a "general" entry point which uses the algorithm to build gui
+
+- allow record that is totally empty to be deleted (i.e. sum of all cols = "")
+- save when leaving barcode field should only work when the record is unlocked
+- illustrations should carry over when new record is created
+- illustrations should default to 'none'?
+- move logic out of form_gui.py into logic.py (so can easily switch GUIs)
 
 EITHER
 select a file pattern

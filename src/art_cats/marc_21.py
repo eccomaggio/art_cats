@@ -1208,7 +1208,7 @@ def build_336(record: Record) -> Result:
     )
 
     # if record.is_illustrated:
-    print(f">>>>> {record.is_illustrated.lower()=}, {record.is_illustrated.lower() == "full"}")
+    # print(f">>>>> {record.is_illustrated.lower()=}, {record.is_illustrated.lower() == "full"}")
     if record.is_illustrated.lower() == "full":
         illus_content = [
             Subfield(value="still image", code="a"),

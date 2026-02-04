@@ -2,3 +2,6 @@ is_illustrated:
 - None
 - Partial
 - Full
+sublib:
+- ARTBL
+- TAYBL

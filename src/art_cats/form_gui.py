@@ -624,8 +624,8 @@ class Editor(QWidget):
         self.next_btn = QPushButton(">")
         self.next_btn.clicked.connect(self.go_to_next_record)
         self.clear_btn = QPushButton("Clear")
-        self.clear_btn.setStyleSheet("color: red;")
-        self.clear_btn.clicked.connect(self.clear_form)
+        # self.clear_btn.setStyleSheet("color: red;")
+        self.clear_btn.clicked.connect(self.handle_clear_form)
         self.new_btn = QPushButton("New")
         self.new_btn.clicked.connect(self.handle_new_record)
         # self.save_btn = QPushButton("Save")
@@ -838,23 +838,20 @@ class Editor(QWidget):
         Gather data from form & save it to file
         """
         logic.gatekeeper("submit")
-        record_as_dict = {}
-        is_empty = True
-        is_dummy = False
-        for input in self.inputs:
-            name = input.objectName()
-            value = self.get_content(input)
-            record_as_dict[name] = value
-            if value and not isinstance(input, QCheckBox):
-                is_empty = False
-            if validation.is_a_dummy_record(name, value, self.settings.validation):
-                is_dummy = True
-        # print(f">>>>>>>>>>> {is_dummy=}, {is_empty=}\n{record_as_dict}")
 
-        if is_dummy:
-            problem_items = []
-        else:
-            problem_items, msg = validation.validate(record_as_dict, self.settings, optional_msg)
+        record_as_dict, is_empty, is_dummy = self.scan_all_inputs()
+        problem_items, msg = validation.validate(
+            record_as_dict,
+            self.settings,
+            is_dummy,
+            optional_msg
+            )
+
+        # if is_dummy:
+        #     problem_items = []
+        # else:
+        #     problem_items, msg = validation.validate(record_as_dict, self.settings, optional_msg)
+        print(f"SUBMIT: {is_empty=}")
 
         if is_empty:
             if self.data.current_record_is_new:
@@ -895,16 +892,37 @@ class Editor(QWidget):
         self.load_record_into_gui(self.data.current_row)
         return True
 
+
+    def scan_all_inputs(self) -> tuple[dict, bool, bool]:
+        record_as_dict = {}
+        is_empty = True
+        is_dummy = False
+        for input in self.inputs:
+            name = input.objectName()
+            value = self.get_content(input)
+            record_as_dict[name] = value
+            if value and not isinstance(input, QCheckBox):
+                is_empty = False
+            if validation.is_a_dummy_record(name, value, self.settings.validation):
+                is_dummy = True
+        # print(f">>>>>>>>>>> {is_dummy=}, {is_empty=}\n{record_as_dict}")
+        return (record_as_dict, is_empty, is_dummy)
+
+
     def show_alert_box(self, msg:str) -> None:
         alert = QMessageBox()
         alert.setText(msg)
         alert.exec()
 
+
     def delete_record(self, index=-1) -> None:
         if index == -1:
             index = self.data.current_row_index
         del self.data.excel_rows[index]
-        ## Choose record to display
+        print(f"????? {index=}")
+        if self.data.record_count:
+            self.load_record_into_gui(self.data.excel_rows[index])
+
 
     def get_content(self, widget: QWidget) -> str:
         content = ""
@@ -1095,7 +1113,7 @@ class Editor(QWidget):
         # print(f">>>>>{mode=}, {row_to_load=} {self.has_records=}, {self.headers}")
         self.data.all_text_is_saved = True
 
-    def clear_form(self) -> None:
+    def handle_clear_form(self) -> None:
         logic.gatekeeper("clear")
         if not self.data.current_record_is_new and self.abort_on_clearing_existing_record(
             self
@@ -1259,15 +1277,11 @@ class Editor(QWidget):
                     input.setReadOnly(status.locked_status)
                 case _ :
                     logger.warning("Widget type {input} isn't fully supported.")
-            # if isinstance(input, QCheckBox) or isinstance(input, QComboBox):
-            #     input.setEnabled(not status.locked_status)
-            # elif isinstance(input, QLineEdit) or isinstance(input, QTextEdit):
-            #     input.setStyleSheet(status.input_style)
-            #     input.setReadOnly(status.locked_status)
-            # else:
-            #     logger.warning("Widget type {input} isn't fully supported.")
         self.unlock_btn.setText(status.btn_text)
         self.submit_btn.setEnabled(not status.locked_status)
+        self.clear_btn.setEnabled(not status.locked_status)
+        button_text_override = "" if status.locked_status else "color: red;"
+        self.clear_btn.setStyleSheet(button_text_override)
         self.update_title_with_record_number()
 
     def update_nav_buttons(self) -> str:
@@ -1361,7 +1375,9 @@ class Editor(QWidget):
         return list_without_dummies
 
     def choose_to_save_on_barcode(self) -> None:
-        # print("unsaved text alert...", s)
+        # print(f"unsaved text alert...{self.data.record_is_locked=}")
+        if self.data.record_is_locked:
+            return
         dialogue = DialogueOkCancel(
             self,
             "Are you sure you want to save this record?",
@@ -1381,7 +1397,8 @@ class Editor(QWidget):
         # print("unsaved text alert...", s)
         dialogue = DialogueOkCancel(
             self,
-            "If you save this record now, it will be deleted. If you simply navigate away or close the app, the record will remain as it was before you cleared the form.",
+            # "If you save this record now, it will be deleted. If you simply navigate away or close the app, the record will remain as it was before you cleared the form.",
+            "If you clear this record and save it, it will be deleted. If you navigate away without saving, the record will not be cleared.",
             # "This wipes the existing record when you save it. Are you OK to contine and lose this text?",
         )
         return dialogue.exec() != 1
