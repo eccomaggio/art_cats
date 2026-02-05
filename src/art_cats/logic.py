@@ -42,6 +42,43 @@ class Data:
 
 
 def gatekeeper(source: str) -> None:
+    """
+    logic for gatekeepers:
+
+    submit:
+            check if dummy
+            check if empty record
+            check if empty file
+
+            check for incomplete (validate)
+
+    close:
+            check for unsaved —> confirm
+            check for incomplete (validate)
+
+    update_current_position: (jump)
+            check for unsaved —> confirm
+            check for incomplete (validate)
+
+    handle_clear_form: (clear)
+            confirm action
+
+    handle_create_new_record: (new)
+            check for unsaved —> confirm
+            check for incomplete (validate)
+
+    handle_unlock: (lock)
+            if about to lock:
+                    check for unsaved —> confirm
+                    check for incomplete (validate)
+
+    handle_marc_files: (marc)
+            check for unsaved —> confirm
+            check for incomplete (validate)
+
+    handle_create_new_file: (discard)
+            check for unsaved —> confirm
+    """
     print(f"gatekeeping for {source=}")
 
 

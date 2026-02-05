@@ -613,7 +613,7 @@ class Editor(QWidget):
         self.help_btn.clicked.connect(caller.toggle_help_panel)
         # self.help_btn.clicked.connect(self.window.toggle_help_panel)
         self.load_file_btn = QPushButton("Load file")
-        self.load_file_btn.clicked.connect(self.handle_file_dialog)
+        self.load_file_btn.clicked.connect(self.handle_open_new_file)
 
         self.first_btn = QPushButton("First")
         self.first_btn.clicked.connect(self.go_to_first_record)
@@ -627,7 +627,7 @@ class Editor(QWidget):
         # self.clear_btn.setStyleSheet("color: red;")
         self.clear_btn.clicked.connect(self.handle_clear_form)
         self.new_btn = QPushButton("New")
-        self.new_btn.clicked.connect(self.handle_new_record)
+        self.new_btn.clicked.connect(self.handle_create_new_record)
         # self.save_btn = QPushButton("Save")
         # self.save_btn.clicked.connect(self.save_as_csv)
         # self.save_btn.setEnabled(False)
@@ -839,19 +839,17 @@ class Editor(QWidget):
         """
         logic.gatekeeper("submit")
 
-        record_as_dict, is_empty, is_dummy = self.scan_all_inputs()
+        (record_as_dict,
+         is_empty,
+         is_dummy
+         ) = self.scan_all_inputs()
+
         problem_items, msg = validation.validate(
             record_as_dict,
             self.settings,
             is_dummy,
             optional_msg
             )
-
-        # if is_dummy:
-        #     problem_items = []
-        # else:
-        #     problem_items, msg = validation.validate(record_as_dict, self.settings, optional_msg)
-        print(f"SUBMIT: {is_empty=}")
 
         if is_empty:
             if self.data.current_record_is_new:
@@ -965,7 +963,7 @@ class Editor(QWidget):
         self.update_current_position("exact", record_number)
 
     def update_current_position(self, direction, record_number=-1) -> None:
-        logic.gatekeeper(f"nav_{direction}")
+        logic.gatekeeper("jump")
         # print(f">>>{self.record_count=}, {self.current_row_index=}, {self.current_record_is_new=}, {self.has_records=} {self.all_text_is_saved=}")
         if not self.data.all_text_is_saved and self.choose_to_abort_on_unsaved_text():
             return
@@ -1122,7 +1120,7 @@ class Editor(QWidget):
         self.load_record_into_gui()
         # self.toggle_record_editable("edit")
 
-    def handle_new_record(self) -> None:
+    def handle_create_new_record(self) -> None:
         logic.gatekeeper("new")
         self.data.current_row_index = -1
         # if self.settings.flavour["title"] == "order_form":
@@ -1234,11 +1232,12 @@ class Editor(QWidget):
         input_widget.setPlainText(value)
 
     def handle_unlock(self) -> None:
-        logic.gatekeeper("unlock")
+        # logic.gatekeeper("unlock")
         # print(f"... handling unlock (currently {self.record_is_locked=})")
         if self.data.record_is_locked:
             self.toggle_record_editable("edit")
         else:
+            logic.gatekeeper("lock")
             if not self.handle_submit("Only completed records can be locked.\n\n"):
                 return
             self.toggle_record_editable("lock")
@@ -1330,7 +1329,7 @@ class Editor(QWidget):
         # print(f"*** records saved as {self.settings.out_file}")
 
     def handle_marc_files(self) -> None:
-        logic.gatekeeper("save_as_marc")
+        logic.gatekeeper("marc")
         file_name_with_path = (
             self.settings.files.full_output_dir / self.settings.files.out_file
         )
@@ -1403,9 +1402,9 @@ class Editor(QWidget):
         )
         return dialogue.exec() != 1
 
-    def handle_file_dialog(self):
+    def handle_open_new_file(self):
         """Opens the native file selection dialog and processes the result."""
-        logic.gatekeeper("load_file")
+        logic.gatekeeper("discard")
         if not self.data.all_text_is_saved and self.choose_to_abort_on_unsaved_text():
             # print(f"&&&&&&&&& Should abort!")
             return
