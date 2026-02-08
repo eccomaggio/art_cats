@@ -14,6 +14,8 @@ from openpyxl.worksheet.worksheet import Worksheet  # type: ignore
 from datetime import date
 import logging
 
+from art_cats.settings import Default_settings
+
 logger = logging.getLogger(__name__)
 
 def get_base_filename(filepath: Path) -> str:
@@ -58,6 +60,12 @@ def write_to_csv(file_name: Path, data: list[list[str]], headers: list[str]) -> 
         csvwriter.writerow(headers)
         csvwriter.writerows(data)
 
+
+def get_csv_file_name_and_path(live_settings: Default_settings) -> Path:
+    csv_file = (
+        live_settings.files.full_output_dir / f"{live_settings.files.out_file}.csv"
+    )
+    return csv_file
 
 ## +++++++++++ from marc_21.py
 

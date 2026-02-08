@@ -1,5 +1,8 @@
 from dataclasses import dataclass
 
+from art_cats.settings import Default_settings
+from . import validation
+
 @dataclass
 class Data:
     excel_rows = [[]]
@@ -41,45 +44,53 @@ class Data:
         self.excel_rows[self.current_row_index] = row
 
 
-def gatekeeper(source: str) -> None:
+def gatekeeper(source: str, editor) -> None:
     """
-    logic for gatekeepers:
+        logic for gatekeepers:
 
-    submit:
-            check if dummy
-            check if empty record
-            check if empty file
+        submit:
+                check if dummy
+                check if empty record
+                check if empty file
 
-            check for incomplete (validate)
+                check for incomplete (validate)
 
-    close:
-            check for unsaved —> confirm
-            check for incomplete (validate)
+        close:
+                check for unsaved —> confirm
+                check for incomplete (validate)
 
-    update_current_position: (jump)
-            check for unsaved —> confirm
-            check for incomplete (validate)
+        update_current_position: (jump)
+                check for unsaved —> confirm
+                check for incomplete (validate)
 
-    handle_clear_form: (clear)
-            confirm action
+        handle_clear_form: (clear)
+                confirm action
 
-    handle_create_new_record: (new)
-            check for unsaved —> confirm
-            check for incomplete (validate)
+        handle_create_new_record: (new)
+                check for unsaved —> confirm
+                check for incomplete (validate)
 
-    handle_unlock: (lock)
-            if about to lock:
-                    check for unsaved —> confirm
-                    check for incomplete (validate)
+        handle_unlock: (lock)
+                if about to lock:
+                        check for unsaved —> confirm
+                        check for incomplete (validate)
 
-    handle_marc_files: (marc)
-            check for unsaved —> confirm
-            check for incomplete (validate)
+        handle_marc_files: (marc)
+                check for unsaved —> confirm
+                check for incomplete (validate)
 
-    handle_create_new_file: (discard)
-            check for unsaved —> confirm
+        handle_create_new_file: (discard)
+                check for unsaved —> confirm
+
+
+    if dummy —> 		submit
+    if empty record —> 	submit
+    if empty file —> 	submit
+
+    if incomplete —>	submit, close, update_pos, new record, unlock, marc,
+    if unsaved info —>			close, update_pos, new record, unlock, marc, new file
     """
-    print(f"gatekeeping for {source=}")
+    print(f"gatekeeping for {source=}, {editor.data.all_text_is_saved=}")
 
 
 def analyse_new_file(headers, col_enum):

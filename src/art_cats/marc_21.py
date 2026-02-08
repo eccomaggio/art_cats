@@ -1407,6 +1407,10 @@ def create_parallel_title(record: Record) -> Result:
             record.parallel_title.original, lang
         )
         parallel_title = parallel_title_without_initial_article
+        parallel_title = (
+            parallel_title[0].upper() + parallel_title[1:]
+        )  # parallel titles must begin with capital letter even if article supressed
+
         # print(f"\t>>> (has p_t){lang=}: {parallel_title_without_article} <- {parallel_title}")
     else:
         parallel_title, parallel_subtitle = "", ""

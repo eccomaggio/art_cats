@@ -3,6 +3,7 @@ Common resources
 """
 
 import logging
+from tkinter import W
 
 # from dev.OLD_edit import COL
 # from re import I
@@ -837,19 +838,23 @@ class Editor(QWidget):
         """
         Gather data from form & save it to file
         """
-        logic.gatekeeper("submit")
+        logic.gatekeeper("submit", self)
 
-        (record_as_dict,
-         is_empty,
-         is_dummy
-         ) = self.scan_all_inputs()
+        record_as_dict, is_empty = self.get_all_inputs()
 
-        problem_items, msg = validation.validate(
+        problem_items, error_details, is_dummy = validation.validate(
             record_as_dict,
             self.settings,
-            is_dummy,
             optional_msg
             )
+
+        if problem_items:
+            # for input in self.inputs:
+            #     if input.objectName() in problem_items:
+            #         self.update_input_styling(input, "validation_error")
+            self.highlight_fields(problem_items)
+            self.show_alert_box(error_details)
+            return False
 
         if is_empty:
             if self.data.current_record_is_new:
@@ -858,13 +863,6 @@ class Editor(QWidget):
             else:
                 self.delete_record()
                 return True
-
-        if problem_items:
-            for input in self.inputs:
-                if input.objectName() in problem_items:
-                    self.update_input_styling(input, "validation_error")
-            self.show_alert_box(msg)
-            return False
 
         record_as_data_row = list(record_as_dict.values())
         # print("OK... data passes as valid for submission...")
@@ -881,9 +879,10 @@ class Editor(QWidget):
             ## Update existing record
             self.data.current_row = record_as_data_row
         # self.save_as_csv(self.settings.files.out_file)
-        csv_file = (
-            self.settings.files.full_output_dir / f"{self.settings.files.out_file}.csv"
-        )
+        # csv_file = (
+        #     self.settings.files.full_output_dir / f"{self.settings.files.out_file}.csv"
+        # )
+        csv_file = io.get_csv_file_name_and_path(self.settings)
         logger.info(f"{csv_file=}")
         self.save_as_csv(csv_file)
         self.update_nav_buttons()
@@ -891,20 +890,41 @@ class Editor(QWidget):
         return True
 
 
-    def scan_all_inputs(self) -> tuple[dict, bool, bool]:
+    def highlight_fields(self, field_names: list[str]) -> None:
+        for input in self.inputs:
+            if input.objectName() in field_names:
+                self.update_input_styling(input, "validation_error")
+
+
+    def get_all_inputs(self) -> tuple[dict, bool]:
         record_as_dict = {}
         is_empty = True
-        is_dummy = False
+        # is_dummy = False
         for input in self.inputs:
             name = input.objectName()
             value = self.get_content(input)
             record_as_dict[name] = value
             if value and not isinstance(input, QCheckBox):
                 is_empty = False
-            if validation.is_a_dummy_record(name, value, self.settings.validation):
-                is_dummy = True
+            # if validation.is_a_dummy_record(name, value, self.settings.validation):
+            #     is_dummy = True
         # print(f">>>>>>>>>>> {is_dummy=}, {is_empty=}\n{record_as_dict}")
-        return (record_as_dict, is_empty, is_dummy)
+        return (record_as_dict, is_empty)
+
+    # def get_all_inputs(self) -> tuple[dict, bool, bool]:
+    #     record_as_dict = {}
+    #     is_empty = True
+    #     is_dummy = False
+    #     for input in self.inputs:
+    #         name = input.objectName()
+    #         value = self.get_content(input)
+    #         record_as_dict[name] = value
+    #         if value and not isinstance(input, QCheckBox):
+    #             is_empty = False
+    #         if validation.is_a_dummy_record(name, value, self.settings.validation):
+    #             is_dummy = True
+    #     # print(f">>>>>>>>>>> {is_dummy=}, {is_empty=}\n{record_as_dict}")
+    #     return (record_as_dict, is_empty, is_dummy)
 
 
     def show_alert_box(self, msg:str) -> None:
@@ -943,7 +963,7 @@ class Editor(QWidget):
         return content.strip()
 
     def handle_close(self) -> None:
-        logic.gatekeeper("close")
+        logic.gatekeeper("close", self)
         # self.close()
         self.app.quit()
 
@@ -963,7 +983,7 @@ class Editor(QWidget):
         self.update_current_position("exact", record_number)
 
     def update_current_position(self, direction, record_number=-1) -> None:
-        logic.gatekeeper("jump")
+        logic.gatekeeper("jump", self)
         # print(f">>>{self.record_count=}, {self.current_row_index=}, {self.current_record_is_new=}, {self.has_records=} {self.all_text_is_saved=}")
         if not self.data.all_text_is_saved and self.choose_to_abort_on_unsaved_text():
             return
@@ -1112,7 +1132,7 @@ class Editor(QWidget):
         self.data.all_text_is_saved = True
 
     def handle_clear_form(self) -> None:
-        logic.gatekeeper("clear")
+        logic.gatekeeper("clear", self)
         if not self.data.current_record_is_new and self.abort_on_clearing_existing_record(
             self
         ):
@@ -1121,7 +1141,7 @@ class Editor(QWidget):
         # self.toggle_record_editable("edit")
 
     def handle_create_new_record(self) -> None:
-        logic.gatekeeper("new")
+        logic.gatekeeper("new", self)
         self.data.current_row_index = -1
         # if self.settings.flavour["title"] == "order_form":
         # for field_name in self.settings.validation.fields_to_clear:
@@ -1237,7 +1257,7 @@ class Editor(QWidget):
         if self.data.record_is_locked:
             self.toggle_record_editable("edit")
         else:
-            logic.gatekeeper("lock")
+            logic.gatekeeper("lock", self)
             if not self.handle_submit("Only completed records can be locked.\n\n"):
                 return
             self.toggle_record_editable("lock")
@@ -1329,7 +1349,7 @@ class Editor(QWidget):
         # print(f"*** records saved as {self.settings.out_file}")
 
     def handle_marc_files(self) -> None:
-        logic.gatekeeper("marc")
+        logic.gatekeeper("marc", self)
         file_name_with_path = (
             self.settings.files.full_output_dir / self.settings.files.out_file
         )
@@ -1404,9 +1424,8 @@ class Editor(QWidget):
 
     def handle_open_new_file(self):
         """Opens the native file selection dialog and processes the result."""
-        logic.gatekeeper("discard")
+        logic.gatekeeper("discard", self)
         if not self.data.all_text_is_saved and self.choose_to_abort_on_unsaved_text():
-            # print(f"&&&&&&&&& Should abort!")
             return
         file_dialog = QFileDialog()
         # This returns a tuple: (file_path, filter_used)
@@ -1457,37 +1476,6 @@ class Editor(QWidget):
             print("File selection cancelled.")
             logger.warning("File selection cancelled.")
 
-    # def analyse_new_file(self, headers):
-    #     expected_col_count = len(self.COL)
-    #     file_resembles_expectations = len(headers) == expected_col_count
-    #     # print(f">>> >> > {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}")
-    #     return file_resembles_expectations
-
-    # def update_csv_fields(
-    #     self, headers: list[str], rows: list[list[str]]
-    # ) -> tuple[list[str], list[list[str]]]:
-    #     """
-    #     NOT NEEDED: using standalone to do this now "tmp_update.py"
-    #     Adds the new 'has_illustrations' field with the default of True
-    #     if the record set is (old-style) i.e. does not have 29 columns
-    #     PROBLEMATIC: this only refers to art catalogues and only for a short window.
-    #     REMOVE ONCE UPGRADE IS COMPLETE
-    #     """
-    #     index_of_illustrations = 19
-    #     if len(headers) < 29:
-    #         headers = [
-    #             *headers[:index_of_illustrations],
-    #             "Illustrated",
-    #             *headers[index_of_illustrations:],
-    #         ]
-    #     if len(rows[0]) < 29:
-    #         new_rows = []
-    #         for row in rows:
-    #             new_rows.append(
-    #                 [*row[:index_of_illustrations], True, *row[index_of_illustrations:]]
-    #             )
-    #         rows = new_rows
-    #     return (headers, rows)
 
 class DialogueOkCancel(QDialog):
     def __init__(self, parent, text):
