@@ -103,7 +103,11 @@ class Default_settings:
     labels = Labels()
     locking_is_enabled = True
     show_table_view = True
-    submit_when_barcode_entered = False
+    #* These three allow the form to auto-submit when a specific field is completed
+    auto_submit_form_on_x_field = False
+    auto_submit_form_field_name = ""
+    auto_submit_form_field: Any = None
+    # submit_when_barcode_entered = False
     default_template = []
     create_output_dir = True
     create_chu_file = True

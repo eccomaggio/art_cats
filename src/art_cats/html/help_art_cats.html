@@ -123,7 +123,7 @@ th, td {
   <p>Records must also be complete to be locked.</p>
 
   <h4>More help</h4>
-  <p>There is detailed help below about each of the input fields. You can either scroll down or click on a title in the form: that will automatically bring the help topic into view.</p>
+  <p>There is detailed help below about each of the input fields. You can either scroll down or <b>click on a title</b> in the form: that will automatically bring the help topic into view.</p>
 
   <h4>Locking / Editing</h4>
   <p>By default, complete records are locked for safety. Toggle the <code>unlock</code> button if you want to edit them further.</p>
@@ -136,6 +136,12 @@ th, td {
 
   <h4>Backups</h4>
   <p>Everytime a record is submitted, it is backed up to a file unimaginatively named <code>[original file name].new.csv</code></p>
+
+  <h4>Deleting records</h4>
+  <p>If you <code>Clear</code> a record and then <code>Save</code> it, it will be deleted.</p>
+
+  <h4>Item policy</h4>
+  <p>See <a href="#hol_notes">HOL Notes</a></p>
 
   <h2 id="sublib">Sublibrary</h2>
   <p>Enter the sublibrary which the materials belong to (<code>BODBL</code>, <code>RSLBL</code>, <code>ARTBL</code> or similar). Team Leaders can advise.</p>
@@ -200,7 +206,7 @@ th, td {
   <p>Measure height of book and round up to nearest centimetre but do not include <code>cm</code>, <code>cms</code>, <code>centimeters</code>, etc., as this will be added automatically] i.e, 22 cm</p>
 
   <h2 id="is_illustrated">Illustrations</h2>
-  <p>Check this if the catalogue is predominantly illustrated.</p>
+  <p>Select <code>None</code> if there are no illustrations and <code>Partial</code> if there are illustrations, even quite extensive, but the text could in principle stand alone without them.Choose <code>Full</code> if the text would lose its meaning without the illustrations, as is the case with many auction catalogues.</p>
 
   <h2 id="series_title">Series title</h2>
   <p>Transcribe from the resource.</p>
@@ -224,7 +230,8 @@ th, td {
 
   <h2 id="hol_notes">HOL notes</h2>
   <p>Add notes pertaining to the copy in your hand, e.g.<code>a donor note</code>; <code>Missing pages 4-5</code>.</p>
-  <p>If the book's <b>item policy</b> should be <code>"Use_in_Library_Only"</code>, then type <code>***lib only**</code> (exactly as is) as the FIRST thing in this field. Otherwise, the default is <code>"Fixed_Week_Loan"</code>.</p>
+  <!-- <p>If the book's <b>item policy</b> should be <code>"Use_in_Library_Only"</code>, then type <code>***lib only**</code> (exactly as is) as the FIRST thing in this field. Otherwise, the default is <code>"Fixed_Week_Loan"</code>.</p> -->
+  <p>If the book's <b>item policy</b> should be <code>"Fixed_Week_Loan"</code>, then type <code>***f week**</code> (exactly as is, one space) as the FIRST thing in this field. Otherwise, the default is <code>"Use_in_Library_Only"</code>.</p>
 
   <h2 id="donation">Donor note</h2>
   <p>For example: <code>Donated by the Ashmolean Museum</code> or <code>Anonymous donor</code>.</p>
@@ -232,7 +239,6 @@ th, td {
   <h2 id="barcode">Barcode</h2>
   <p>Attach the barcode onto the item in the top left-hand corner of the front cover and scan the barcode into the field. </p>
   <p>If you type <code>*dummy*</code> into this field, it will allow you to save an incomplete record.</p>
-  <p>If you type <code>*delete*</code> or <code>*del*</code> into this field, it will be deleted the next time you save the records. [This feature has not yet been implemented.]</p>
 
 <br>
 <br>

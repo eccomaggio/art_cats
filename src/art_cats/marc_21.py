@@ -784,11 +784,14 @@ def norm_isbn(raw_isbn: str, row_num: int) -> str:
 
 def get_item_policy_from_hol_notes(raw_note: str) -> tuple[str, str]:
     ## TODO: if keeping, put trigger_string into settings
-    trigger_string = "**lib only**"
+    # trigger_string = "**lib only**"
+    trigger_string = "**f week**"
     if raw_note.lower().startswith(trigger_string.lower()):
-        return (raw_note[len(trigger_string):], "LUO-DIG-Y")
-    else:
+        # return (raw_note[len(trigger_string):], "LUO-DIG-Y")
         return (raw_note, "")
+    else:
+        # return (raw_note, "")
+        return (raw_note[len(trigger_string):], "LUO-DIG-Y")
 
 
 def norm_barcode(raw_barcode: str, row_num: int) -> str:
@@ -1452,8 +1455,8 @@ def create_alternative_title(alternative_form: str, lang="eng") -> Field:
     tag = 246
     i1 = "3"  ## "No note, added entry"
     i2 = ISBD["BLANK"]  ## No type specified
-    _, alternative_title_field = check_for_nonfiling(alternative_form, lang)
-    content = [Subfield(value=alternative_title_field, code="a")]
+    _, alternative_title = check_for_nonfiling(alternative_form, lang)
+    content = [Subfield(value=alternative_title, code="a")]
     alternative_title_field = Field(
         tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content
     )

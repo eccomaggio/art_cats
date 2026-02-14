@@ -1,0 +1,8 @@
+[mypy]
+# Tells mypy to look for the root of the package
+# Using this file generates more import errors in VS Code than not.
+explicit_package_bases = True
+# Allows mypy to find __init__.py-less packages
+namespace_packages = True
+# Add your source folder to the path if it's not the root
+mypy_path = .

@@ -130,21 +130,27 @@ class Grid:
     def total_rows(self) -> int:
         return len(self.rows)
 
+
     def exceeds_grid_length(self, current_row: int) -> bool:
         return current_row + 1 > self.total_rows
+
 
     def is_free(self, id: int) -> bool:
         return id == -1
 
+
     def is_occupied(self, id: int) -> bool:
         return not self.is_free(id)
+
 
     def add_a_row(self) -> None:
         # self.rows.append([-1 for _ in range(self.grid_width)])
         self.rows.append(self.make_row())
 
+
     def make_row(self) -> list:
         return [-1 for _ in range(self.grid_width)]
+
 
     def add_brick_algorithmically(
         self, brick_id: int, brick: Brick, title="", name=""
@@ -189,6 +195,7 @@ class Grid:
                     self.current_row = row_i
                     break
             row_i += 1
+
 
     def add_bricks_by_template(self, template: list) -> None:
         # print(f"add bricks by template: {template=}")
@@ -310,12 +317,14 @@ class WindowWithRightTogglePanel(QWidget):
         self.saved_editor_width = self.edit_panel_widget.width()
         self.centre_window_in_display()
 
+
     def centre_window_in_display(self) -> None:
         screen_geometry = QApplication.primaryScreen().geometry()
         window_frame = self.frameGeometry()
         center_point = screen_geometry.center()
         window_frame.moveCenter(center_point)
         self.move(window_frame.topLeft())
+
 
     def resizeEvent(self, event):
         """
@@ -343,6 +352,7 @@ class WindowWithRightTogglePanel(QWidget):
                 # 3. Force a layout update to make the editor stretch immediately
                 self.layout().invalidate() # type: ignore
                 self.update()
+
 
     def toggle_help_panel(self):
         """
@@ -392,11 +402,13 @@ class WindowWithRightTogglePanel(QWidget):
             # self.resize(new_width, self.height())
             self.resize(new_width, self.saved_height)
 
+
     def handle_internal_link(self, url: QUrl):
         """Scrolls the QTextBrowser to the target anchor within the document."""
         anchor_name = url.toString().split("#")[-1]
         if anchor_name:
             self.help_widget.scrollToAnchor(anchor_name)
+
 
     def handle_link_click(self, url: QUrl):
         """
@@ -433,14 +445,15 @@ class ClickableLabel(QLabel):
         self.pressed_style = "font-style: italic;"
         self.setStyleSheet(self.default_style)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
         # Initialize placeholder for custom property
         self.help_txt = ""
+
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
             self.setStyleSheet(self.pressed_style)
         super().mousePressEvent(event)
+
 
     def mouseReleaseEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -451,9 +464,11 @@ class ClickableLabel(QLabel):
             self.clicked.emit()
         super().mouseReleaseEvent(event)
 
+
     def enterEvent(self, event: QEnterEvent):
         self.setStyleSheet(self.hover_style)
         super().enterEvent(event)
+
 
     def leaveEvent(self, event: QEvent):
         self.setStyleSheet(self.default_style)
@@ -526,6 +541,7 @@ class Editor(QWidget):
         self.update_nav_buttons()
         self.add_signal_to_fire_on_text_change()
 
+
     def add_input_widgets(self, inputs_layout):
         self.labels: list[QLabel] = []
         self.inputs: list[QWidget] = []
@@ -553,15 +569,17 @@ class Editor(QWidget):
 
             tmp_wrapper = QVBoxLayout()
             if name in self.settings.validation.required_fields:
-                title = f"**{title}"
+                title = f"* {title}"
             if (
-                self.settings.submit_when_barcode_entered
-                and name.lower() == "barcode"
+                self.settings.auto_submit_form_on_x_field
+                # and name.lower() == "barcode"
+                and name.lower() == self.settings.auto_submit_form_field_name.lower()
                 and isinstance(tmp_input, QLineEdit)
             ):
                 # print("Adding submit on barcode connection...")
                 # tmp_input.textEdited.connect(self.choose_to_save_on_barcode)
                 tmp_input.editingFinished.connect(self.choose_to_save_on_barcode)
+                self.settings.auto_submit_form_field = tmp_input
             # print(f" >>>> {name}-> {title}")
             tmp_label = ClickableLabel(self.settings, title)
             tmp_label.help_txt = name
@@ -583,6 +601,7 @@ class Editor(QWidget):
             )
         ## TODO: work out why HOL_notes does react to changed text!!
         # self.add_signal_to_fire_on_text_change()
+
 
     def build_nav_buttons(self, caller, nav_grid):
         if self.settings.show_table_view:
@@ -675,6 +694,7 @@ class Editor(QWidget):
             nav_grid.addWidget(self.tableView, last_row, 0, 1, 6)
         self.nav_grouped_layout.setLayout(nav_grid)
 
+
     def customize_fields(self) -> None:
         if self.settings.title == "art_catalogue":
             sale_dates = self.inputs[self.COL.sale_dates.value]
@@ -690,6 +710,7 @@ class Editor(QWidget):
         elif self.settings.title == "order_form":
             self.setup_combo_boxes()
             self.load_table(self.tableView, self.data.excel_rows)
+
 
     def setup_combo_boxes(self) -> None:
         ## set up lists of leaders & followers & populate drop down lists for leaders
@@ -716,17 +737,20 @@ class Editor(QWidget):
                 input_widget.addItems(options)
                 input_widget.setCurrentIndex(0)
 
+
     def handle_update_follower(self) -> None:
         # leader: QComboBox = self.sender()
         leader: QObject = self.sender()
         follower_name = self.settings.combos.dict_by_leader[leader.objectName()]
         self.load_combo_box(self.follower_inputs[follower_name])
 
+
     def transform_into_yaml_lookup(self, object_name: str) -> str:
         ## transforms the objectName of the widget so that it matches the yaml file
         # name = combo_lookup[object_name]
         # return name
         return object_name
+
 
     def get_combo_options_source(self, combo_box: QComboBox) -> str:
         ## TODO: (probably) combine with / call only from get_raw_combo_options()
@@ -748,6 +772,7 @@ class Editor(QWidget):
         # print(f"\tSource = {match_for_yaml_lookup}")
         return match_for_yaml_lookup
 
+
     def get_raw_combo_options(self, key: str) -> list:
         if key:
             if key.startswith("*!*"):
@@ -764,6 +789,7 @@ class Editor(QWidget):
             raw_options = []
         # print(f"\t** get raw combo options: {key=} -> raw_options={raw_options[:2]}... >> {inspect.stack()[1].function}")
         return raw_options
+
 
     def get_normalized_combo_list(
         self, combo_name: str, raw_combo_options: list, selected_item=""
@@ -816,6 +842,7 @@ class Editor(QWidget):
         # print(f"\tget normalized combo list: {len(new_combo_options)}, {selected_item=}->{index=}, {new_combo_options[:2]}...\n")
         return (new_combo_options, index)
 
+
     def highlight_row_by_index(self, table_widget: QTableWidget, row_index: int):
         """
         Highlights the entire row in the QTableWidget.
@@ -825,6 +852,7 @@ class Editor(QWidget):
         # SelectionBehavior=SelectRows, so any col highlights the whole row (here, col 0 for convenience).
         table_widget.setCurrentCell(row_index, 0)
         # table_widget.scrollToItem(self.table_widget.item(row_index, 0))
+
 
     def show_help_topic(self, sender_label: ClickableLabel):
         """Slot runs when label is clicked, accessing custom property."""
@@ -838,59 +866,10 @@ class Editor(QWidget):
         """
         Gather data from form & save it to file
         """
-        logic.gatekeeper("submit", self)
-        save_is_authorised = False
-
-        record_as_dict, is_empty = self.get_all_inputs()
-        print(f"handle_submit: {is_empty=}")
-        if is_empty:
-            if self.data.current_record_is_new:
-                self.show_alert_box("There is no information to save. You can either enter a record or simply close the app.")
-                # return False
-                save_is_authorised = False
-            else:
-                self.delete_record()
-                # return True
-                save_is_authorised = True
-        else:
-
-            problem_items, error_details, is_dummy = validation.validate(
-                record_as_dict,
-                self.settings,
-                optional_msg
-                )
-
-            if problem_items:
-                self.highlight_fields(problem_items)
-                self.show_alert_box(error_details)
-                # return False
-                save_is_authorised = False
-            else:
-
-                record_as_data_row = list(record_as_dict.values())
-                # print("OK... data passes as valid for submission...")
-                if self.data.current_record_is_new:
-                    # print(f"***{self.has_records=}, record count: {self.record_count} {data=}")
-                    if self.data.has_records:
-                        self.data.excel_rows.append(record_as_data_row)
-                    else:
-                        self.data.excel_rows = [record_as_data_row]
-                        self.data.has_records = True
-                    self.data.current_row_index = self.data.index_of_last_record
-                    self.update_title_with_record_number()
-                else:
-                    ## Update existing record
-                    self.data.current_row = record_as_data_row
-                save_is_authorised = True
-
-        if save_is_authorised:
-            csv_file = io.get_csv_file_name_and_path(self.settings)
-            logger.info(f"{csv_file=}")
-            self.save_as_csv(csv_file)
-            self.update_nav_buttons()
-            self.load_record_into_gui(self.data.current_row)
-        # return True
-        return save_is_authorised
+        authorised_to_continue = logic.gatekeeper("submit", self)
+        if authorised_to_continue:
+            logic.save_record_externally(self)
+        return authorised_to_continue
 
 
     def highlight_fields(self, field_names: list[str]) -> None:
@@ -915,39 +894,11 @@ class Editor(QWidget):
         # print(f">>>>>>>>>>> {is_dummy=}, {is_empty=}\n{record_as_dict}")
         return (record_as_dict, is_empty)
 
-    # def get_all_inputs(self) -> tuple[dict, bool, bool]:
-    #     record_as_dict = {}
-    #     is_empty = True
-    #     is_dummy = False
-    #     for input in self.inputs:
-    #         name = input.objectName()
-    #         value = self.get_content(input)
-    #         record_as_dict[name] = value
-    #         if value and not isinstance(input, QCheckBox):
-    #             is_empty = False
-    #         if validation.is_a_dummy_record(name, value, self.settings.validation):
-    #             is_dummy = True
-    #     # print(f">>>>>>>>>>> {is_dummy=}, {is_empty=}\n{record_as_dict}")
-    #     return (record_as_dict, is_empty, is_dummy)
-
 
     def show_alert_box(self, msg:str) -> None:
         alert = QMessageBox()
         alert.setText(msg)
         alert.exec()
-
-
-    def delete_record(self, index=-1) -> None:
-        if index == -1:
-            index = self.data.current_row_index
-        del self.data.excel_rows[index]
-        index_of_last_record = self.data.index_of_last_record
-        if index > index_of_last_record:
-            index = index_of_last_record
-            self.data.current_row_index = index_of_last_record
-        # print(f"????? {index=}")
-        if self.data.record_count:
-            self.load_record_into_gui(self.data.excel_rows[index])
 
 
     def get_content(self, widget: QWidget) -> str:
@@ -970,10 +921,14 @@ class Editor(QWidget):
                 logger.critical(msg)
         return content.strip()
 
+
     def handle_close(self) -> None:
-        logic.gatekeeper("close", self)
+        authorised_to_continue = logic.gatekeeper("close", self)
+        if not authorised_to_continue:
+            return
         # self.close()
         self.app.quit()
+
 
     def go_to_first_record(self) -> None:
         self.update_current_position("first")
@@ -990,10 +945,11 @@ class Editor(QWidget):
     def go_to_record_number(self, record_number: int) -> None:
         self.update_current_position("exact", record_number)
 
+
     def update_current_position(self, direction, record_number=-1) -> None:
-        logic.gatekeeper("jump", self)
         # print(f">>>{self.record_count=}, {self.current_row_index=}, {self.current_record_is_new=}, {self.has_records=} {self.all_text_is_saved=}")
-        if not self.data.all_text_is_saved and self.choose_to_abort_on_unsaved_text():
+        authorised_to_continue = logic.gatekeeper("jump", self)
+        if not authorised_to_continue:
             return
         # index_of_last_record = len(self.excel_rows) - 1
         match direction:
@@ -1019,6 +975,7 @@ class Editor(QWidget):
         self.load_record_into_gui(self.data.current_row)
         # self.all_text_is_saved = True
 
+
     def saledates_action(self) -> None:
         # print("sales_date filled in!!")
         sender = self.sender()
@@ -1031,6 +988,7 @@ class Editor(QWidget):
                 pubdate.setText(f"{year_of_pub}?")
         else:
             logger.warning("Can't access salecode or pubdate fields...")
+
 
     def update_title_with_record_number(self, prefix="Record no. ") -> None:
         # text = f"{self.get_human_readable_record_number()} of {self.data.record_count}"
@@ -1057,6 +1015,7 @@ class Editor(QWidget):
         self.caller.setWindowTitle(status_line)
         # print(f"{status_line=}")
 
+
     def add_signal_to_fire_on_text_change(self):
         # for input in self.inputs:
         for i, input in enumerate(self.inputs):
@@ -1071,6 +1030,7 @@ class Editor(QWidget):
                     input.currentTextChanged.connect(self.handle_text_change)
                 case QCheckBox():
                     input.checkStateChanged.connect(self.handle_text_change)
+
 
     def handle_text_change(self) -> None:
         # print(f"Text changed...{datetime.datetime.now()}")
@@ -1089,6 +1049,7 @@ class Editor(QWidget):
                 logger.warning("Huston, we have a problem with text input...")
         self.update_input_styling(sender, style)
         self.data.all_text_is_saved = False
+
 
     def update_input_styling(self, widget: QObject, style_name: str) -> None:
         style = getattr(self.settings.styles, style_name)
@@ -1111,6 +1072,7 @@ class Editor(QWidget):
                 pass
             case _ :
                 logger.warning("Huston, we have a problem with input styling")
+
 
     def load_record_into_gui(self, row_to_load: list | None = None) -> None:
         """
@@ -1140,26 +1102,24 @@ class Editor(QWidget):
         self.data.all_text_is_saved = True
 
     def handle_clear_form(self) -> None:
-        logic.gatekeeper("clear", self)
-        if not self.data.current_record_is_new and self.abort_on_clearing_existing_record(
-            self
-        ):
+        authorised_to_continue = logic.gatekeeper("clear", self)
+        if not authorised_to_continue:
             return
         self.load_record_into_gui()
         # self.toggle_record_editable("edit")
 
     def handle_create_new_record(self) -> None:
-        logic.gatekeeper("new", self)
+        authorised_to_continue = logic.gatekeeper("new", self)
+        if not authorised_to_continue:
+            return
         self.data.current_row_index = -1
-        # if self.settings.flavour["title"] == "order_form":
-        # for field_name in self.settings.validation.fields_to_clear:
-        #     input_widget = self.inputs[field_name]
         for field in self.settings.validation.fields_to_clear:
             input_widget = self.inputs[field.value]
             self.load_record(input_widget, "")
         self.data.all_text_is_saved = True
         self.toggle_record_editable("edit")
         self.update_title_with_record_number()
+
 
     def load_record(self, input_widget: QWidget, value: Any, options=[]) -> None:
         # caller = inspect.stack()[1].function
@@ -1181,6 +1141,7 @@ class Editor(QWidget):
             case _ :
                 logger.warning(f"!!!! Problem: current widget ({type(input_widget)})")
 
+
     def load_checkbox(self, widget: QCheckBox, value="") -> None:
         if value == "True" or value == True:
             state = True
@@ -1188,6 +1149,7 @@ class Editor(QWidget):
             state = False
         widget.setChecked(state)
         # print(f"+++++++{widget.objectName} {value=} -> {state=} [{widget.checkState()=}]")
+
 
     def load_combo_box(self, combo_box: QComboBox, value="") -> None:
         """
@@ -1202,6 +1164,7 @@ class Editor(QWidget):
         combo_box.clear()
         combo_box.addItems(options)
         combo_box.setCurrentIndex(index)
+
 
     def load_table(self, table: QTableWidget, rows: list[list], headers=[]) -> None:
         # print(f"   === {rows=}, {headers=}")
@@ -1247,28 +1210,32 @@ class Editor(QWidget):
             row_count * row_height + table.horizontalHeader().height()
         )
 
+
     def pass_table_row_index(self, row, column) -> None:
         # print(f"$$$$$$$$$ {row=}, {column=}")
         self.highlight_row_by_index(self.tableView, row)
         self.go_to_record_number(row)
 
+
     def load_line_edit(self, input_widget: QLineEdit, value="") -> None:
         input_widget.setText(value)
+
 
     def load_text_edit(self, input_widget: QTextEdit, value="") -> None:
         # self.inputs[input_widget.value].setText(value)
         input_widget.setPlainText(value)
 
+
     def handle_unlock(self) -> None:
-        # logic.gatekeeper("unlock")
         # print(f"... handling unlock (currently {self.record_is_locked=})")
         if self.data.record_is_locked:
             self.toggle_record_editable("edit")
         else:
-            logic.gatekeeper("lock", self)
-            if not self.handle_submit("Only completed records can be locked.\n\n"):
+            authorised_to_continue = logic.gatekeeper("lock", self)
+            if not authorised_to_continue:
                 return
             self.toggle_record_editable("lock")
+
 
     def toggle_record_editable(self, mode="edit") -> None:
         if not self.settings.locking_is_enabled:
@@ -1311,6 +1278,7 @@ class Editor(QWidget):
         self.clear_btn.setStyleSheet(button_text_override)
         self.update_title_with_record_number()
 
+
     def update_nav_buttons(self) -> str:
         # print(f"nav status: {self.record_count=}")
         msg = ""
@@ -1338,6 +1306,7 @@ class Editor(QWidget):
             self.next_btn.setEnabled(True)
         return msg
 
+
     # def get_human_readable_record_number(self, number=-100):
     #     if number == -100:
     #         number = self.data.current_row_index
@@ -1356,8 +1325,11 @@ class Editor(QWidget):
         self.data.all_text_is_saved = True
         # print(f"*** records saved as {self.settings.out_file}")
 
+
     def handle_marc_files(self) -> None:
-        logic.gatekeeper("marc", self)
+        authorised_to_continue = logic.gatekeeper("marc", self)
+        if not authorised_to_continue:
+            return
         file_name_with_path = (
             self.settings.files.full_output_dir / self.settings.files.out_file
         )
@@ -1382,6 +1354,7 @@ class Editor(QWidget):
         msg_box.setText(msg)
         msg_box.exec()
 
+
     def remove_dummy_records(self, records:list[list[str]]) -> list:
         target_col_name = self.settings.validation.validation_skip_fieldname
         if not target_col_name:
@@ -1401,24 +1374,42 @@ class Editor(QWidget):
             logging.info(f"{number_of_records_removed} dummy records were removed from the export to Marc 21 format.")
         return list_without_dummies
 
+
     def choose_to_save_on_barcode(self) -> None:
-        # print(f"unsaved text alert...{self.data.record_is_locked=}")
-        if self.data.record_is_locked:
+        if (
+            self.data.record_is_locked or
+            self.is_modal_open() or
+            validation.barcode("barcode", self.get_content(self.settings.auto_submit_form_field))
+        ):
+            print(f"Auto-submit on {self.settings.auto_submit_form_field_name} suppressed.")
             return
-        dialogue = DialogueOkCancel(
-            self,
-            "Are you sure you want to save this record?",
-        )
-        if dialogue.exec() == 1:
-            self.handle_submit()
+        else:
+
+            authorised_to_continue = logic.gatekeeper("barcode", self)
+            if authorised_to_continue:
+                dialogue = DialogueOkCancel(
+                    self,
+                    "Are you sure you want to save this record?",
+                )
+                if dialogue.exec() == 1:
+                    self.handle_submit()
+
 
     def choose_to_abort_on_unsaved_text(self) -> int:
+        """
+        abort (i.e. treat text as unsaved)  = False
+        continue (i.e. treat text as saved) = True
+        """
         # print("unsaved text alert...", s)
         dialogue = DialogueOkCancel(
             self,
             "There is unsaved text in this record. Are you OK to contine and lose this text?",
         )
-        return dialogue.exec() != 1
+        continue_because_saved = dialogue.exec() == 1
+        abort_because_unsaved = not continue_because_saved
+        return abort_because_unsaved
+        # return dialogue.exec() != 1
+
 
     def abort_on_clearing_existing_record(self, s) -> int:
         # print("unsaved text alert...", s)
@@ -1430,10 +1421,11 @@ class Editor(QWidget):
         )
         return dialogue.exec() != 1
 
+
     def handle_open_new_file(self):
         """Opens the native file selection dialog and processes the result."""
-        logic.gatekeeper("discard", self)
-        if not self.data.all_text_is_saved and self.choose_to_abort_on_unsaved_text():
+        authorised_to_continue = logic.gatekeeper("discard", self)
+        if not authorised_to_continue:
             return
         file_dialog = QFileDialog()
         # This returns a tuple: (file_path, filter_used)
@@ -1483,6 +1475,14 @@ class Editor(QWidget):
         else:
             print("File selection cancelled.")
             logger.warning("File selection cancelled.")
+
+
+    def is_modal_open(self):
+        active_window = QApplication.activeModalWidget()
+        # Or check activeWindow() if activeModalWidget() is None
+        if active_window:
+            return True
+        return False
 
 
 class DialogueOkCancel(QDialog):

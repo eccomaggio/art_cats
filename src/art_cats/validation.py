@@ -98,13 +98,8 @@ def validate(
     error_details = ""
     is_dummy = False
     problem_items = []
-
-    # if validation.is_a_dummy_record(name, value, self.settings.validation):
-    #     is_dummy = True
-
     missing = []
     invalid = []
-    errors = []
     rules = live_settings.validation
     for name, content in record_as_dict.items():
         if is_a_dummy_record(name, content, rules):
@@ -121,26 +116,10 @@ def validate(
             if error_msg:
                 invalid.append(f"{name}: {error_msg}")
                 problem_items.append(name)
-            # test = tests_by_fieldname.get(name, None)
-            # if test:
-            #     error_msg = test(name, content)
-            #     if error_msg:
-            #         invalid.append(f"{name}: {error_msg}")
-            #         problem_items.append(name)
     if not is_dummy:
+        errors = []
         if live_settings.title == "art_catalogue":
             invalid, problem_items = validate_marc21_country_codes(record_as_dict, invalid, problem_items)
-            # country = record_as_dict["country_name"]
-            # state = record_as_dict["state"]
-            # place = record_as_dict["place"]
-            # country_code = marc_21.get_country_code(country, state, place)
-            # print(f">>> {country}->{country_code}")
-            # if country and not country_code:
-            #     invalid.append(f"country of publication ({country}) is not recognized.")
-            #     problem_items.append(country)
-            # # elif country_code in marc_21.code_can_be_expanded:
-            # #     ## But this will disallow entry if you don't know the state
-            # #     invalid.append(f"{country} should be expanded if possible with a state.")
         if missing:
             count = len(missing)
             add_s = "s" if count > 1 else ""

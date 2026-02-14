@@ -11,6 +11,7 @@ from enum import Enum
 from pathlib import Path
 from .settings import Default_settings
 from . import form_gui
+
 # from . import marc_21
 
 # logger = logging.getLogger(__name__)
@@ -73,7 +74,8 @@ def main():
     settings.show_table_view = False
     settings.locking_is_enabled = True
     settings.combos.data_file = "data/combo_data_artcats.yaml"
-    settings.submit_when_barcode_entered = True
+    settings.auto_submit_form_on_x_field = True
+    settings.auto_submit_form_field_name = COL.barcode.name
 
     settings.validation.fields_to_clear = [
         COL.barcode,
@@ -90,7 +92,9 @@ def main():
         # COL.sublib.name : "ARTBL",
     }
 
-    settings.validation.fields_to_fill = list(settings.validation.fields_to_fill_info.keys())
+    settings.validation.fields_to_fill = list(
+        settings.validation.fields_to_fill_info.keys()
+    )
     settings.validation.required_fields = [
         COL.langs.name,
         COL.title.name,
@@ -119,36 +123,36 @@ def main():
         ## non-algorithmic version needs to be: [title, (brick height, brick length), start-row, start-col]
         ## needs to be in same order as COL specification
         # (COL.sublib, (1,2), 0, 0, "line"),
-        (COL.sublib, (1,2), 0, 0, "combo"),
-        (COL.langs, (1,2), 0, 2, "line"),
-        (COL.isbn, (1,2), 0, 4, "line"),
-        (COL.title, (2,3), 1, 0, "text"),
-        (COL.tr_title, (2,3), 1, 3, "text"),
-        (COL.subtitle, (2,3), 3, 0, "text"),
-        (COL.tr_subtitle, (2,3), 3, 3, "text"),
-        (COL.parallel_title, (2,3), 5, 0, "text"),
-        (COL.tr_parallel_title, (2,3), 5, 3, "text"),
-        (COL.parallel_subtitle, (2,3), 7, 0, "text"),
-        (COL.tr_parallel_subtitle, (2,3), 7, 3, "text"),
-        (COL.country_name, (1,2), 13, 0, "line"),
-        (COL.state, (1,2), 13, 2, "line"),
-        (COL.place, (1,2), 13, 4, "line"),
-        (COL.publisher, (1,4), 14, 0, "line"),
-        (COL.pub_year, (1,1), 14, 4, "line"),
-        (COL.copyright, (1,1), 14, 5, "line"),
-        (COL.extent, (1,1), 15, 1, "line"),
-        (COL.size, (1,1), 15, 0, "line"),
+        (COL.sublib, (1, 2), 0, 0, "combo"),
+        (COL.langs, (1, 2), 0, 2, "line"),
+        (COL.isbn, (1, 2), 0, 4, "line"),
+        (COL.title, (2, 3), 1, 0, "text"),
+        (COL.tr_title, (2, 3), 1, 3, "text"),
+        (COL.subtitle, (2, 3), 3, 0, "text"),
+        (COL.tr_subtitle, (2, 3), 3, 3, "text"),
+        (COL.parallel_title, (2, 3), 5, 0, "text"),
+        (COL.tr_parallel_title, (2, 3), 5, 3, "text"),
+        (COL.parallel_subtitle, (2, 3), 7, 0, "text"),
+        (COL.tr_parallel_subtitle, (2, 3), 7, 3, "text"),
+        (COL.country_name, (1, 2), 13, 0, "line"),
+        (COL.state, (1, 2), 13, 2, "line"),
+        (COL.place, (1, 2), 13, 4, "line"),
+        (COL.publisher, (1, 4), 14, 0, "line"),
+        (COL.pub_year, (1, 1), 14, 4, "line"),
+        (COL.copyright, (1, 1), 14, 5, "line"),
+        (COL.extent, (1, 1), 15, 1, "line"),
+        (COL.size, (1, 1), 15, 0, "line"),
         # (COL.is_illustrated, (1,1), 15, 3, "checkbox"),
-        (COL.is_illustrated, (1,1), 15, 3, "combo"),
-        (COL.series_title, (1,3), 12, 0, "line"),
-        (COL.series_enum, (1,2), 12, 3, "line"),
-        (COL.volume, (1,1), 12, 5, "line"),
-        (COL.notes, (3,3), 9, 0, "text"),
-        (COL.sales_code, (1,1), 15, 2, "line"),
-        (COL.sale_dates, (1,2), 15, 4, "line"),
-        (COL.hol_notes, (3,3), 9, 3, "text"),
-        (COL.donation, (1,4), 16, 0, "line"),
-        (COL.barcode, (1,2), 16, 4, "line"),
+        (COL.is_illustrated, (1, 1), 15, 3, "combo"),
+        (COL.series_title, (1, 3), 12, 0, "line"),
+        (COL.series_enum, (1, 2), 12, 3, "line"),
+        (COL.volume, (1, 1), 12, 5, "line"),
+        (COL.notes, (3, 3), 9, 0, "text"),
+        (COL.sales_code, (1, 1), 15, 2, "line"),
+        (COL.sale_dates, (1, 2), 15, 4, "line"),
+        (COL.hol_notes, (3, 3), 9, 3, "text"),
+        (COL.donation, (1, 4), 16, 0, "line"),
+        (COL.barcode, (1, 2), 16, 4, "line"),
     ]
 
     settings.files.help_file = "html/help_art_cats.html"
@@ -162,7 +166,8 @@ def main():
 
     CUSTOM_LOG_FILE = (
         # settings.files.full_output_dir / f"logger.{settings.timestamp}.log"
-        settings.files.full_output_dir / "logger.log"
+        settings.files.full_output_dir
+        / "logger.log"
     )
 
     log_setup.setup_app_logging(log_file_path=CUSTOM_LOG_FILE)

@@ -65,7 +65,8 @@ def write_to_csv(file_name: Path, data: list[list[str]], headers: list[str]) -> 
 
 def get_csv_file_name_and_path(live_settings: Default_settings) -> Path:
     csv_file = (
-        live_settings.files.full_output_dir / f"{live_settings.files.out_file}.csv"
+        # live_settings.files.full_output_dir / f"{live_settings.files.out_file}.csv"
+        live_settings.files.full_output_dir / live_settings.files.out_file
     )
     return csv_file
 

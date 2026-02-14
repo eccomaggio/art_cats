@@ -1,7 +1,11 @@
 from dataclasses import dataclass
+from tkinter import W
 
 from art_cats.settings import Default_settings
 from . import validation
+from . import io
+import logging
+logger = logging.getLogger(__name__)
 
 @dataclass
 class Data:
@@ -44,53 +48,141 @@ class Data:
         self.excel_rows[self.current_row_index] = row
 
 
-def gatekeeper(source: str, editor) -> None:
+def gatekeeper(source: str, editor) -> bool:
     """
-        logic for gatekeepers:
+    *LOGIC:
 
-        submit:
-                check if dummy
-                check if empty record
-                check if empty file
+    This routine is called whenever a record is saved or
+    data could be lost because a record is unsaved when
+    a user moves on to the next record.
 
-                check for incomplete (validate)
+    *Assumptions:
+    if a record is saved:
+        assume it is valid
+        no need to save again
+    else:
+        submit -> validate & save
+        other -> abort and prompt to repair & try again
 
-        close:
-                check for unsaved —> confirm
-                check for incomplete (validate)
-
-        update_current_position: (jump)
-                check for unsaved —> confirm
-                check for incomplete (validate)
-
-        handle_clear_form: (clear)
-                confirm action
-
-        handle_create_new_record: (new)
-                check for unsaved —> confirm
-                check for incomplete (validate)
-
-        handle_unlock: (lock)
-                if about to lock:
-                        check for unsaved —> confirm
-                        check for incomplete (validate)
-
-        handle_marc_files: (marc)
-                check for unsaved —> confirm
-                check for incomplete (validate)
-
-        handle_create_new_file: (discard)
-                check for unsaved —> confirm
-
-
-    if dummy —> 		submit
-    if empty record —> 	submit
-    if empty file —> 	submit
-
-    if incomplete —>	submit, close, update_pos, new record, unlock, marc,
-    if unsaved info —>			close, update_pos, new record, unlock, marc, new file
+    *identifiers:
+    These are passed to the routine by the caller:
+            submit -> handle_submit()
+            close -> handle_close()
+            jump -> update_current_position()
+            clear -> handle_clear_form()
+            new -> handle_create_new_record()
+            lock -> handle_unlock()
+            marc -> handle_marc_files()
+            discard -> handle_create_new_file()
+            barcode -> choose_to_save_on_barcode()
     """
-    print(f"gatekeeping for {source=}, {editor.data.all_text_is_saved=}")
+    authorised_to_continue = False
+
+    is_saved = check_if_saved(editor, source)
+    print(f"gatekeeping for {source=} [{is_saved=}]")
+    if source not in ["submit"]:
+        if is_saved:
+            authorised_to_continue = True
+        else:
+            authorised_to_continue = False
+            editor.show_alert_box("Check the record is correct and then save it before continuing.")
+    else:
+        if is_saved:
+            authorised_to_continue = False
+        else:
+            authorised_to_continue = check_record_can_be_saved(editor)
+    return authorised_to_continue
+
+
+def check_record_can_be_saved(editor, source="submit") -> bool:
+    record_as_dict, is_empty = editor.get_all_inputs()
+    if is_empty:
+        authorised_to_continue = handle_empty_records(editor, source)
+    else:
+        problem_items, error_details, is_dummy = validation.validate(
+            record_as_dict,
+            editor.settings,
+            )
+        if problem_items:
+            editor.highlight_fields(problem_items)
+            editor.show_alert_box(error_details)
+            authorised_to_continue = False
+        else:
+            add_record(editor, record_as_dict)
+            authorised_to_continue = True
+    return authorised_to_continue
+
+
+def check_if_saved(editor, source) -> bool:
+    """
+    Checks whether there is unsaved text in the record.
+    This is normal for a submit-record request, but if
+    if is for some other operation, **the user is given
+    the option to abort**.
+    """
+    # return not editor.data.all_text_is_saved
+    record_is_saved = editor.data.all_text_is_saved
+    if not record_is_saved and source not in ("submit","lock"):
+            record_is_saved = not editor.choose_to_abort_on_unsaved_text()
+    # treat_as_saved = False
+    # if source != "submit" and not editor.data.all_text_is_saved:
+    #     treat_as_saved = not editor.choose_to_abort_on_unsaved_text()
+    #     # all_saved = False
+    #     # error_msg = "There is some unsaved information. Please save before continuing"
+    #     # editor.show_alert_box(error_msg)
+    return record_is_saved
+
+
+def handle_empty_records(editor, source: str) -> bool:
+    if source in ("discard"):
+        save_is_authorised = True
+    elif editor.data.current_record_is_new:
+        editor.show_alert_box("There is no information to save. You can either enter a record or simply close the app.")
+        # return False
+        save_is_authorised = False
+    else:
+        editor.delete_record()
+        # return True
+        save_is_authorised = True
+    return save_is_authorised
+
+
+def add_record(editor, record_as_dict) -> None:
+    record_as_data_row = list(record_as_dict.values())
+    # print("OK... data passes as valid for submission...")
+    if editor.data.current_record_is_new:
+        # print(f"***{self.has_records=}, record count: {self.record_count} {data=}")
+        if editor.data.has_records:
+            editor.data.excel_rows.append(record_as_data_row)
+        else:
+            editor.data.excel_rows = [record_as_data_row]
+            editor.data.has_records = True
+        editor.data.current_row_index = editor.data.index_of_last_record
+        editor.update_title_with_record_number()
+    else:
+        ## Update existing record
+        editor.data.current_row = record_as_data_row
+
+
+def save_record_externally(editor) -> None:
+    csv_file = io.get_csv_file_name_and_path(editor.settings)
+    logger.info(f"{csv_file=}")
+    editor.save_as_csv(csv_file)
+    editor.update_nav_buttons()
+    editor.load_record_into_gui(editor.data.current_row)
+
+
+def delete_record(editor, index=-1) -> None:
+    if index == -1:
+        index = editor.data.current_row_index
+    del editor.data.excel_rows[index]
+    index_of_last_record = editor.data.index_of_last_record
+    if index > index_of_last_record:
+        index = index_of_last_record
+        editor.data.current_row_index = index_of_last_record
+    # print(f"????? {index=}")
+    if editor.data.record_count:
+        editor.load_record_into_gui(editor.data.excel_rows[index])
 
 
 def analyse_new_file(headers, col_enum):
