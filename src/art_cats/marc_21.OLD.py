@@ -742,19 +742,6 @@ def norm_size(raw: str) -> int:
 #         is_illustrated = raw.strip().lower() == "true"
 #     return is_illustrated
 
-def norm_illustrations(raw: str) -> str:
-    """
-    This is to convert old boolean version into the 3-way version
-    """
-    is_illustrated = raw
-    if isinstance(raw, bool):
-        is_illustrated = "Full" if raw else "None"
-    else:
-        if raw.lower() == "true":
-            is_illustrated = "Full"
-        elif raw.lower() == "false":
-            is_illustrated = "None"
-    return is_illustrated
 
 def norm_pages(pages_raw: str) -> tuple[str, bool]:
     pages = strip_unwanted(r"pages|\[|\]", pages_raw)
@@ -786,9 +773,9 @@ def get_item_policy_from_hol_notes(raw_note: str) -> tuple[str, str]:
     ## TODO: if keeping, put trigger_string into settings
     trigger_string = "**lib only**"
     if raw_note.lower().startswith(trigger_string.lower()):
-        return (raw_note[len(trigger_string):], "LUO-DIG-Y")
+        return (raw_note[len(trigger_string):], "Use_in_Library_Only")
     else:
-        return (raw_note, "")
+        return (raw_note, "Fixed_Week_Loan")
 
 
 def norm_barcode(raw_barcode: str, row_num: int) -> str:
@@ -863,8 +850,8 @@ def parse_row(row: list[str], row_num: int, current_time: datetime) -> Record:
     copyright_ = norm_copyright(next(cols))
     extent, extent_is_approx = norm_pages(next(cols))
     size = norm_size(next(cols))
-    is_illustrated = norm_illustrations(next(cols))
-    # is_illustrated = next(cols)
+    # is_illustrated = norm_illustrations(next(cols))
+    is_illustrated = next(cols)
     series_title = next(cols)
     series_enum = next(cols)
     volume = next(cols)

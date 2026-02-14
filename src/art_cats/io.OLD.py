@@ -11,8 +11,6 @@ import csv
 import openpyxl  # type: ignore
 import openpyxl.styles
 from openpyxl.worksheet.worksheet import Worksheet  # type: ignore
-from openpyxl.workbook.defined_name import DefinedName
-from openpyxl.utils import quote_sheetname, absolute_coordinate
 from datetime import date
 import logging
 
@@ -192,17 +190,6 @@ def write_CHU_file(
     ws["E2"].alignment = openpyxl.styles.Alignment(horizontal="right")
     ws["F2"] = email
     ws["G2"] = "(Always e-mail)"
-
-    ## These are required by the CHU process
-    named_ranges = {
-        "WhenEmail": "G2",
-        "ContactEmail": "F2",
-    }
-    for name, coord in named_ranges.items():
-        ref = f"{quote_sheetname(ws.title)}!{absolute_coordinate(coord)}"
-        named_range = DefinedName(name=name, attr_text=ref)
-        wb.defined_names.add(named_range)
-
     # for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G']:
     for col in ["A", "B", "C", "D", "E", "F"]:
         cell = ws[f"{col}2"]

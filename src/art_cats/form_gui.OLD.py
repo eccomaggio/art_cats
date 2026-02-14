@@ -701,7 +701,7 @@ class Editor(QWidget):
                     raw_options = self.get_raw_combo_options(
                         self.transform_into_yaml_lookup(name)
                     )
-                    options, _ = self.get_normalized_combo_list(input_widget.objectName(), raw_options)
+                    options, _ = self.get_normalized_combo_list(raw_options)
                 else:
                     leader_name = self.settings.combos.dict_by_follower[name]
                     leader_widget = self.leader_inputs[leader_name]
@@ -711,7 +711,7 @@ class Editor(QWidget):
                     )
                     source = self.get_combo_options_source(input_widget)
                     raw_options = self.get_raw_combo_options(source)
-                    options, _ = self.get_normalized_combo_list(input_widget.objectName(), raw_options)
+                    options, _ = self.get_normalized_combo_list(raw_options)
                 input_widget.clear()
                 input_widget.addItems(options)
                 input_widget.setCurrentIndex(0)
@@ -766,7 +766,7 @@ class Editor(QWidget):
         return raw_options
 
     def get_normalized_combo_list(
-        self, combo_name: str, raw_combo_options: list, selected_item=""
+        self, raw_combo_options: list, selected_item=""
     ) -> tuple[list[str], int]:
         """
         returns list with default "choose" text if more than one option
@@ -807,7 +807,7 @@ class Editor(QWidget):
                     # )
                 except ValueError:
                     logger.warning(
-                        f"The option *{selected_item}* is not an item in the combo box '{combo_name}'!"
+                        f"The option *{selected_item}* is not an item in this combo box!"
                     )
                     index = 0
             else:
@@ -839,58 +839,55 @@ class Editor(QWidget):
         Gather data from form & save it to file
         """
         logic.gatekeeper("submit", self)
-        save_is_authorised = False
 
         record_as_dict, is_empty = self.get_all_inputs()
-        print(f"handle_submit: {is_empty=}")
+
+        problem_items, error_details, is_dummy = validation.validate(
+            record_as_dict,
+            self.settings,
+            optional_msg
+            )
+
+        if problem_items:
+            # for input in self.inputs:
+            #     if input.objectName() in problem_items:
+            #         self.update_input_styling(input, "validation_error")
+            self.highlight_fields(problem_items)
+            self.show_alert_box(error_details)
+            return False
+
         if is_empty:
             if self.data.current_record_is_new:
                 self.show_alert_box("There is no information to save. You can either enter a record or simply close the app.")
-                # return False
-                save_is_authorised = False
+                return False
             else:
                 self.delete_record()
-                # return True
-                save_is_authorised = True
-        else:
+                return True
 
-            problem_items, error_details, is_dummy = validation.validate(
-                record_as_dict,
-                self.settings,
-                optional_msg
-                )
-
-            if problem_items:
-                self.highlight_fields(problem_items)
-                self.show_alert_box(error_details)
-                # return False
-                save_is_authorised = False
+        record_as_data_row = list(record_as_dict.values())
+        # print("OK... data passes as valid for submission...")
+        if self.data.current_record_is_new:
+            # print(f"***{self.has_records=}, record count: {self.record_count} {data=}")
+            if self.data.has_records:
+                self.data.excel_rows.append(record_as_data_row)
             else:
-
-                record_as_data_row = list(record_as_dict.values())
-                # print("OK... data passes as valid for submission...")
-                if self.data.current_record_is_new:
-                    # print(f"***{self.has_records=}, record count: {self.record_count} {data=}")
-                    if self.data.has_records:
-                        self.data.excel_rows.append(record_as_data_row)
-                    else:
-                        self.data.excel_rows = [record_as_data_row]
-                        self.data.has_records = True
-                    self.data.current_row_index = self.data.index_of_last_record
-                    self.update_title_with_record_number()
-                else:
-                    ## Update existing record
-                    self.data.current_row = record_as_data_row
-                save_is_authorised = True
-
-        if save_is_authorised:
-            csv_file = io.get_csv_file_name_and_path(self.settings)
-            logger.info(f"{csv_file=}")
-            self.save_as_csv(csv_file)
-            self.update_nav_buttons()
-            self.load_record_into_gui(self.data.current_row)
-        # return True
-        return save_is_authorised
+                self.data.excel_rows = [record_as_data_row]
+                self.data.has_records = True
+            self.data.current_row_index = self.data.index_of_last_record
+            self.update_title_with_record_number()
+        else:
+            ## Update existing record
+            self.data.current_row = record_as_data_row
+        # self.save_as_csv(self.settings.files.out_file)
+        # csv_file = (
+        #     self.settings.files.full_output_dir / f"{self.settings.files.out_file}.csv"
+        # )
+        csv_file = io.get_csv_file_name_and_path(self.settings)
+        logger.info(f"{csv_file=}")
+        self.save_as_csv(csv_file)
+        self.update_nav_buttons()
+        self.load_record_into_gui(self.data.current_row)
+        return True
 
 
     def highlight_fields(self, field_names: list[str]) -> None:
@@ -909,7 +906,6 @@ class Editor(QWidget):
             record_as_dict[name] = value
             if value and not isinstance(input, QCheckBox):
                 is_empty = False
-            # print(f"{name}: {value} [{type(input)}], {is_empty=}")
             # if validation.is_a_dummy_record(name, value, self.settings.validation):
             #     is_dummy = True
         # print(f">>>>>>>>>>> {is_dummy=}, {is_empty=}\n{record_as_dict}")
@@ -941,11 +937,7 @@ class Editor(QWidget):
         if index == -1:
             index = self.data.current_row_index
         del self.data.excel_rows[index]
-        index_of_last_record = self.data.index_of_last_record
-        if index > index_of_last_record:
-            index = index_of_last_record
-            self.data.current_row_index = index_of_last_record
-        # print(f"????? {index=}")
+        print(f"????? {index=}")
         if self.data.record_count:
             self.load_record_into_gui(self.data.excel_rows[index])
 
@@ -1197,7 +1189,7 @@ class Editor(QWidget):
         """
         source = self.get_combo_options_source(combo_box)
         raw_options = self.get_raw_combo_options(source)
-        options, index = self.get_normalized_combo_list(combo_box.objectName(), raw_options, value)
+        options, index = self.get_normalized_combo_list(raw_options, value)
         # print(f"load_combo_box {combo_box.objectName()} >>> {match_for_yaml_lookup=}: {value=}, {index=}, {options[:2]=}...\n")
         combo_box.clear()
         combo_box.addItems(options)
