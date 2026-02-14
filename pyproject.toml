@@ -24,5 +24,6 @@ dev = [
 # command to update the system when you change an entry point:
 # uv pip install -e .
 cat = "art_cats.art:main"
+cattab = "art_cats.art_withTable:main"
 order = "art_cats.order:main"
 update = "art_cats.tmp_update:main"
