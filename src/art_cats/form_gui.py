@@ -1336,14 +1336,13 @@ class Editor(QWidget):
         records_to_export = self.remove_dummy_records(self.data.excel_rows)
         files_successfully_created = marc_21.save_as_marc_files(
             self.data.headers,
-            # self.excel_rows,
             records_to_export,
-            # self.COL.barcode.value,
-            self.COL.hol_notes.value,
+            # self.COL.hol_notes.value,
             file_name_with_path,
             # self.settings,
-            self.settings.create_excel_file,
-            self.settings.create_chu_file
+            # self.settings.create_excel_file,
+            # self.settings.create_chu_file,
+            self.settings,
             )
         if files_successfully_created:
             msg = f'The {len(records_to_export)} records in "{self.settings.files.in_file}" have been successfully saved as "{file_name_with_path.stem}.mrk" in *{self.settings.files.full_output_dir}*.'

@@ -6,6 +6,8 @@ import from / export to csv / excel files
 import enum
 import logging
 
+from art_cats.settings import Default_settings
+
 # from . import log_setup
 from . import validation
 from . import io
@@ -835,17 +837,30 @@ def create_date_list(dates_raw: str) -> list[str]:
     return dates
 
 
-def parse_rows_into_records(sheet: list[worksheet_row]) -> list[Record]:
+def parse_rows_into_records(
+        sheet: list[worksheet_row],
+        live_settings:Default_settings
+        ) -> list[Record]:
     current_time = datetime.now()
     records = []
     logger.info("\n\n++++ Validating records")
     for row_num, row in enumerate(sheet):
-        record = parse_row(row, row_num, current_time)
+        record = parse_row(
+            row,
+            row_num,
+            current_time,
+            live_settings,
+            )
         records.append(record)
     return records
 
 
-def parse_row(row: list[str], row_num: int, current_time: datetime) -> Record:
+def parse_row(
+        row: list[str],
+        row_num: int,
+        current_time: datetime,
+        live_settings: Default_settings,
+        ) -> Record:
     cols = iter(row)
     sublibrary = next(cols)
     langs = norm_langs(next(cols))
@@ -878,6 +893,9 @@ def parse_row(row: list[str], row_num: int, current_time: datetime) -> Record:
     hol_notes, item_policy = get_item_policy_from_hol_notes(next(cols))
     donation = next(cols)
     barcode = norm_barcode(next(cols), row_num)
+
+    if not donation and live_settings.title == "art_catalogue":
+       donation = "Donated by the Ashmolean Museum."
 
     record = Record(
         sublibrary,
@@ -1668,38 +1686,23 @@ def apply_marc_logic(record: Record) -> PyRecord:
 def save_as_marc_files(
     headers: list[str],
     excel_rows: list[list[str]],
-    # barcode_index: int,
-    hol_index: int,
+    # hol_index: int,
     file_name_with_path: Path,
-    # settings,
-    create_excel_file=True,
-    create_chu_file=True,
+    live_settings: Default_settings,
+    # create_excel_file=True,
+    # create_chu_file=True,
 ) -> bool:
     """
     Saves the record set as .mrk & .mrc files;
     depending on settings, also creates an excel CHU file
     for once the marc files have been uploaded to ALMA
     """
+    records = parse_rows_into_records(excel_rows, live_settings)
     # if create_chu_file:
-    #     # if settings.create_chu_file:
-    #     chu_file = file_name_with_path.with_suffix(".CHU.xlsx")
-    #     # io.write_CHU_file_1(excel_rows, chu_file, barcode_index)
-    #     chu_rows = [
-    #         [row[barcode_index], "", "", "", "Relocating to CSF", ""]
-    #         for row in excel_rows
-    #     ]
-    #     io.write_CHU_file(chu_rows, chu_file)
-
-    # if create_excel_file:
-    #     io.write_data_to_excel([headers, *excel_rows], file_name_with_path.with_suffix(".xlsx"))
-        # if settings.create_excel_file:
-    #     excel_file = file_name_with_path.with_suffix(".xlsx")
-    # io.write_data_to_excel([headers, *excel_rows], excel_file)
-
-    records = parse_rows_into_records(excel_rows)
-    if create_chu_file:
+    if live_settings.create_chu_file:
         write_chu_file(records, file_name_with_path)
-    if create_excel_file:
+    # if create_excel_file:
+    if live_settings.create_excel_file:
         # excel_rows = add_policy_into_hol_notes(records, excel_rows, hol_index)
         io.write_data_to_excel([headers, *excel_rows], file_name_with_path.with_suffix(".xlsx"))
     # marc_records = build_marc_records(parse_rows_into_records(excel_rows))
