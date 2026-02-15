@@ -26,4 +26,5 @@ dev = [
 cat = "art_cats.art:main"
 cattab = "art_cats.art_withTable:main"
 order = "art_cats.order:main"
+uni = "art_cats.universal:main"
 update = "art_cats.tmp_update:main"
