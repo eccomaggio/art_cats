@@ -596,9 +596,12 @@ class Editor(QWidget):
             if isinstance(tmp_input, QLineEdit):
                 tmp_wrapper.addStretch(1)
             tmp_wrapper.setSpacing(3)
-            inputs_layout.addLayout(
-                tmp_wrapper, start_row, start_col, row_span, col_span
-            )
+            if row_span > 1 or col_span > 1:
+                layout_params = (tmp_wrapper, start_row, start_col, row_span, col_span)
+            else:
+                layout_params = (tmp_wrapper, start_row, start_col)
+            inputs_layout.addLayout(*layout_params)
+
         ## TODO: work out why HOL_notes does react to changed text!!
         # self.add_signal_to_fire_on_text_change()
 
