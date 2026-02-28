@@ -52,7 +52,8 @@ def main():
         publisher = "Publisher's name"
         pub_year = "Year of publication"
         copyright = "Year of copyright"
-        extent = "Number of pages"
+        # extent = "Number of pages"
+        pagination = "Number of pages"
         size = "Size (height)"
         # is_illustrated = "Illustrated"
         is_illustrated = "Illustrations"
@@ -70,6 +71,7 @@ def main():
 
     settings = Default_settings()
     settings.title = "art_catalogue"
+    settings.show_marc_button = True
     settings.headers = [member.display_title for member in COL]
     settings.show_table_view = False
     settings.locking_is_enabled = True
@@ -80,7 +82,7 @@ def main():
     settings.validation.fields_to_clear = [
         COL.barcode,
         # COL.hol_notes,  # temporarily contains 'item policy'
-        COL.extent,
+        COL.pagination,
         COL.pub_year,
         COL.sale_dates,
         COL.copyright,
@@ -98,12 +100,12 @@ def main():
     settings.validation.required_fields = [
         COL.langs.name,
         COL.title.name,
-        COL.extent.name,
+        # COL.extent.name,
         COL.pub_year.name,
         COL.publisher.name,
         COL.country_name.name,
         COL.place.name,
-        COL.extent.name,
+        COL.pagination.name,
         COL.size.name,
         COL.barcode.name,
         COL.is_illustrated,
@@ -140,7 +142,7 @@ def main():
         (COL.publisher, (1, 4), 14, 0, "line"),
         (COL.pub_year, (1, 1), 14, 4, "line"),
         (COL.copyright, (1, 1), 14, 5, "line"),
-        (COL.extent, (1, 1), 15, 1, "line"),
+        (COL.pagination, (1, 1), 15, 1, "line"),
         (COL.size, (1, 1), 15, 0, "line"),
         # (COL.is_illustrated, (1,1), 15, 3, "checkbox"),
         (COL.is_illustrated, (1, 1), 15, 3, "combo"),

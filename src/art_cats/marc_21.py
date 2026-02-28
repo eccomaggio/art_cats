@@ -69,9 +69,8 @@ class Record:
     publisher: str
     pub_year: str
     copyright: str
-    extent: str
+    pagination: str
     size: int
-    # is_illustrated: bool
     is_illustrated: str
     series_title: str
     series_enum: str
@@ -84,7 +83,7 @@ class Record:
     barcode: str
 
     pub_year_is_approx: bool
-    extent_is_approx: bool
+    pagination_is_approx: bool
     timestamp: datetime
     item_policy: str
 
@@ -707,7 +706,7 @@ def validate_record(record: Record, record_num: int) -> bool:
         # "place",
         "publisher",
         "pub_year",
-        "extent",
+        "pagination",
         "size",
         "sale_dates",
         "barcode",
@@ -769,8 +768,8 @@ def norm_pages(pages_raw: str) -> tuple[str, bool]:
     if "approx" in pages:
         pages = re.sub(r"[^\d]", "", pages)
         pages = pages + "?"
-    extent, extent_is_approx = check_for_approx(pages)
-    return (extent, extent_is_approx)
+    pagination, pagination_is_approx = check_for_approx(pages)
+    return (pagination, pagination_is_approx)
 
 
 def norm_copyright(raw: str) -> str:
@@ -885,7 +884,7 @@ def parse_row(
     publisher = next(cols)
     pub_date, pub_date_is_approx = check_for_approx(norm_year(next(cols)))
     copyright_ = norm_copyright(next(cols))
-    extent, extent_is_approx = norm_pages(next(cols))
+    pagination, pagination_is_approx = norm_pages(next(cols))
     size = norm_size(next(cols))
     is_illustrated = norm_illustrations(next(cols))
     # is_illustrated = next(cols)
@@ -919,7 +918,7 @@ def parse_row(
         publisher,
         pub_date,
         copyright_,
-        extent,
+        pagination,
         size,
         is_illustrated,
         series_title,
@@ -932,7 +931,7 @@ def parse_row(
         donation,
         barcode,
         pub_date_is_approx,
-        extent_is_approx,
+        pagination_is_approx,
         current_time,
         item_policy,
         sequence_number=1,
@@ -1211,9 +1210,9 @@ def build_300(record: Record) -> Result:
     # i1, i2 = "\\", "\\"
     i1, i2 = ISBD["BLANK"], ISBD["BLANK"]  ## "undefined"
     pages_content = (
-        f"approximately {record.extent} pages"
-        if record.extent_is_approx
-        else f"{record.extent} pages"
+        f"approximately {record.pagination} pages"
+        if record.pagination_is_approx
+        else f"{record.pagination} pages"
     )
     # pages_punctuation = ISBD[":"] if record.is_illustrated else ""
     # pages = Subfield(value=tmp + ISBD[";"], code="a")

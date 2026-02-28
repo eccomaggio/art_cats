@@ -35,35 +35,19 @@ def main():
         def __init__(self, title: str):
             self.display_title = title
 
-        # sublib = "Library"
         langs = "language of resource"
         isbn = "ISBN"
         title = "Title"
-        # tr_title = "Title transliteration"
         subtitle = "Subtitle"
         artist = "Artist"
-        # tr_subtitle = "Subtitle transliteration"
-        # parallel_title = "Parallel title (dual language only)"
-        # tr_parallel_title = "Parallel title transliteration"
-        # parallel_subtitle = "Parallel subtitle (dual language only)"
-        # tr_parallel_subtitle = "Parallel subtitle transliteration"
-        # state = "State (US/UK/Canada & Australia only)"
         place = "(State,) City of publication"
-        country = "Country of publication"
+        country_name = "Country of publication"
         publisher = "Publisher's name"
         pub_year = "Year of publication"
         copyright = "Year of copyright"
         pagination = "Pagination"
         size = "Size (height)"
-        # is_illustrated = "Illustrations"
-        # series_title = "Series title"
-        # series_enum = "Series enumeration"
-        # volume = "Volume"
-        note = "Note"
-        # sales_code = "Sale code"
-        # sale_dates = "Date of auction"
-        # hol_notes = "HOL notes"
-        # donation = "Donor note"
+        notes = "Note"
         authors = "Author(s)"
         call_number = "Call number"
         holding_note = "Holding note"
@@ -73,6 +57,7 @@ def main():
 
     settings = Default_settings()
     settings.title = "strachan"
+    settings.show_marc_button = True
     settings.headers = [member.display_title for member in COL]
     settings.show_table_view = True
     settings.locking_is_enabled = True
@@ -87,7 +72,7 @@ def main():
         COL.artist,
         COL.pagination,
         COL.pub_year,
-        COL.note,
+        COL.notes,
         COL.copyright,
         COL.authors,
         COL.call_number,
@@ -107,7 +92,7 @@ def main():
         COL.title.name,
         COL.pub_year.name,
         COL.publisher.name,
-        COL.country.name,
+        COL.country_name.name,
         COL.place.name,
         COL.pagination.name,
         COL.size.name,
@@ -138,13 +123,13 @@ def main():
         (COL.subtitle, (2, 3), 1, 3, "text"),
         (COL.artist, (1, 2), 0, 4, "line"),
         (COL.place, (1, 3), 3, 0, "line"),
-        (COL.country, (1, 3), 3, 3, "line"),
+        (COL.country_name, (1, 3), 3, 3, "line"),
         (COL.publisher, (1, 2), 4, 0, "line"),
         (COL.pub_year, (1, 1), 4, 2, "line"),
         (COL.copyright, (1, 1), 4, 3, "line"),
         (COL.pagination, (1, 1), 4, 4, "line"),
         (COL.size, (1, 1), 4, 5, "line"),
-        (COL.note, (2, 2), 6, 0, "text"),
+        (COL.notes, (2, 2), 6, 0, "text"),
         (COL.authors, (1, 4), 5, 0, "line"),
         (COL.call_number, (1, 2), 5, 4, "line"),
         (COL.holding_note, (2, 2), 6, 2, "text"),

@@ -70,6 +70,7 @@ def main():
 
     settings = Default_settings()
     settings.title = "art_catalogue"
+    settings.show_marc_button = True
     settings.headers = [member.display_title for member in COL]
     settings.show_table_view = True
     settings.locking_is_enabled = True

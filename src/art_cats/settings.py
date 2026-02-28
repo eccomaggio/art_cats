@@ -88,6 +88,7 @@ class Default_settings:
     # is_existing_file = True
     is_existing_file = False
     use_default_layout = True
+    show_marc_button = False
     # layout_template: tuple = ()
     layout_template = []
     first_row_is_header = True

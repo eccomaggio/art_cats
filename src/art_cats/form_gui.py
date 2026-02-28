@@ -681,12 +681,9 @@ class Editor(QWidget):
         last_row += 1
         nav_grid.addWidget(self.load_file_btn, last_row, 0, 1, 1)
         # nav_grid.addWidget(self.save_btn, last_row, 1, 1, 1)
-        # if self.settings.flavour["title"] == "art_catalogue":
-        #     nav_grid.addWidget(self.marc_btn, last_row, 1, 1, 1)
         nav_grid.addWidget(self.close_btn, last_row, 2, 1, 1)
         nav_grid.addWidget(self.help_btn, last_row, 3, 1, 1)
-        # if self.settings.show_table_view:
-        if self.settings.title == "art_catalogue":
+        if self.settings.show_marc_button:
             self.marc_btn = QPushButton("Export as MARC")
             # self.marc_btn.clicked.connect(self.save_as_marc)
             self.marc_btn.clicked.connect(self.handle_marc_files)
