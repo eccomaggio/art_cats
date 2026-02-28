@@ -6,75 +6,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# def validate(
-#         record_as_dict: dict[str, str],
-#         settings:Default_settings,
-#         is_dummy,
-#         optional_msg=""
-#         ) -> tuple[list[str], str]:
-#     ## TODO: check out optional_msg
-#     ## TODO: tweak rules to fit art cats
-#     """
-#     goes through values in a record and checks their validity if required
-#     Args:
-#         record_as_dict (dict[str, str])
-#         settings (Default_settings)
-#         optional_msg (str, optional): Not sure! Need to check!!. Defaults to "".
-
-#     Returns:
-#         None | tuple[list[str], str]: if empty, everything validated; otherwise return a list of the problematic field names and an error message containing the details
-#     """
-#     msg = ""
-#     problem_items = []
-
-#     if not is_dummy:
-#         missing = []
-#         invalid = []
-#         errors = []
-#         rules = settings.validation
-#         for name, content in record_as_dict.items():
-#             # if is_a_dummy_record(name, content, rules):
-#             #     continue
-#             if name in rules.required_fields and not content:
-#                 missing.append(name)
-#                 problem_items.append(name)
-#                 continue
-#             if name in rules.must_validate:
-#                 test = tests_by_name.get(name, None)
-#                 if test:
-#                     error_msg = test(name, content)
-#                     if error_msg:
-#                         invalid.append(f"{name}: {error_msg}")
-#                         problem_items.append(name)
-#         if settings.title == "art_catalogue":
-#             country = record_as_dict["country_name"]
-#             state = record_as_dict["state"]
-#             place = record_as_dict["place"]
-#             country_code = marc_21.get_country_code(country, state, place)
-#             print(f">>> {country}->{country_code}")
-#             if country and not country_code:
-#                 invalid.append(f"country of publication ({country}) is not recognized.")
-#                 problem_items.append(country)
-#             # elif country_code in marc_21.code_can_be_expanded:
-#             #     ## But this will disallow entry if you don't know the state
-#             #     invalid.append(f"{country} should be expanded if possible with a state.")
-#         if missing:
-#             count = len(missing)
-#             add_s = "s" if count > 1 else ""
-#             errors.append(
-#                 f"The following {count} field{add_s} are missing: {', '.join(missing)}"
-#             )
-#         if invalid:
-#             count = len(invalid)
-#             add_s = "s" if count > 1 else ""
-#             errors.append(
-#                 f"Please correct the {count} following problem{add_s}: {'; '.join(invalid)}"
-#             )
-#         if errors:
-#             msg = "\n".join(errors)
-
-#     return (problem_items, msg)
-
 def validate(
         record_as_dict: dict[str, str],
         live_settings: Default_settings,
@@ -143,7 +74,7 @@ def validate_marc21_country_codes(record_as_dict: dict, invalid: list, problem_i
     state = record_as_dict["state"]
     place = record_as_dict["place"]
     country_code = marc_21.get_country_code(country, state, place, row_num)
-    print(f">>> {country}->{country_code}")
+    print(f"Validate marc21 codes: {country}->{country_code}")
     if country and not country_code:
         invalid.append(f"country of publication ({country}) is not recognized.")
         problem_items.append(country)

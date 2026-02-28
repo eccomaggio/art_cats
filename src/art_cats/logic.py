@@ -79,7 +79,7 @@ def gatekeeper(source: str, editor) -> bool:
     authorised_to_continue = False
 
     is_saved = check_if_saved(editor, source)
-    print(f"gatekeeping for {source=} [{is_saved=}]")
+    # print(f"gatekeeping for {source=} [{is_saved=}]")
     if source not in ["submit"]:
         if is_saved:
             authorised_to_continue = True

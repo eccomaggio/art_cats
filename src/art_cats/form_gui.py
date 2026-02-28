@@ -1557,7 +1557,7 @@ def setup_environment(settings: Default_settings, expected_col_count:int):
             Path(settings.files.in_file), settings.first_row_is_header
         )
         file_resembles_expectations = len(headers) == expected_col_count
-        print(f">>> >> > {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}")
+        print(f"Setup environment: {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}")
         if settings.use_default_layout:
             settings.layout_template = settings.default_template
             grid.add_bricks_by_template(settings.layout_template)
