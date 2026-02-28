@@ -666,7 +666,7 @@ def check_city(place:str) -> str:
     print(f"normed place: {normed}")
     return code_by_city.get(normed, "")
 
-def get_country_code(country:str, state:str, place:str) -> str:
+def get_country_code(country:str, state:str, place:str, row_num:int) -> str:
     short_code = check_country(country)
     # print(f"step 1: {short_code=}")
     if short_code:
@@ -677,10 +677,16 @@ def get_country_code(country:str, state:str, place:str) -> str:
                 long_code = check_state(state)
                 if long_code:
                     return long_code
-            elif place:
-                long_code = check_city(place)
-                if long_code:
-                    return long_code
+            else:
+                logger.warning(f"Record no. {row_num} is lacking a State; please check that the final assigned country code is accurate.")
+                if place:
+                    long_code = check_city(place)
+                    if long_code:
+                        return long_code
+            # elif place:
+            #     long_code = check_city(place)
+            #     if long_code:
+                    # return long_code
         return short_code
     else:
         # print(f"{country} matched no country...")
@@ -873,7 +879,7 @@ def parse_row(
     # country = norm_country(country_name)
     state = next(cols)
     place = next(cols)
-    country_code = get_country_code(country_name, state, place)
+    country_code = get_country_code(country_name, state, place, row_num)
     if not country_code:
         logger.error(f"{country_name} is not recognized as a valid country name.")
     publisher = next(cols)
@@ -895,7 +901,8 @@ def parse_row(
     barcode = norm_barcode(next(cols), row_num)
 
     if not donation and live_settings.title == "art_catalogue":
-       donation = "Donated by the Ashmolean Museum."
+    #    donation = "Donated by the Ashmolean Museum."
+       donation = "Anonymous donation"
 
     record = Record(
         sublibrary,
@@ -1330,8 +1337,8 @@ def build_020(record: Record) -> Result:  ##optional
     contents = []
     if record.isbn:
         contents.append(Subfield(value=record.isbn, code="a"))
-    if record.volume:
-        contents.append(Subfield(value=f"volume {record.volume}", code="q"))
+    # if record.volume:
+    #     contents.append(Subfield(value=f"volume {record.volume}", code="q"))
     if contents:
         result = Result(
             Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=contents),

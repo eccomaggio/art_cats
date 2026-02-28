@@ -101,7 +101,7 @@ def validate(
     missing = []
     invalid = []
     rules = live_settings.validation
-    for name, content in record_as_dict.items():
+    for row_num, (name, content) in enumerate(record_as_dict.items()):
         if is_a_dummy_record(name, content, rules):
             is_dummy = True
             break
@@ -119,7 +119,7 @@ def validate(
     if not is_dummy:
         errors = []
         if live_settings.title == "art_catalogue":
-            invalid, problem_items = validate_marc21_country_codes(record_as_dict, invalid, problem_items)
+            invalid, problem_items = validate_marc21_country_codes(record_as_dict, invalid, problem_items, row_num)
         if missing:
             count = len(missing)
             add_s = "s" if count > 1 else ""
@@ -138,11 +138,11 @@ def validate(
     return (problem_items, error_details, is_dummy)
 
 
-def validate_marc21_country_codes(record_as_dict: dict, invalid: list, problem_items: list) -> tuple[list, list]:
+def validate_marc21_country_codes(record_as_dict: dict, invalid: list, problem_items: list, row_num:int) -> tuple[list, list]:
     country = record_as_dict["country_name"]
     state = record_as_dict["state"]
     place = record_as_dict["place"]
-    country_code = marc_21.get_country_code(country, state, place)
+    country_code = marc_21.get_country_code(country, state, place, row_num)
     print(f">>> {country}->{country_code}")
     if country and not country_code:
         invalid.append(f"country of publication ({country}) is not recognized.")
