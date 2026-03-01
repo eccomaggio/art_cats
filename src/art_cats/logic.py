@@ -5,7 +5,9 @@ from art_cats.settings import Default_settings
 from . import validation
 from . import io
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class Data:
@@ -17,7 +19,6 @@ class Data:
     record_is_locked = False
     all_text_is_saved = True
     # record_is_new = True
-
 
     @property
     def row_count(self) -> int:
@@ -85,7 +86,9 @@ def gatekeeper(source: str, editor) -> bool:
             authorised_to_continue = True
         else:
             authorised_to_continue = False
-            editor.show_alert_box("Check the record is correct and then save it before continuing.")
+            editor.show_alert_box(
+                "Check the record is correct and then save it before continuing."
+            )
     else:
         if is_saved:
             authorised_to_continue = False
@@ -102,7 +105,7 @@ def check_record_can_be_saved(editor, source="submit") -> bool:
         problem_items, error_details, is_dummy = validation.validate(
             record_as_dict,
             editor.settings,
-            )
+        )
         if problem_items:
             editor.highlight_fields(problem_items)
             editor.show_alert_box(error_details)
@@ -122,8 +125,8 @@ def check_if_saved(editor, source) -> bool:
     """
     # return not editor.data.all_text_is_saved
     record_is_saved = editor.data.all_text_is_saved
-    if not record_is_saved and source not in ("submit","lock"):
-            record_is_saved = not editor.choose_to_abort_on_unsaved_text()
+    if not record_is_saved and source not in ("submit", "lock"):
+        record_is_saved = not editor.choose_to_abort_on_unsaved_text()
     # treat_as_saved = False
     # if source != "submit" and not editor.data.all_text_is_saved:
     #     treat_as_saved = not editor.choose_to_abort_on_unsaved_text()
@@ -137,7 +140,9 @@ def handle_empty_records(editor, source: str) -> bool:
     if source in ("discard"):
         save_is_authorised = True
     elif editor.data.current_record_is_new:
-        editor.show_alert_box("There is no information to save. You can either enter a record or simply close the app.")
+        editor.show_alert_box(
+            "There is no information to save. You can either enter a record or simply close the app."
+        )
         # return False
         save_is_authorised = False
     else:
@@ -185,7 +190,7 @@ def delete_record(editor, index=-1) -> None:
         editor.load_record_into_gui(editor.data.excel_rows[index])
 
 
-def analyse_new_file(headers, col_enum):
+def is_expected_filetype(headers, col_enum):
     expected_col_count = len(col_enum)
     file_resembles_expectations = len(headers) == expected_col_count
     # print(f">>> >> > {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}")
@@ -200,3 +205,54 @@ def get_human_readable_record_number(current_row_index, number=-100):
     else:
         out = str(number + 1)
     return out
+
+
+def map_list(orig: list, mappings: list) -> list:
+    """
+    'new' is returned where each of its elements
+    come from 'orig'
+    but moved to the index specified in 'mappings'
+    TEST:
+    x = ["a", "b", "c", "d", "e"]
+    y = [1, 4, 2, 3, 0]
+    z = map_list(x, y)
+    assert z == ["e", "a", "c", "d", "b"]
+    """
+    if not map_fits_list(mappings, orig):
+        return orig
+    new = ["" for _ in mappings]
+    for pos, value in enumerate(orig):
+        new_pos = mappings[pos]
+        new[new_pos] = value
+        # print(f"{value} @ {pos} -> {new_pos}: {new}")
+    return new
+
+
+def unmap_list(mapped: list, mappings: list) -> list:
+    """
+    'mapped' is a list  constructed from 'mappings'
+    'orig' returns the elements in their original order
+    before 'mappings' was applied
+    """
+    if not map_fits_list(mappings, mapped):
+        return mapped
+    orig = ["" for _ in mappings]
+    for orig_pos, mapped_pos in enumerate(mappings):
+        value = mapped[mapped_pos]
+        orig[orig_pos] = value
+        # print(f"{value} @ {pos} -> {new_pos}: {new}")
+    return orig
+
+
+def map_fits_list(mappings: list, orig: list) -> bool:
+    """
+    * orig & mappings must be equal length
+    * elements in mappings must be contiguous when sorted
+    """
+    if len(orig) != len(mappings):
+        return False
+    test1 = sorted(mappings)
+    test2 = list(range(test1[0], test1[-1] + 1))
+    if test1 != test2:
+        return False
+    return True

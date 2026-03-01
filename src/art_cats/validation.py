@@ -142,7 +142,7 @@ def barcode(name:str, content:str) -> str:
           error_msg = " and ".join(errors)
         else:
           error_msg = errors[0]
-        error_msg = f"The barcode must {error_msg}"
+        error_msg = f"The barcode [{content}] must {error_msg}"
     return error_msg
 
 

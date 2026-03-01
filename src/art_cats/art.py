@@ -52,10 +52,8 @@ def main():
         publisher = "Publisher's name"
         pub_year = "Year of publication"
         copyright = "Year of copyright"
-        # extent = "Number of pages"
         pagination = "Number of pages"
         size = "Size (height)"
-        # is_illustrated = "Illustrated"
         is_illustrated = "Illustrations"
         series_title = "Series title"
         series_enum = "Series enumeration"
@@ -72,6 +70,7 @@ def main():
     settings = Default_settings()
     settings.title = "art_catalogue"
     settings.show_marc_button = True
+    settings.column_names = [column.name for column in COL]
     settings.headers = [member.display_title for member in COL]
     settings.show_table_view = False
     settings.locking_is_enabled = True

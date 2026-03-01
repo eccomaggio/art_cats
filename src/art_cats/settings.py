@@ -89,6 +89,9 @@ class Default_settings:
     is_existing_file = False
     use_default_layout = True
     show_marc_button = False
+    column_names = []
+    # * How the column order differs from a marc_21 record (ignoring omitted fields)
+    csv_to_marc_mappings = []
     # layout_template: tuple = ()
     layout_template = []
     first_row_is_header = True

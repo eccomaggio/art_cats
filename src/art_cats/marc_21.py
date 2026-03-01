@@ -44,7 +44,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-worksheet_row: TypeAlias = list[str]
+# worksheet_row: TypeAlias = list[str]
 
 
 @dataclass
@@ -59,9 +59,13 @@ class Record:
     langs: list[str]
     isbn: str
     title: Title
+    tr_title: str
     subtitle: Title
+    tr_subtitle: str
     parallel_title: Title
+    tr_parallel_title: str
     parallel_subtitle: Title
+    tr_parallel_subtitle: str
     country_name: str
     country_code: str
     state: str
@@ -82,12 +86,16 @@ class Record:
     donation: str
     barcode: str
 
+    authors: list[str]
+    artist: str
+    call_number: str
+
     pub_year_is_approx: bool
     pagination_is_approx: bool
     timestamp: datetime
     item_policy: str
 
-    sequence_number: int
+    internal_link_number: int
     links: list[Field | None]
 
 
@@ -694,6 +702,7 @@ def get_country_code(country:str, state:str, place:str, row_num:int) -> str:
             country = country.lower()
             if country in all_country_codes:
                 return country
+    logger.error(f"{country} is not recognized as a valid country name.")
     return ""
 
 
@@ -843,12 +852,14 @@ def create_date_list(dates_raw: str) -> list[str]:
 
 
 def parse_rows_into_records(
-        sheet: list[worksheet_row],
+        # sheet: list[worksheet_row],
+        sheet: list[list[str]],
         live_settings:Default_settings
         ) -> list[Record]:
     current_time = datetime.now()
     records = []
     logger.info("\n\n++++ Validating records")
+    # print(f"Marc21 parse rows: {live_settings.column_names=}")
     for row_num, row in enumerate(sheet):
         record = parse_row(
             row,
@@ -866,41 +877,51 @@ def parse_row(
         current_time: datetime,
         live_settings: Default_settings,
         ) -> Record:
-    cols = iter(row)
-    sublibrary = next(cols)
-    langs = norm_langs(next(cols))
-    isbn = norm_isbn(next(cols), row_num)
-    title = Title(next(cols), next(cols))
-    subtitle = Title(next(cols), next(cols))
-    parallel_title = Title(next(cols), next(cols))
-    parallel_subtitle = Title(next(cols), next(cols))
-    country_name = next(cols)
-    # country = norm_country(country_name)
-    state = next(cols)
-    place = next(cols)
+    # print(f"Marc21.py: parsing row {row_num} (={len(row)} cols)")
+    _col = iter(row)
+
+    sublibrary = next(_col)
+    langs = norm_langs(next(_col))
+    isbn = norm_isbn(next(_col), row_num)
+    title_orig = next(_col)
+    title_tr = next(_col)
+    title = Title(title_orig, title_tr)
+    subtitle_orig = next(_col)
+    subtitle_tr = next(_col)
+    subtitle = Title(subtitle_orig, subtitle_tr)
+    parallel_title_orig = next(_col)
+    parallel_title_tr = next(_col)
+    parallel_title = Title(parallel_title_orig, parallel_title_tr)
+    parallel_subtitle_orig = next(_col)
+    parallel_subtitle_tr = next(_col)
+    parallel_subtitle = Title(parallel_subtitle_orig, parallel_subtitle_tr)
+    country_name = next(_col)
+    state = next(_col)
+    place = next(_col)
     country_code = get_country_code(country_name, state, place, row_num)
-    if not country_code:
-        logger.error(f"{country_name} is not recognized as a valid country name.")
-    publisher = next(cols)
-    pub_date, pub_date_is_approx = check_for_approx(norm_year(next(cols)))
-    copyright_ = norm_copyright(next(cols))
-    pagination, pagination_is_approx = norm_pages(next(cols))
-    size = norm_size(next(cols))
-    is_illustrated = norm_illustrations(next(cols))
-    # is_illustrated = next(cols)
-    series_title = next(cols)
-    series_enum = next(cols)
-    volume = next(cols)
-    note = next(cols)
-    sale_code = next(cols)
-    date_of_sale = create_date_list(next(cols))
-    # hol_notes = next(cols)
-    hol_notes, item_policy = get_item_policy_from_hol_notes(next(cols))
-    donation = next(cols)
-    barcode = norm_barcode(next(cols), row_num)
+    # if not country_code:
+    #     logger.error(f"{country_name} is not recognized as a valid country name.")
+    publisher = next(_col)
+    pub_date, pub_date_is_approx = check_for_approx(norm_year(next(_col)))
+    copyright_ = norm_copyright(next(_col))
+    pagination, pagination_is_approx = norm_pages(next(_col))
+    size = norm_size(next(_col))
+    is_illustrated = norm_illustrations(next(_col))
+    series_title = next(_col)
+    series_enum = next(_col)
+    volume = next(_col)
+    notes = next(_col)
+    sale_code = next(_col)
+    date_of_sale = create_date_list(next(_col))
+    hol_notes, item_policy = get_item_policy_from_hol_notes(next(_col))
+    donation = next(_col)
+    barcode = norm_barcode(next(_col), row_num)
+
+    authors = next(_col)
+    artist = next(_col)
+    call_number = next(_col)
 
     if not donation and live_settings.title == "art_catalogue":
-    #    donation = "Donated by the Ashmolean Museum."
        donation = "Anonymous donation"
 
     record = Record(
@@ -908,9 +929,13 @@ def parse_row(
         langs,
         isbn,
         title,
+        title_tr,
         subtitle,
+        subtitle_tr,
         parallel_title,
+        parallel_title_tr,
         parallel_subtitle,
+        parallel_subtitle_tr,
         country_name,
         country_code,
         state,
@@ -924,17 +949,20 @@ def parse_row(
         series_title,
         series_enum,
         volume,
-        note,
+        notes,
         sale_code,
         date_of_sale,
         hol_notes,
         donation,
         barcode,
+        authors,
+        artist,
+        call_number,
         pub_date_is_approx,
         pagination_is_approx,
         current_time,
         item_policy,
-        sequence_number=1,
+        internal_link_number=1,
         links=[],
     )
     validate_record(record, row_num + 1)
@@ -980,7 +1008,7 @@ def build_leader(record: Record) -> Result:
         + implementation_len_22
         + undefined_23
     )
-    success = Field(tag=seq_num(tag), data=data)
+    success = Field(tag=link_num(tag), data=data)
     return Result(success, None)
 
 
@@ -992,7 +1020,7 @@ def build_005(record: Record) -> Result:
     standard_time = record.timestamp.now(timezone.utc)
     ## NB: python produces this format: YYYY-MM-DD HH:MM:SS.ffffff, e.g. 2020-09-30 12:37:55.713351
     timestamp = str(standard_time).translate(str.maketrans("", "", " -:"))[:16]
-    result = Result(Field(tag=seq_num(tag), data=timestamp), None)
+    result = Result(Field(tag=link_num(tag), data=timestamp), None)
     return result
 
 
@@ -1052,7 +1080,7 @@ def build_008(record: Record) -> Result:
         lang,
         modified_and_cataloging,
     ]
-    result = Result(Field(tag=seq_num(tag), data="".join(content)), None)
+    result = Result(Field(tag=link_num(tag), data="".join(content)), None)
     return result
 
 
@@ -1064,7 +1092,7 @@ def build_033(record: Record) -> Result:
     i2 = ISBD["BLANK"]
     result = Result(
         Field(
-            tag=seq_num(tag),
+            tag=link_num(tag),
             indicators=Indicators(i1, i2),
             subfields=[Subfield(value=date, code="a") for date in record.sale_dates],
         ),
@@ -1085,7 +1113,7 @@ def build_040(record: Record) -> Result:
         Subfield(value="UkOxU", code="c"),
     ]
     result = Result(
-        Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None
+        Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=content), None
     )
     return result
 
@@ -1132,7 +1160,7 @@ def build_245(record: Record) -> Result:
             title = add_period_if_necessary(title)
             content.append(Subfield(value=title, code="a"))
         title_field = Field(
-            tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content
+            tag=link_num(tag), indicators=Indicators(i1, i2), subfields=content
         )
         if alt_title:
             result = Result([title_field, alt_title_field], error)
@@ -1163,9 +1191,9 @@ def deal_with_chinese_titles(
         if tag == 245:
             title_original = add_period_if_necessary(title_original)
         full_title = [Subfield(value=title_original, code="a")]
-    sequence_number = seq_num(record.sequence_number)
-    linkage = Subfield(value=f"880-{sequence_number}", code="6")
-    build_880(record, full_title, i1, i2, tag, sequence_number)
+    internal_link_number = link_num(record.internal_link_number)
+    linkage = Subfield(value=f"880-{internal_link_number}", code="6")
+    build_880(record, full_title, i1, i2, tag, internal_link_number)
     return linkage
 
 
@@ -1186,13 +1214,13 @@ def build_264(record: Record) -> Result:
         code="c",
     )
     content = Field(
-        tag=seq_num(tag),
+        tag=link_num(tag),
         indicators=Indicators(i1, i2),
         subfields=[place, publisher, pub_year],
     )
     if record.copyright:
         _copyright = Field(
-            tag=seq_num(tag),
+            tag=link_num(tag),
             indicators=Indicators(i1, "4"),
             subfields=[
                 Subfield(value=f"{copyright_symbol}{record.copyright}", code="c")
@@ -1229,7 +1257,7 @@ def build_300(record: Record) -> Result:
         pages = Subfield(value=pages_content + ISBD[";"], code="a")
         content = [pages, size]
     result = Result(
-        Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None
+        Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=content), None
     )
     return result
 
@@ -1244,7 +1272,7 @@ def build_336(record: Record) -> Result:
         Subfield(value="rdacontent", code="2"),
     ]
     text_field = Field(
-        tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=text_content
+        tag=link_num(tag), indicators=Indicators(i1, i2), subfields=text_content
     )
 
     # if record.is_illustrated:
@@ -1255,7 +1283,7 @@ def build_336(record: Record) -> Result:
             Subfield(value="rdacontent", code="2"),
         ]
         illus_field = Field(
-            tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=illus_content
+            tag=link_num(tag), indicators=Indicators(i1, i2), subfields=illus_content
         )
         result = Result([text_field, illus_field], None)
 
@@ -1276,7 +1304,7 @@ def build_337(record: Record) -> Result:
         Subfield(value="rdamedia", code="2"),
     ]
     result = Result(
-        Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None
+        Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=content), None
     )
     return result
 
@@ -1291,7 +1319,7 @@ def build_338(record: Record) -> Result:
         Subfield(value="rdacarrier", code="2"),
     ]
     result = Result(
-        Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None
+        Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=content), None
     )
     return result
 
@@ -1310,7 +1338,7 @@ def build_876(record: Record) -> Result:
     if notes := record.hol_notes:
         content.append(Subfield(value=notes, code="z"))
     result = Result(
-        Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None
+        Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=content), None
     )
     return result
 
@@ -1322,7 +1350,7 @@ def build_904(record: Record) -> Result:
     content = [Subfield(value="Oxford Local Record", code="a")]
     result = Result(
         # Field(tag=seq_num(tag), indicators=Indicators("\\", "\\"), subfields=content),
-        Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content),
+        Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=content),
         None,
     )
     return result
@@ -1340,7 +1368,7 @@ def build_020(record: Record) -> Result:  ##optional
     #     contents.append(Subfield(value=f"volume {record.volume}", code="q"))
     if contents:
         result = Result(
-            Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=contents),
+            Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=contents),
             None,
         )
     else:
@@ -1357,7 +1385,7 @@ def build_024(record: Record) -> Result:  ##optional
     if record.sales_code:
         result = Result(
             Field(
-                tag=seq_num(tag),
+                tag=link_num(tag),
                 indicators=Indicators(i1, i2),
                 subfields=[Subfield(value=record.sales_code, code="a")],
             ),
@@ -1392,7 +1420,7 @@ def build_041(record: Record) -> Result:  ##optional
         ## OPTION 3
         result = Result(
             Field(
-                tag=seq_num(tag),
+                tag=link_num(tag),
                 indicators=Indicators(i1, i2),
                 subfields=[
                     Subfield(value=language, code="a") for language in record.langs
@@ -1465,7 +1493,7 @@ def create_parallel_title(record: Record) -> Result:
         if parallel_subtitle:
             content.append(Subfield(value=parallel_subtitle, code="b"))
         result = Result(
-            Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content),
+            Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=content),
             None,
         )
     else:
@@ -1482,7 +1510,7 @@ def create_alternative_title(alternative_form: str, lang="eng") -> Field:
     _, alternative_title = check_for_nonfiling(alternative_form, lang)
     content = [Subfield(value=alternative_title, code="a")]
     alternative_title_field = Field(
-        tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content
+        tag=link_num(tag), indicators=Indicators(i1, i2), subfields=content
     )
     return alternative_title_field
 
@@ -1508,7 +1536,7 @@ def build_490(record: Record) -> Result:  ## optional
         content.append(series_enum)
     if content:
         result = Result(
-            Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content),
+            Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=content),
             None,
         )
     else:
@@ -1528,7 +1556,7 @@ def build_500(record: Record) -> Result:  ##optional
         notes_text = notes_text[0] + notes_text[1:]
         result = Result(
             Field(
-                tag=seq_num(tag),
+                tag=link_num(tag),
                 indicators=Indicators(i1, i2),
                 subfields=[Subfield(value=notes_text, code="a")],
             ),
@@ -1541,7 +1569,7 @@ def build_500(record: Record) -> Result:  ##optional
 
 # TODO: need an item with both a Chinese title and subtitle to test the sequence number logic.
 def build_880(
-    record: Record, title_subfield, i1: str, i2: str, caller: int, sequence_number: str
+    record: Record, title_subfield, i1: str, i2: str, caller: int, internal_link_number: str
 ) -> None:  ##optional
     """Alternate Graphic Representation
     NB. unlike the other fields, this isn't called directly but by the linked field
@@ -1550,9 +1578,9 @@ def build_880(
     tag = 880
     # blank = "\\"
     blank = ISBD["BLANK"]
-    record.sequence_number += 1
-    # content = [Subfield(value=f"{str(caller):{"\\"}<3}-{sequence_number}", code="6")]
-    content = [Subfield(value=f"{str(caller):{blank}<3}-{sequence_number}", code="6")]
+    record.internal_link_number += 1
+    # content = [Subfield(value=f"{str(caller):{"\\"}<3}-{internal_link_number}", code="6")]
+    content = [Subfield(value=f"{str(caller):{blank}<3}-{internal_link_number}", code="6")]
     content.extend(title_subfield)
     field = Field(tag=str(tag), indicators=Indicators(i1, i2), subfields=content)
     record.links.append(field)
@@ -1594,7 +1622,7 @@ def check_if_mandatory(result: Result, is_mandatory: bool) -> list[Field] | None
 #     display_tag = seq_num(numeric_tag)
 # return f"={expand_tag(display_tag)}  "
 def line_prefix(numeric_tag: int) -> str:
-    display_tag = "LDR" if numeric_tag == 0 else seq_num(numeric_tag)
+    display_tag = "LDR" if numeric_tag == 0 else link_num(numeric_tag)
     return f"={expand_tag(display_tag)}  "
 
 
@@ -1602,8 +1630,8 @@ def expand_tag(field_number: str) -> str:
     return str(field_number).zfill(3)
 
 
-def seq_num(sequence_number: int) -> str:
-    return str(sequence_number).zfill(2)
+def link_num(internal_link_number: int) -> str:
+    return str(internal_link_number).zfill(2)
 
 
 def check_for_nonfiling(title: str, lang: str = "eng") -> tuple[str, str]:
@@ -1652,19 +1680,19 @@ def build_marc_records(records: list[Record]) -> list[PyRecord]:
 def apply_marc_logic(record: Record) -> PyRecord:
     fields_to_deploy: tuple[tuple[Callable, bool], ...] = (
         (build_leader, True),
-        (build_040, True),
-        (build_336, True),
-        (build_337, True),
-        (build_338, True),
-        (build_904, True),
-        (build_005, True),
-        (build_008, True),
-        (build_033, True),
-        (build_245, True),
-        (build_264, True),
-        (build_300, True),
+        (build_040, True),   # cataloguing source: Oxford (boilerplate)
+        (build_336, True),   # content type (boilerplate)
+        (build_337, True),   # media type (boilerplate)
+        (build_338, True),   # carrier type (boilerplate)
+        (build_904, True),   # authority Ox Local Record (boilerplate)
+        (build_005, True),   # timestamp (boilerplate)
+        (build_008, True),   # pub details
+        (build_033, True),   # sale date
+        (build_245, True),   # title
+        (build_264, True),   # publisher & copyright
+        (build_300, True),   # physical description
         (build_490, False),  # series statement
-        (build_876, True),
+        (build_876, True),   # notes / barcode
         (build_020, False),  # isbn
         (build_024, False),  # sales code
         (build_041, False),  # language if not monolingual
@@ -1691,7 +1719,7 @@ def apply_marc_logic(record: Record) -> PyRecord:
 
 def save_as_marc_files(
     headers: list[str],
-    excel_rows: list[list[str]],
+    rows_from_gui: list[list[str]],
     # hol_index: int,
     file_name_with_path: Path,
     live_settings: Default_settings,
@@ -1703,14 +1731,14 @@ def save_as_marc_files(
     depending on settings, also creates an excel CHU file
     for once the marc files have been uploaded to ALMA
     """
-    records = parse_rows_into_records(excel_rows, live_settings)
+    records = parse_rows_into_records(rows_from_gui, live_settings)
     # if create_chu_file:
     if live_settings.create_chu_file:
         write_chu_file(records, file_name_with_path)
     # if create_excel_file:
     if live_settings.create_excel_file:
         # excel_rows = add_policy_into_hol_notes(records, excel_rows, hol_index)
-        io.write_data_to_excel([headers, *excel_rows], file_name_with_path.with_suffix(".xlsx"))
+        io.write_data_to_excel([headers, *rows_from_gui], file_name_with_path.with_suffix(".xlsx"))
     # marc_records = build_marc_records(parse_rows_into_records(excel_rows))
     marc_records = build_marc_records(records)
     write_marc21_files(marc_records, Path(file_name_with_path))

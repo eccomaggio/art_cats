@@ -50,7 +50,7 @@ def main():
         notes = "Note"
         authors = "Author(s)"
         call_number = "Call number"
-        holding_note = "Holding note"
+        hol_notes = "Holding note"
         barcode = "Barcode"
 
     ##### Tailor settings
@@ -58,6 +58,8 @@ def main():
     settings = Default_settings()
     settings.title = "strachan"
     settings.show_marc_button = True
+    settings.column_names = [column.name for column in COL]
+    settings.csv_to_marc_mappings = [0, 1, 2, 3, 15, 5, 4, 6, 7, 8, 9, 10, 11, 14, 16, 12, 13]
     settings.headers = [member.display_title for member in COL]
     settings.show_table_view = True
     settings.locking_is_enabled = True
@@ -76,7 +78,7 @@ def main():
         COL.copyright,
         COL.authors,
         COL.call_number,
-        COL.holding_note,
+        COL.hol_notes,
         COL.barcode,
     ]
 
@@ -132,7 +134,7 @@ def main():
         (COL.notes, (2, 2), 6, 0, "text"),
         (COL.authors, (1, 4), 5, 0, "line"),
         (COL.call_number, (1, 2), 5, 4, "line"),
-        (COL.holding_note, (2, 2), 6, 2, "text"),
+        (COL.hol_notes, (2, 2), 6, 2, "text"),
         (COL.barcode, (1, 2), 7, 4, "line"),
     ]
 

@@ -21,16 +21,18 @@ from . import logic
 
 # import argparse
 from datetime import datetime
+
 # import yaml
 import sys
+
 # import csv
 from enum import Enum, auto
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from collections import namedtuple
 from typing import Any
 from pathlib import Path
 
-# from pprint import pprint
+from pprint import pprint
 from PySide6.QtWidgets import (
     QApplication,
     QPushButton,
@@ -121,7 +123,7 @@ class Grid:
         self.grid_width = width
         self.current_row = 0
         ## each row is a list of brick ids OR -1 to indicate cell is unoccupied
-        self.rows: list[list[int]] = ([])
+        self.rows: list[list[int]] = []
         self.add_a_row()
         ## dict[id: (start_row, start_col, Brick(height, width), title, name, widget-type)]
         self.widget_info: dict[int, tuple[int, int, Brick, str, str, str]] = {}
@@ -130,27 +132,21 @@ class Grid:
     def total_rows(self) -> int:
         return len(self.rows)
 
-
     def exceeds_grid_length(self, current_row: int) -> bool:
         return current_row + 1 > self.total_rows
-
 
     def is_free(self, id: int) -> bool:
         return id == -1
 
-
     def is_occupied(self, id: int) -> bool:
         return not self.is_free(id)
-
 
     def add_a_row(self) -> None:
         # self.rows.append([-1 for _ in range(self.grid_width)])
         self.rows.append(self.make_row())
 
-
     def make_row(self) -> list:
         return [-1 for _ in range(self.grid_width)]
-
 
     def add_brick_algorithmically(
         self, brick_id: int, brick: Brick, title="", name=""
@@ -196,7 +192,6 @@ class Grid:
                     break
             row_i += 1
 
-
     def add_bricks_by_template(self, template: list) -> None:
         # print(f"add bricks by template: {template=}")
         last_brick = template[-1]
@@ -227,7 +222,6 @@ class Grid:
                 widget_type,
             )
 
-
     def count_free_spaces_across(self, row, start_col):
         free_spaces = 0
         for col_i in range(start_col, self.grid_width):
@@ -235,7 +229,6 @@ class Grid:
                 return free_spaces
             free_spaces += 1
         return free_spaces
-
 
     def count_free_spaces_down(self, start_row, col):
         free_spaces = 0
@@ -247,7 +240,6 @@ class Grid:
                 return free_spaces
             free_spaces += 1
             row_i += 1
-
 
     def place_brick_in_grid(
         self, brick: Brick, brick_id: int, start_row: int, start_col: int
@@ -317,14 +309,12 @@ class WindowWithRightTogglePanel(QWidget):
         self.saved_editor_width = self.edit_panel_widget.width()
         self.centre_window_in_display()
 
-
     def centre_window_in_display(self) -> None:
         screen_geometry = QApplication.primaryScreen().geometry()
         window_frame = self.frameGeometry()
         center_point = screen_geometry.center()
         window_frame.moveCenter(center_point)
         self.move(window_frame.topLeft())
-
 
     def resizeEvent(self, event):
         """
@@ -350,9 +340,8 @@ class WindowWithRightTogglePanel(QWidget):
                 self.edit_panel_widget.setFixedWidth(16777215)  # QWIDGETSIZE_MAX
 
                 # 3. Force a layout update to make the editor stretch immediately
-                self.layout().invalidate() # type: ignore
+                self.layout().invalidate()  # type: ignore
                 self.update()
-
 
     def toggle_help_panel(self):
         """
@@ -402,13 +391,11 @@ class WindowWithRightTogglePanel(QWidget):
             # self.resize(new_width, self.height())
             self.resize(new_width, self.saved_height)
 
-
     def handle_internal_link(self, url: QUrl):
         """Scrolls the QTextBrowser to the target anchor within the document."""
         anchor_name = url.toString().split("#")[-1]
         if anchor_name:
             self.help_widget.scrollToAnchor(anchor_name)
-
 
     def handle_link_click(self, url: QUrl):
         """
@@ -448,12 +435,10 @@ class ClickableLabel(QLabel):
         # Initialize placeholder for custom property
         self.help_txt = ""
 
-
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
             self.setStyleSheet(self.pressed_style)
         super().mousePressEvent(event)
-
 
     def mouseReleaseEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -464,11 +449,9 @@ class ClickableLabel(QLabel):
             self.clicked.emit()
         super().mouseReleaseEvent(event)
 
-
     def enterEvent(self, event: QEnterEvent):
         self.setStyleSheet(self.hover_style)
         super().enterEvent(event)
-
 
     def leaveEvent(self, event: QEvent):
         self.setStyleSheet(self.default_style)
@@ -541,7 +524,6 @@ class Editor(QWidget):
         self.update_nav_buttons()
         self.add_signal_to_fire_on_text_change()
 
-
     def add_input_widgets(self, inputs_layout):
         self.labels: list[QLabel] = []
         self.inputs: list[QWidget] = []
@@ -604,7 +586,6 @@ class Editor(QWidget):
 
         ## TODO: work out why HOL_notes does react to changed text!!
         # self.add_signal_to_fire_on_text_change()
-
 
     def build_nav_buttons(self, caller, nav_grid):
         if self.settings.show_table_view:
@@ -694,7 +675,6 @@ class Editor(QWidget):
             nav_grid.addWidget(self.tableView, last_row, 0, 1, 6)
         self.nav_grouped_layout.setLayout(nav_grid)
 
-
     def customize_fields(self) -> None:
         if self.settings.title == "art_catalogue":
             sale_dates = self.inputs[self.COL.sale_dates.value]
@@ -711,7 +691,6 @@ class Editor(QWidget):
             self.setup_combo_boxes()
             self.load_table(self.tableView, self.data.excel_rows)
 
-
     def setup_combo_boxes(self) -> None:
         ## set up lists of leaders & followers & populate drop down lists for leaders
         for input_widget in self.inputs:
@@ -722,7 +701,9 @@ class Editor(QWidget):
                     raw_options = self.get_raw_combo_options(
                         self.transform_into_yaml_lookup(name)
                     )
-                    options, _ = self.get_normalized_combo_list(input_widget.objectName(), raw_options)
+                    options, _ = self.get_normalized_combo_list(
+                        input_widget.objectName(), raw_options
+                    )
                 else:
                     leader_name = self.settings.combos.dict_by_follower[name]
                     leader_widget = self.leader_inputs[leader_name]
@@ -732,11 +713,12 @@ class Editor(QWidget):
                     )
                     source = self.get_combo_options_source(input_widget)
                     raw_options = self.get_raw_combo_options(source)
-                    options, _ = self.get_normalized_combo_list(input_widget.objectName(), raw_options)
+                    options, _ = self.get_normalized_combo_list(
+                        input_widget.objectName(), raw_options
+                    )
                 input_widget.clear()
                 input_widget.addItems(options)
                 input_widget.setCurrentIndex(0)
-
 
     def handle_update_follower(self) -> None:
         # leader: QComboBox = self.sender()
@@ -744,13 +726,11 @@ class Editor(QWidget):
         follower_name = self.settings.combos.dict_by_leader[leader.objectName()]
         self.load_combo_box(self.follower_inputs[follower_name])
 
-
     def transform_into_yaml_lookup(self, object_name: str) -> str:
         ## transforms the objectName of the widget so that it matches the yaml file
         # name = combo_lookup[object_name]
         # return name
         return object_name
-
 
     def get_combo_options_source(self, combo_box: QComboBox) -> str:
         ## TODO: (probably) combine with / call only from get_raw_combo_options()
@@ -772,7 +752,6 @@ class Editor(QWidget):
         # print(f"\tSource = {match_for_yaml_lookup}")
         return match_for_yaml_lookup
 
-
     def get_raw_combo_options(self, key: str) -> list:
         if key:
             if key.startswith("*!*"):
@@ -789,7 +768,6 @@ class Editor(QWidget):
             raw_options = []
         # print(f"\t** get raw combo options: {key=} -> raw_options={raw_options[:2]}... >> {inspect.stack()[1].function}")
         return raw_options
-
 
     def get_normalized_combo_list(
         self, combo_name: str, raw_combo_options: list, selected_item=""
@@ -842,7 +820,6 @@ class Editor(QWidget):
         # print(f"\tget normalized combo list: {len(new_combo_options)}, {selected_item=}->{index=}, {new_combo_options[:2]}...\n")
         return (new_combo_options, index)
 
-
     def highlight_row_by_index(self, table_widget: QTableWidget, row_index: int):
         """
         Highlights the entire row in the QTableWidget.
@@ -853,14 +830,12 @@ class Editor(QWidget):
         table_widget.setCurrentCell(row_index, 0)
         # table_widget.scrollToItem(self.table_widget.item(row_index, 0))
 
-
     def show_help_topic(self, sender_label: ClickableLabel):
         """Slot runs when label is clicked, accessing custom property."""
         link = sender_label.help_txt
         self.caller.handle_internal_link(QUrl(f"#{link}"))
         # self.display.setText(link)
         # print(f"--- the link is: #{link}")
-
 
     def handle_submit(self, optional_msg="") -> bool:
         """
@@ -871,12 +846,10 @@ class Editor(QWidget):
             logic.save_record_externally(self)
         return authorised_to_continue
 
-
     def highlight_fields(self, field_names: list[str]) -> None:
         for input in self.inputs:
             if input.objectName() in field_names:
                 self.update_input_styling(input, "validation_error")
-
 
     def get_all_inputs(self) -> tuple[dict, bool]:
         record_as_dict = {}
@@ -894,12 +867,10 @@ class Editor(QWidget):
         # print(f">>>>>>>>>>> {is_dummy=}, {is_empty=}\n{record_as_dict}")
         return (record_as_dict, is_empty)
 
-
-    def show_alert_box(self, msg:str) -> None:
+    def show_alert_box(self, msg: str) -> None:
         alert = QMessageBox()
         alert.setText(msg)
         alert.exec()
-
 
     def get_content(self, widget: QWidget) -> str:
         content = ""
@@ -916,11 +887,10 @@ class Editor(QWidget):
                     content = ""
             case QCheckBox():
                 content = "True" if widget.isChecked() else "False"
-            case _ :
+            case _:
                 msg = f"No reader set up for {widget}!"
                 logger.critical(msg)
         return content.strip()
-
 
     def handle_close(self) -> None:
         authorised_to_continue = logic.gatekeeper("close", self)
@@ -928,7 +898,6 @@ class Editor(QWidget):
             return
         # self.close()
         self.app.quit()
-
 
     def go_to_first_record(self) -> None:
         self.update_current_position("first")
@@ -944,7 +913,6 @@ class Editor(QWidget):
 
     def go_to_record_number(self, record_number: int) -> None:
         self.update_current_position("exact", record_number)
-
 
     def update_current_position(self, direction, record_number=-1) -> None:
         # print(f">>>{self.record_count=}, {self.current_row_index=}, {self.current_record_is_new=}, {self.has_records=} {self.all_text_is_saved=}")
@@ -975,7 +943,6 @@ class Editor(QWidget):
         self.load_record_into_gui(self.data.current_row)
         # self.all_text_is_saved = True
 
-
     def saledates_action(self) -> None:
         # print("sales_date filled in!!")
         sender = self.sender()
@@ -988,7 +955,6 @@ class Editor(QWidget):
                 pubdate.setText(f"{year_of_pub}?")
         else:
             logger.warning("Can't access salecode or pubdate fields...")
-
 
     def update_title_with_record_number(self, prefix="Record no. ") -> None:
         # text = f"{self.get_human_readable_record_number()} of {self.data.record_count}"
@@ -1015,7 +981,6 @@ class Editor(QWidget):
         self.caller.setWindowTitle(status_line)
         # print(f"{status_line=}")
 
-
     def add_signal_to_fire_on_text_change(self):
         # for input in self.inputs:
         for i, input in enumerate(self.inputs):
@@ -1031,10 +996,9 @@ class Editor(QWidget):
                 case QCheckBox():
                     input.checkStateChanged.connect(self.handle_text_change)
 
-
     def handle_text_change(self) -> None:
         # print(f"Text changed...{datetime.datetime.now()}")
-        sender:QObject = self.sender()
+        sender: QObject = self.sender()
         style = "text_changed"
         match sender:
             case QLineEdit():
@@ -1045,11 +1009,10 @@ class Editor(QWidget):
                 sender.currentTextChanged.disconnect(self.handle_text_change)
             case QCheckBox():
                 sender.checkStateChanged.disconnect(self.handle_text_change)
-            case _ :
+            case _:
                 logger.warning("Huston, we have a problem with text input...")
         self.update_input_styling(sender, style)
         self.data.all_text_is_saved = False
-
 
     def update_input_styling(self, widget: QObject, style_name: str) -> None:
         style = getattr(self.settings.styles, style_name)
@@ -1070,9 +1033,8 @@ class Editor(QWidget):
                 #     # style = "border_only_active"
                 # widget.setStyleSheet(style)
                 pass
-            case _ :
+            case _:
                 logger.warning("Huston, we have a problem with input styling")
-
 
     def load_record_into_gui(self, row_to_load: list | None = None) -> None:
         """
@@ -1120,12 +1082,16 @@ class Editor(QWidget):
         self.toggle_record_editable("edit")
         self.update_title_with_record_number()
 
-
     def load_record(self, input_widget: QWidget, value: Any, options=[]) -> None:
         # caller = inspect.stack()[1].function
         # print(f"++++ load record: {input_widget.objectName()}={value} ({self.settings.validation.fields_to_fill})")
-        if not value and input_widget.objectName() in self.settings.validation.fields_to_fill:
-            value = self.settings.validation.fields_to_fill_info[input_widget.objectName()]
+        if (
+            not value
+            and input_widget.objectName() in self.settings.validation.fields_to_fill
+        ):
+            value = self.settings.validation.fields_to_fill_info[
+                input_widget.objectName()
+            ]
         match input_widget:
             case QComboBox():
                 self.load_combo_box(input_widget, value)
@@ -1138,9 +1104,8 @@ class Editor(QWidget):
             # elif isinstance(input_widget, QTableWidget):
             #     ## the entire table is loaded from scratch, not just a single value, as for others
             #     self.load_table(input_widget, value)
-            case _ :
+            case _:
                 logger.warning(f"!!!! Problem: current widget ({type(input_widget)})")
-
 
     def load_checkbox(self, widget: QCheckBox, value="") -> None:
         if value == "True" or value == True:
@@ -1150,7 +1115,6 @@ class Editor(QWidget):
         widget.setChecked(state)
         # print(f"+++++++{widget.objectName} {value=} -> {state=} [{widget.checkState()=}]")
 
-
     def load_combo_box(self, combo_box: QComboBox, value="") -> None:
         """
         The list of options is populated from the baseName() value
@@ -1159,12 +1123,13 @@ class Editor(QWidget):
         """
         source = self.get_combo_options_source(combo_box)
         raw_options = self.get_raw_combo_options(source)
-        options, index = self.get_normalized_combo_list(combo_box.objectName(), raw_options, value)
+        options, index = self.get_normalized_combo_list(
+            combo_box.objectName(), raw_options, value
+        )
         # print(f"load_combo_box {combo_box.objectName()} >>> {match_for_yaml_lookup=}: {value=}, {index=}, {options[:2]=}...\n")
         combo_box.clear()
         combo_box.addItems(options)
         combo_box.setCurrentIndex(index)
-
 
     def load_table(self, table: QTableWidget, rows: list[list], headers=[]) -> None:
         # print(f"   === {rows=}, {headers=}")
@@ -1210,21 +1175,17 @@ class Editor(QWidget):
             row_count * row_height + table.horizontalHeader().height()
         )
 
-
     def pass_table_row_index(self, row, column) -> None:
         # print(f"$$$$$$$$$ {row=}, {column=}")
         self.highlight_row_by_index(self.tableView, row)
         self.go_to_record_number(row)
 
-
     def load_line_edit(self, input_widget: QLineEdit, value="") -> None:
         input_widget.setText(value)
-
 
     def load_text_edit(self, input_widget: QTextEdit, value="") -> None:
         # self.inputs[input_widget.value].setText(value)
         input_widget.setPlainText(value)
-
 
     def handle_unlock(self) -> None:
         # print(f"... handling unlock (currently {self.record_is_locked=})")
@@ -1235,7 +1196,6 @@ class Editor(QWidget):
             if not authorised_to_continue:
                 return
             self.toggle_record_editable("lock")
-
 
     def toggle_record_editable(self, mode="edit") -> None:
         if not self.settings.locking_is_enabled:
@@ -1269,7 +1229,7 @@ class Editor(QWidget):
                 case QLineEdit() | QTextEdit():
                     input.setStyleSheet(status.input_style)
                     input.setReadOnly(status.locked_status)
-                case _ :
+                case _:
                     logger.warning("Widget type {input} isn't fully supported.")
         self.unlock_btn.setText(status.btn_text)
         self.submit_btn.setEnabled(not status.locked_status)
@@ -1277,7 +1237,6 @@ class Editor(QWidget):
         button_text_override = "" if status.locked_status else "color: red;"
         self.clear_btn.setStyleSheet(button_text_override)
         self.update_title_with_record_number()
-
 
     def update_nav_buttons(self) -> str:
         # print(f"nav status: {self.record_count=}")
@@ -1306,7 +1265,6 @@ class Editor(QWidget):
             self.next_btn.setEnabled(True)
         return msg
 
-
     # def get_human_readable_record_number(self, number=-100):
     #     if number == -100:
     #         number = self.data.current_row_index
@@ -1325,7 +1283,6 @@ class Editor(QWidget):
         self.data.all_text_is_saved = True
         # print(f"*** records saved as {self.settings.out_file}")
 
-
     def handle_marc_files(self) -> None:
         authorised_to_continue = logic.gatekeeper("marc", self)
         if not authorised_to_continue:
@@ -1334,16 +1291,14 @@ class Editor(QWidget):
             self.settings.files.full_output_dir / self.settings.files.out_file
         )
         records_to_export = self.remove_dummy_records(self.data.excel_rows)
+        records_in_marc_format = self.format_list_for_marc(records_to_export)
         files_successfully_created = marc_21.save_as_marc_files(
             self.data.headers,
-            records_to_export,
-            # self.COL.hol_notes.value,
+            # records_to_export,
+            records_in_marc_format,
             file_name_with_path,
-            # self.settings,
-            # self.settings.create_excel_file,
-            # self.settings.create_chu_file,
             self.settings,
-            )
+        )
         if files_successfully_created:
             msg = f'The {len(records_to_export)} records in "{self.settings.files.in_file}" have been successfully saved as "{file_name_with_path.stem}.mrk" in *{self.settings.files.full_output_dir}*.'
         else:
@@ -1353,8 +1308,45 @@ class Editor(QWidget):
         msg_box.setText(msg)
         msg_box.exec()
 
+    def format_list_for_marc(self, records: list[list[str]]) -> list[list[str]]:
+        internal_fields = {
+            "country_code",
+            "pub_year_is_approx",
+            "pagination_is_approx",
+            "timestamp",
+            "sequence_number",
+            "links",
+        }
+        marc_column_names = [
+            f.name for f in fields(marc_21.Record) if f.name not in internal_fields
+        ]
+        augmented_records = []
+        must_normalise_column_order = bool(self.settings.csv_to_marc_mappings)
+        if must_normalise_column_order:
+            logger.info("Normalising columns to match expected order.")
+        for record in records:
+            # * apply corrective column mapping if necessary
+            if must_normalise_column_order:
+                record = logic.map_list(record, self.settings.csv_to_marc_mappings)
+            # else:
+            #     record = raw_record
+            curr_row = []
+            _col = iter(record)
+            for i, marc_col_name in enumerate(marc_column_names):
+                if marc_col_name in self.settings.column_names:
+                    contents = next(_col)
+                else:
+                    contents = ""
+                # print(f"...{i} {marc_col_name}: {contents=}")
+                curr_row.append(contents)
+            augmented_records.append(curr_row)
 
-    def remove_dummy_records(self, records:list[list[str]]) -> list:
+        print("** format list for marc:")
+        print(f"{len(augmented_records[1])}->{augmented_records[1]}")
+        print(f"{len(marc_column_names)}->{marc_column_names}\n")
+        return augmented_records
+
+    def remove_dummy_records(self, records: list[list[str]]) -> list:
         target_col_name = self.settings.validation.validation_skip_fieldname
         if not target_col_name:
             return records
@@ -1362,7 +1354,9 @@ class Editor(QWidget):
         target_col_index = self.COL[target_col_name].value
         list_without_dummies = []
         for record in records:
-            is_dummy = validation.is_dummy_content(record[target_col_index], self.settings.validation.validation_skip_text)
+            is_dummy = validation.is_dummy_content(
+                record[target_col_index], self.settings.validation.validation_skip_text
+            )
             if is_dummy:
                 continue
             else:
@@ -1370,17 +1364,22 @@ class Editor(QWidget):
         # print(f">>>> {len(records)=} vs {len(list_without_dummies)=}")
         number_of_records_removed = len(records) - len(list_without_dummies)
         if number_of_records_removed > 0:
-            logging.info(f"{number_of_records_removed} dummy records were removed from the export to Marc 21 format.")
+            logging.info(
+                f"{number_of_records_removed} dummy records were removed from the export to Marc 21 format."
+            )
         return list_without_dummies
-
 
     def choose_to_save_on_barcode(self) -> None:
         if (
-            self.data.record_is_locked or
-            self.is_modal_open() or
-            validation.barcode("barcode", self.get_content(self.settings.auto_submit_form_field))
+            self.data.record_is_locked
+            or self.is_modal_open()
+            or validation.barcode(
+                "barcode", self.get_content(self.settings.auto_submit_form_field)
+            )
         ):
-            print(f"Auto-submit on {self.settings.auto_submit_form_field_name} suppressed.")
+            print(
+                f"Auto-submit on {self.settings.auto_submit_form_field_name} suppressed."
+            )
             return
         else:
 
@@ -1392,7 +1391,6 @@ class Editor(QWidget):
                 )
                 if dialogue.exec() == 1:
                     self.handle_submit()
-
 
     def choose_to_abort_on_unsaved_text(self) -> int:
         """
@@ -1409,7 +1407,6 @@ class Editor(QWidget):
         return abort_because_unsaved
         # return dialogue.exec() != 1
 
-
     def abort_on_clearing_existing_record(self, s) -> int:
         # print("unsaved text alert...", s)
         dialogue = DialogueOkCancel(
@@ -1419,7 +1416,6 @@ class Editor(QWidget):
             # "This wipes the existing record when you save it. Are you OK to contine and lose this text?",
         )
         return dialogue.exec() != 1
-
 
     def handle_open_new_file(self):
         """Opens the native file selection dialog and processes the result."""
@@ -1443,7 +1439,7 @@ class Editor(QWidget):
                 Path(file_path), self.settings.first_row_is_header
             )
             # if self.analyse_new_file(tmp_headers):
-            if logic.analyse_new_file(tmp_headers, self.COL):
+            if logic.is_expected_filetype(tmp_headers, self.COL):
                 self.data.headers = tmp_headers
                 self.data.excel_rows = tmp_excel_rows
                 self.settings.files.in_file = file_path.name
@@ -1464,7 +1460,9 @@ class Editor(QWidget):
             if not self.settings.use_default_layout:
                 logger.warning("Haven't coded for non-default layout yet!")
                 ## TODO: code for change of layout on file loading (i.e. make a standalone: 'load file and update grid' function)
-            logger.info(f"\n** file dialog -> records loaded: {len(self.data.excel_rows)}")
+            logger.info(
+                f"\n** file dialog -> records loaded: {len(self.data.excel_rows)}"
+            )
             self.data.all_text_is_saved = True
             self.data.has_records = True
             self.go_to_last_record()
@@ -1474,7 +1472,6 @@ class Editor(QWidget):
         else:
             print("File selection cancelled.")
             logger.warning("File selection cancelled.")
-
 
     def is_modal_open(self):
         active_window = QApplication.activeModalWidget()
@@ -1545,7 +1542,7 @@ def create_max_lengths(rows: list[list[str]]) -> list[int]:
 #     # settings.layout_template = default_template
 
 
-def setup_environment(settings: Default_settings, expected_col_count:int):
+def setup_environment(settings: Default_settings, expected_col_count: int):
     # read_cli_into_settings(settings)
     grid = Grid()
     headers = []
@@ -1557,7 +1554,9 @@ def setup_environment(settings: Default_settings, expected_col_count:int):
             Path(settings.files.in_file), settings.first_row_is_header
         )
         file_resembles_expectations = len(headers) == expected_col_count
-        print(f"Setup environment: {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}")
+        print(
+            f"Setup environment: {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}"
+        )
         if settings.use_default_layout:
             settings.layout_template = settings.default_template
             grid.add_bricks_by_template(settings.layout_template)
