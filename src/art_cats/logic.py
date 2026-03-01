@@ -1,9 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from tkinter import W
 
 from art_cats.settings import Default_settings
 from . import validation
 from . import io
+from . import marc_21
 import logging
 
 logger = logging.getLogger(__name__)
@@ -270,3 +271,74 @@ def map_fits_list(mappings: list, orig: list) -> bool:
 #     if test1 != test2:
 #         return False
 #     return True
+
+
+def format_list_for_marc(records: list[list[str]], live_settings: Default_settings) -> list[list[str]]:
+    internal_fields = {
+        "country_code",
+        "pub_year_is_approx",
+        "pagination_is_approx",
+        "timestamp",
+        "sequence_number",
+        "links",
+    }
+    marc_column_names = [
+        f.name for f in fields(marc_21.Record) if f.name not in internal_fields
+    ]
+    augmented_records = []
+    must_normalise_column_order = bool(live_settings.csv_to_marc_mappings)
+    if must_normalise_column_order:
+        logger.info("Normalising columns to match expected order.")
+    for record in records:
+        # * apply corrective column mapping if necessary
+        if must_normalise_column_order:
+            record = map_list(record, live_settings.csv_to_marc_mappings)
+        # else:
+        #     record = raw_record
+        curr_row = []
+        _col = iter(record)
+        for i, marc_col_name in enumerate(marc_column_names):
+            if marc_col_name in live_settings.column_names:
+                contents = next(_col)
+            else:
+                contents = ""
+            # print(f"...{i} {marc_col_name}: {contents=}")
+            curr_row.append(contents)
+        augmented_records.append(curr_row)
+
+    # print("** format list for marc:")
+    # print(f"{len(augmented_records[1])}->{augmented_records[1]}")
+    # print(f"{len(marc_column_names)}->{marc_column_names}\n")
+    return augmented_records
+
+def remove_dummy_records(records: list[list[str]], live_settings: Default_settings, COL) -> list:
+    target_col_name = live_settings.validation.validation_skip_fieldname
+    if not target_col_name:
+        return records
+    # print(f">>>>>>>>>>>>>{target_col_name}")
+    target_col_index = COL[target_col_name].value
+    list_without_dummies = []
+    indices_of_dummies = []
+    for i, record in enumerate(records):
+        is_dummy = validation.is_dummy_content(
+            record[target_col_index], live_settings.validation.validation_skip_text
+        )
+        if is_dummy:
+            indices_of_dummies.append(i)
+            # continue
+        else:
+            list_without_dummies.append(record)
+    # print(f">>>> {len(records)=} vs {len(list_without_dummies)=}")
+    # number_of_records_removed = len(records) - len(list_without_dummies)
+    number_of_records_removed = len(indices_of_dummies)
+    # if number_of_records_removed > 0:
+    if number_of_records_removed > 0:
+        print(f"!!!!!!{indices_of_dummies}")
+        logging.warning(
+            f"The following {number_of_records_removed} dummy record{singular_or_plural(number_of_records_removed)} {singular_or_plural(number_of_records_removed, "were", "was")} removed from the export to Marc 21 format: {", ".join((str(el) for el in indices_of_dummies))}"
+        )
+    return list_without_dummies
+
+
+def singular_or_plural(count:int, plural="s", singular="") -> str:
+    return plural if count != 1 else singular

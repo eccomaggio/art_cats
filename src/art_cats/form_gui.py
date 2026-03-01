@@ -1290,8 +1290,12 @@ class Editor(QWidget):
         file_name_with_path = (
             self.settings.files.full_output_dir / self.settings.files.out_file
         )
-        records_to_export = self.remove_dummy_records(self.data.excel_rows)
-        records_in_marc_format = self.format_list_for_marc(records_to_export)
+        # records_to_export = self.remove_dummy_records(self.data.excel_rows)
+        # records_in_marc_format = self.format_list_for_marc(records_to_export)
+        # records_to_export = logic.remove_dummy_records(self.data.excel_rows, self.settings)
+
+        records_to_export = logic.remove_dummy_records(self.data.excel_rows, self.settings, self.COL)
+        records_in_marc_format = logic.format_list_for_marc(records_to_export, self.settings)
         files_successfully_created = marc_21.save_as_marc_files(
             self.data.headers,
             # records_to_export,
@@ -1308,66 +1312,66 @@ class Editor(QWidget):
         msg_box.setText(msg)
         msg_box.exec()
 
-    def format_list_for_marc(self, records: list[list[str]]) -> list[list[str]]:
-        internal_fields = {
-            "country_code",
-            "pub_year_is_approx",
-            "pagination_is_approx",
-            "timestamp",
-            "sequence_number",
-            "links",
-        }
-        marc_column_names = [
-            f.name for f in fields(marc_21.Record) if f.name not in internal_fields
-        ]
-        augmented_records = []
-        must_normalise_column_order = bool(self.settings.csv_to_marc_mappings)
-        if must_normalise_column_order:
-            logger.info("Normalising columns to match expected order.")
-        for record in records:
-            # * apply corrective column mapping if necessary
-            if must_normalise_column_order:
-                record = logic.map_list(record, self.settings.csv_to_marc_mappings)
-            # else:
-            #     record = raw_record
-            curr_row = []
-            _col = iter(record)
-            for i, marc_col_name in enumerate(marc_column_names):
-                if marc_col_name in self.settings.column_names:
-                    contents = next(_col)
-                else:
-                    contents = ""
-                # print(f"...{i} {marc_col_name}: {contents=}")
-                curr_row.append(contents)
-            augmented_records.append(curr_row)
+    # def format_list_for_marc(self, records: list[list[str]]) -> list[list[str]]:
+    #     internal_fields = {
+    #         "country_code",
+    #         "pub_year_is_approx",
+    #         "pagination_is_approx",
+    #         "timestamp",
+    #         "sequence_number",
+    #         "links",
+    #     }
+    #     marc_column_names = [
+    #         f.name for f in fields(marc_21.Record) if f.name not in internal_fields
+    #     ]
+    #     augmented_records = []
+    #     must_normalise_column_order = bool(self.settings.csv_to_marc_mappings)
+    #     if must_normalise_column_order:
+    #         logger.info("Normalising columns to match expected order.")
+    #     for record in records:
+    #         # * apply corrective column mapping if necessary
+    #         if must_normalise_column_order:
+    #             record = logic.map_list(record, self.settings.csv_to_marc_mappings)
+    #         # else:
+    #         #     record = raw_record
+    #         curr_row = []
+    #         _col = iter(record)
+    #         for i, marc_col_name in enumerate(marc_column_names):
+    #             if marc_col_name in self.settings.column_names:
+    #                 contents = next(_col)
+    #             else:
+    #                 contents = ""
+    #             # print(f"...{i} {marc_col_name}: {contents=}")
+    #             curr_row.append(contents)
+    #         augmented_records.append(curr_row)
 
-        print("** format list for marc:")
-        print(f"{len(augmented_records[1])}->{augmented_records[1]}")
-        print(f"{len(marc_column_names)}->{marc_column_names}\n")
-        return augmented_records
+    #     print("** format list for marc:")
+    #     print(f"{len(augmented_records[1])}->{augmented_records[1]}")
+    #     print(f"{len(marc_column_names)}->{marc_column_names}\n")
+    #     return augmented_records
 
-    def remove_dummy_records(self, records: list[list[str]]) -> list:
-        target_col_name = self.settings.validation.validation_skip_fieldname
-        if not target_col_name:
-            return records
-        # print(f">>>>>>>>>>>>>{target_col_name}")
-        target_col_index = self.COL[target_col_name].value
-        list_without_dummies = []
-        for record in records:
-            is_dummy = validation.is_dummy_content(
-                record[target_col_index], self.settings.validation.validation_skip_text
-            )
-            if is_dummy:
-                continue
-            else:
-                list_without_dummies.append(record)
-        # print(f">>>> {len(records)=} vs {len(list_without_dummies)=}")
-        number_of_records_removed = len(records) - len(list_without_dummies)
-        if number_of_records_removed > 0:
-            logging.info(
-                f"{number_of_records_removed} dummy records were removed from the export to Marc 21 format."
-            )
-        return list_without_dummies
+    # def remove_dummy_records(self, records: list[list[str]]) -> list:
+    #     target_col_name = self.settings.validation.validation_skip_fieldname
+    #     if not target_col_name:
+    #         return records
+    #     # print(f">>>>>>>>>>>>>{target_col_name}")
+    #     target_col_index = self.COL[target_col_name].value
+    #     list_without_dummies = []
+    #     for record in records:
+    #         is_dummy = validation.is_dummy_content(
+    #             record[target_col_index], self.settings.validation.validation_skip_text
+    #         )
+    #         if is_dummy:
+    #             continue
+    #         else:
+    #             list_without_dummies.append(record)
+    #     # print(f">>>> {len(records)=} vs {len(list_without_dummies)=}")
+    #     number_of_records_removed = len(records) - len(list_without_dummies)
+    #     if number_of_records_removed > 0:
+    #         logging.info(
+    #             f"{number_of_records_removed} dummy records were removed from the export to Marc 21 format."
+    #         )
+    #     return list_without_dummies
 
     def choose_to_save_on_barcode(self) -> None:
         if (
