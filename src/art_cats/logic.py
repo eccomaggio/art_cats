@@ -245,14 +245,28 @@ def unmap_list(mapped: list, mappings: list) -> list:
 
 
 def map_fits_list(mappings: list, orig: list) -> bool:
-    """
-    * orig & mappings must be equal length
-    * elements in mappings must be contiguous when sorted
-    """
+    result = True
     if len(orig) != len(mappings):
-        return False
-    test1 = sorted(mappings)
-    test2 = list(range(test1[0], test1[-1] + 1))
-    if test1 != test2:
-        return False
-    return True
+        result = False
+    else:
+        test1 = sorted(mappings)
+        test2 = list(range(test1[0], test1[-1] + 1))
+        if test1 != test2:
+            result = False
+    if not result:
+        logger.warning("The mappings don't fit the list. (The mappings file is probably invalid or does not match the columns in the .csv)")
+    return result
+
+
+# def map_fits_list(mappings: list, orig: list) -> bool:
+#     """
+#     * orig & mappings must be equal length
+#     * elements in mappings must be contiguous when sorted
+#     """
+#     if len(orig) != len(mappings):
+#         return False
+#     test1 = sorted(mappings)
+#     test2 = list(range(test1[0], test1[-1] + 1))
+#     if test1 != test2:
+#         return False
+#     return True
