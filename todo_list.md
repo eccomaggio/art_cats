@@ -11,13 +11,15 @@
 
 To do:
 
+- **check 'holding_notes'** - they seem to have different uses / marc fields between art_cats and strachan
+
 - make sure 'algorithmic display' still works for new csvs: create a "general" entry point which uses the algorithm to build gui
 
-- allow record that is totally empty to be deleted (i.e. sum of all cols = "")
-- save when leaving barcode field should only work when the record is unlocked
-- illustrations should carry over when new record is created
-- illustrations should default to 'none'?
-- move logic out of form_gui.py into logic.py (so can easily switch GUIs)
+DONE - allow record that is totally empty to be deleted (i.e. sum of all cols = "")
+DONE - save when leaving barcode field should only work when the record is unlocked
+DONE - illustrations should carry over when new record is created
+DONE - illustrations should default to 'none'?
+DONE - move logic out of form_gui.py into logic.py (so can easily switch GUIs)
 
 EITHER
 select a file pattern
@@ -196,150 +198,3 @@ __load file__ ->
 __export as .csv__
 __export as marc21__
 __lock__ -> validate
-
-
-
-
-TO EVALUATE AND ADD TO logic.py
-
-import re
-
-code_by_state = {
-    "england": "enk",
-    "northernireland": "nik",
-    "ni": "nik",
-    "scotland": "stk",
-    "wales": "wlk",
-    "alberta": "abc",
-    "britishcolumbia": "bcc",
-    "california": "cau",
-}
-
-code_by_country = {
-    "usa": "xxu",
-    "us": "xxu",
-    "unitedstates": "xxu",
-    "unitedstatesamerica": "xxu",
-    "uk": "xxk",
-    "unitedkingdom": "xxk",
-    "england": "enk",
-    "scotland": "stk",
-    "wales": "wlk",
-    "northernireland": "nik",
-    "ni": "nik",
-    "canada": "xxc",
-    "india": "ii",
-}
-
-code_by_city = {
-    "newyork": "nyu",
-    "london":"enk",
-    "edinburgh":"stk",
-    "glasgow":"stk",
-    "belfast": "nik",
-    "cardiff": "wlk",
-    "toronto": "onc",
-    "montreal": "quc",
-    "montréal": "quc",
-    "vancouver": "bcc",
-    "losangeles": "cau"
-}
-
-code_can_be_expanded = {"xxu", "xxk", "xxc", "at"}
-
-def norm_location(name: str) -> str:
-    name = name.strip()
-    if not name:
-        return ""
-    wip = name.lower()
-    for word in ["the", "of", "in", "and"]:
-        regex = re.compile(r"\b%s\b" % re.escape(word))
-        wip = re.sub(regex, "", wip)
-    wip = re.sub(r"[\s\-\.'&]", "", wip)
-    return wip
-
-def norm_place(places: str) -> list[str]:
-    places = places.strip()
-    if not places:
-        return []
-    tmp = places.split(",")
-    if len(tmp) > 2:
-        tmp = tmp[:2]
-    city_and_or_state = []
-    for el in tmp:
-        wip = norm_location(el)
-        if wip:
-            city_and_or_state.append(el.strip())
-    return city_and_or_state
-
-def check_country(country:str) -> str:
-    normed = norm_location(country)
-    # print(f"normed country: {normed}")
-    return code_by_country.get(normed, "")
-
-def check_state(state:str) -> str:
-    normed = norm_location(state)
-    # print(f"normed state: {normed}")
-    return code_by_state.get(normed, "")
-
-def check_city(place:str) -> str:
-    normed = norm_location(place)
-    #print(f"normed place: {normed}")
-    return code_by_city.get(normed, "")
-
-def get_city_and_state(place:str, row_num:int) -> tuple[str, str, str]:
-    """
-    need to decide if place is state or city, or both
-    returns: [city, state, country_code]
-    """
-    undecided = norm_place(place)
-    state, city, match = "", "", ""
-    full_city, full_state = "", ""
-    elements_in_place = len(undecided)
-    if elements_in_place > 0:
-        if len(undecided) > 1:
-            # *states must have a match; only famous cities have match
-            #* if state does not match, there is a problem, even if city does
-            city, state = undecided
-            match = check_state(state)
-            if not match:
-                state, city = city, state
-                match = check_state(state)
-                if not match:
-                    match = check_city(city)
-        else:
-            state = undecided[0]
-            match = check_state(state)
-            if not match:
-                city = state
-                state = ""
-                match = check_city(city)
-    return (city, state, match)
-
-def get_country_code(country:str, place:str, row_num:int) -> tuple[str, str, str]:
-    city, state, tmp_country_code = get_city_and_state(place, row_num)
-    if len(country) < 4:
-        country_code = country.lower()
-        print("The country may already have been converted to a Marc code. Please check.")
-    else:
-        country_code = check_country(country)
-    if country_code and country_code in code_can_be_expanded:
-        country_code = tmp_country_code
-    return (city, state, country_code)
-
-country = "USA"
-country = "India"
-city = "Los Angeles"
-state = "California"
-places = (("USA", "Los Angeles, California"), ("United States", "California, Los Angeles, California"), ("US","California, Los Angeles, Downtown"), ("","California"), ("U.S.A.","Los Angelese"), ("United States of America","Hicksville, Lalaland"), ("India","Mumbai"), ("mau", ""))
-
-for i, (country, place) in enumerate(places):
-    #y = get_city_and_state(place, -1)
-    y = get_country_code(country, place, i)
-    #print(f"{i}: {country} => {place}")
-    print(f"{place} ->\n\t {y}\n")
-
-# x = "Los Angeles, California"
-# y = norm_location(x)
-# z = norm_place(y)
-# print(x, y, z)

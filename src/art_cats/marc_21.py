@@ -1407,6 +1407,79 @@ def build_020(record: Record) -> Result:  ##optional
     return result
 
 
+def build_852(record: Record) -> Result:  ##optional
+    """call number (if exists)"""
+    tag = 852
+    i1, i2 = "0", "1"
+    # i1, i2 = isbd["blank"], isbd["blank"]
+    contents = []
+    if value := record.call_number:
+        contents.append(Subfield(value=value, code="h"))
+        result = Result(
+            Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=contents),
+            None,
+        )
+    else:
+        result = Result(None, (tag, ""))
+    return result
+
+
+def build_100(record: Record) -> Result:  ##optional
+    """Artist (if exists)"""
+    tag = 100
+    i1 = "1"
+    i2 = ISBD["BLANK"]
+    contents = []
+    if value := record.artist:
+        contents.append(Subfield(value=value, code="a"))
+        result = Result(
+            Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=contents), None,)
+    else:
+        result = Result(None, (tag, ""))
+    return result
+
+
+def build_700(record: Record) -> Result:  ##optional
+    """Author(s) (if exists)"""
+    tag = 700
+    i1 = "1"
+    i2 = ISBD["BLANK"]
+    contents = []
+    if record.authors[0]:
+        value = record.authors
+        print(f"oh-oh! authors: {record.authors=} ({record.artist=})")
+        fields = []
+        for author in value:
+            contents.append(Subfield(value=author, code="a"))
+            fields.append(
+                Field(
+                    tag=link_num(tag), indicators=Indicators(i1, i2), subfields=contents
+                )
+            )
+        result = Result(
+            fields,
+            None
+        )
+    else:
+        result = Result(None, (tag, ""))
+    return result
+
+
+# def build_951(record: Record) -> Result:  ##optional
+#     """Holding (if exists)"""
+#     tag = 951
+#     i1 = ISBD["BLANK"]
+#     i2 = ISBD["BLANK"]
+#     contents = []
+#     if value := record.hol_notes:
+#         contents.append(Subfield(value=value, code="a"))
+#         result = Result(
+#             Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=contents), None,)
+#     else:
+#         result = Result(None, (tag, ""))
+#     return result
+
+
 def build_024(record: Record) -> Result:  ##optional
     """sales code (if exists)"""
     tag = 24
@@ -1729,6 +1802,9 @@ def apply_marc_logic(record: Record) -> PyRecord:
         (build_041, False),  # language if not monolingual
         (build_246, False),  # parallel title
         (build_500, False),  # general notes
+        (build_100, False),  # artist
+        (build_700, False),  # author(s)
+        (build_852, False),  # call number
     )
     pymarc_record = PyRecord()
     for builder, is_mandatory in fields_to_deploy:
