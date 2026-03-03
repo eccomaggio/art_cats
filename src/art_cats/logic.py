@@ -275,6 +275,7 @@ def map_fits_list(mappings: list, orig: list) -> bool:
 
 def format_list_for_marc(records: list[list[str]], live_settings: Default_settings) -> list[list[str]]:
     internal_fields = {
+        "state",
         "country_code",
         "pub_year_is_approx",
         "pagination_is_approx",
@@ -289,7 +290,7 @@ def format_list_for_marc(records: list[list[str]], live_settings: Default_settin
     must_normalise_column_order = bool(live_settings.csv_to_marc_mappings)
     if must_normalise_column_order:
         logger.info("Normalising columns to match expected order.")
-    for record in records:
+    for record_num, record in enumerate(records):
         # * apply corrective column mapping if necessary
         if must_normalise_column_order:
             record = map_list(record, live_settings.csv_to_marc_mappings)
@@ -297,12 +298,13 @@ def format_list_for_marc(records: list[list[str]], live_settings: Default_settin
         #     record = raw_record
         curr_row = []
         _col = iter(record)
+        # print(f"Record number {record_num + 1}:")
         for i, marc_col_name in enumerate(marc_column_names):
             if marc_col_name in live_settings.column_names:
                 contents = next(_col)
             else:
                 contents = ""
-            # print(f"...{i} {marc_col_name}: {contents=}")
+            # print(f"\t{i} {marc_col_name}: {contents=}")
             curr_row.append(contents)
         augmented_records.append(curr_row)
 
@@ -333,9 +335,9 @@ def remove_dummy_records(records: list[list[str]], live_settings: Default_settin
     number_of_records_removed = len(indices_of_dummies)
     # if number_of_records_removed > 0:
     if number_of_records_removed > 0:
-        print(f"!!!!!!{indices_of_dummies}")
+        print(f"{indices_of_dummies=}")
         logging.warning(
-            f"The following {number_of_records_removed} dummy record{singular_or_plural(number_of_records_removed)} {singular_or_plural(number_of_records_removed, "were", "was")} removed from the export to Marc 21 format: {", ".join((str(el) for el in indices_of_dummies))}"
+            f"The following {number_of_records_removed} dummy record{singular_or_plural(number_of_records_removed)} {singular_or_plural(number_of_records_removed, "were", "was")} removed from the export to Marc 21 format: {", ".join((str(el + 1) for el in indices_of_dummies))}"
         )
     return list_without_dummies
 

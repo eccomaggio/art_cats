@@ -47,14 +47,13 @@ def main():
         parallel_subtitle = "Parallel subtitle (dual language only)"
         tr_parallel_subtitle = "Parallel subtitle transliteration"
         country_name = "Country of publication"
-        state = "State (US/UK/Canada & Australia only)"
-        place = "Place of publication"
+        place = "(State,) City of publication"
         publisher = "Publisher's name"
         pub_year = "Year of publication"
         copyright = "Year of copyright"
         pagination = "Number of pages"
         size = "Size (height)"
-        is_illustrated = "Illustrations"
+        illustrations = "Illustrations"
         series_title = "Series title"
         series_enum = "Series enumeration"
         volume = "Volume"
@@ -107,11 +106,11 @@ def main():
         COL.pagination.name,
         COL.size.name,
         COL.barcode.name,
-        COL.is_illustrated,
+        COL.illustrations,
     ]
 
     settings.combos.independents = [
-        COL.is_illustrated.name,
+        COL.illustrations.name,
     ]
 
     # settings.validation.validate_always = [COL.barcode.name]
@@ -136,15 +135,13 @@ def main():
         (COL.parallel_subtitle, (2, 3), 7, 0, "text"),
         (COL.tr_parallel_subtitle, (2, 3), 7, 3, "text"),
         (COL.country_name, (1, 2), 13, 0, "line"),
-        (COL.state, (1, 2), 13, 2, "line"),
-        (COL.place, (1, 2), 13, 4, "line"),
+        (COL.place, (1, 4), 13, 2, "line"),
         (COL.publisher, (1, 4), 14, 0, "line"),
         (COL.pub_year, (1, 1), 14, 4, "line"),
         (COL.copyright, (1, 1), 14, 5, "line"),
         (COL.pagination, (1, 1), 15, 1, "line"),
         (COL.size, (1, 1), 15, 0, "line"),
-        # (COL.is_illustrated, (1,1), 15, 3, "checkbox"),
-        (COL.is_illustrated, (1, 1), 15, 3, "combo"),
+        (COL.illustrations, (1, 1), 15, 3, "combo"),
         (COL.series_title, (1, 3), 12, 0, "line"),
         (COL.series_enum, (1, 2), 12, 3, "line"),
         (COL.volume, (1, 1), 12, 5, "line"),

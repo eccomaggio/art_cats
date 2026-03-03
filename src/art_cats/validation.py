@@ -134,7 +134,7 @@ def barcode(name:str, content:str) -> str:
     errors = []
     if len(content) != 9:
         errors.append("have 9 digits")
-    if content[0] not in "367":
+    if content and content[0] not in "367":
         errors.append("start with 3, 6 or 7")
     error_count = len(errors)
     if error_count:

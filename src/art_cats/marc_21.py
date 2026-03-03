@@ -75,7 +75,7 @@ class Record:
     copyright: str
     pagination: str
     size: int
-    is_illustrated: str
+    illustrations: str
     series_title: str
     series_enum: str
     volume: str
@@ -287,6 +287,7 @@ code_by_state = {
 
 code_by_country = {
     "usa": "xxu",
+    "us": "xxu",
     "unitedstates": "xxu",
     "unitedstatesamerica": "xxu",
     "uk": "xxk",
@@ -606,7 +607,8 @@ code_by_city = {
     "Adelaide": "xra",
 }
 
-code_can_be_expanded = set(["xxu", "xxk", "xxc", "at"])
+# code_can_be_expanded = set(["xxu", "xxk", "xxc", "at"])
+code_can_be_expanded = {"xxu", "xxk", "xxc", "at"}
 
 def norm_langs(raw: str) -> list[str]:
     code_by_language = {
@@ -658,6 +660,21 @@ def norm_location(name: str) -> str:
     return wip
 
 
+def norm_place(raw_places: str) -> list[str]:
+    raw_places = raw_places.strip()
+    if not raw_places:
+        return []
+    split_raw_places = raw_places.split(",")
+    if len(split_raw_places) > 2:
+        split_raw_places = split_raw_places[:2]
+    city_and_or_state = []
+    for raw_place_name in split_raw_places:
+        normed_place = norm_location(raw_place_name)
+        if normed_place:
+            city_and_or_state.append(raw_place_name.strip())
+    return city_and_or_state
+
+
 def check_country(country:str) -> str:
     normed = norm_location(country)
     # print(f"normed country: {normed}")
@@ -670,40 +687,50 @@ def check_state(state:str) -> str:
 
 def check_city(place:str) -> str:
     normed = norm_location(place)
-    print(f"normed place: {normed}")
+    # print(f"normed place: {normed}")
     return code_by_city.get(normed, "")
 
-def get_country_code(country:str, state:str, place:str, row_num:int) -> str:
-    short_code = check_country(country)
-    # print(f"step 1: {short_code=}")
-    if short_code:
-        # if len(short_code) == 3 or short_code == "at":
-        # if short_code in ["xxu", "xxk", "xxc", "at"]:
-        if short_code in code_can_be_expanded:
-            if state:
-                long_code = check_state(state)
-                if long_code:
-                    return long_code
-            else:
-                logger.warning(f"Record no. {row_num} is lacking a State; please check that the final assigned country code is accurate.")
-                if place:
-                    long_code = check_city(place)
-                    if long_code:
-                        return long_code
-            # elif place:
-            #     long_code = check_city(place)
-            #     if long_code:
-                    # return long_code
-        return short_code
+
+def get_city_and_state(place:str) -> tuple[str, str, str]:
+    """
+    need to decide if place is state or city, or both
+    returns: [city, state, country_code]
+    """
+    undecided = norm_place(place)
+    state, city, match = "", "", ""
+    # full_city, full_state = "", ""
+    elements_in_place = len(undecided)
+    if elements_in_place > 0:
+        if len(undecided) > 1:
+            # *states must have a match; only famous cities have match
+            #* if state does not match, there is a problem, even if city does
+            city, state = undecided
+            match = check_state(state)
+            if not match:
+                state, city = city, state
+                match = check_state(state)
+                if not match:
+                    match = check_city(city)
+        else:
+            state = undecided[0]
+            match = check_state(state)
+            if not match:
+                city = state
+                state = ""
+                match = check_city(city)
+    return (city, state, match)
+
+
+def get_country_code(country:str, place:str, row_num:int) -> tuple[str, str, str]:
+    city, state, tmp_country_code = get_city_and_state(place)
+    if len(country) < 4 and country.lower() not in ("us", "usa", "uk"):
+        country_code = country.lower()
+        print(f"Record: {row_num}: the country '{country}' may already have been converted to a Marc code. Please check.")
     else:
-        # print(f"{country} matched no country...")
-        if len(country) < 4:
-            ## Check to see if full LCC country code has been given by cataloguer (overrides state...)
-            country = country.lower()
-            if country in all_country_codes:
-                return country
-    logger.error(f"{country} is not recognized as a valid country name.")
-    return ""
+        country_code = check_country(country)
+    if country_code and country_code in code_can_be_expanded:
+        country_code = tmp_country_code
+    return (city, state, country_code)
 
 
 def validate_record(record: Record, record_num: int) -> bool:
@@ -762,15 +789,15 @@ def norm_illustrations(raw: str) -> str:
     """
     This is to convert old boolean version into the 3-way version
     """
-    is_illustrated = raw
+    illustrations = raw
     if isinstance(raw, bool):
-        is_illustrated = "Full" if raw else "None"
+        illustrations = "Full" if raw else "None"
     else:
         if raw.lower() == "true":
-            is_illustrated = "Full"
+            illustrations = "Full"
         elif raw.lower() == "false":
-            is_illustrated = "None"
-    return is_illustrated
+            illustrations = "None"
+    return illustrations
 
 def norm_pages(pages_raw: str) -> tuple[str, bool]:
     pages = strip_unwanted(r"pages|\[|\]", pages_raw)
@@ -789,6 +816,12 @@ def norm_year(year_raw: str) -> str:
     year = strip_unwanted(r"[\[\]]", year_raw)
     return year
 
+
+def norm_authors(authors_raw:list[str]|str) -> list[str]:
+    if isinstance(authors_raw, str):
+        return [authors_raw]
+    else:
+        return authors_raw
 
 def norm_isbn(raw_isbn: str, row_num: int) -> str:
     isbn = re.sub(r"[\s-]", "", raw_isbn)
@@ -885,39 +918,37 @@ def parse_row(
     isbn = norm_isbn(next(_col), row_num)
     title_orig = next(_col)
     title_tr = next(_col)
-    title = Title(title_orig, title_tr)
     subtitle_orig = next(_col)
     subtitle_tr = next(_col)
-    subtitle = Title(subtitle_orig, subtitle_tr)
     parallel_title_orig = next(_col)
     parallel_title_tr = next(_col)
-    parallel_title = Title(parallel_title_orig, parallel_title_tr)
     parallel_subtitle_orig = next(_col)
     parallel_subtitle_tr = next(_col)
-    parallel_subtitle = Title(parallel_subtitle_orig, parallel_subtitle_tr)
     country_name = next(_col)
-    state = next(_col)
     place = next(_col)
-    country_code = get_country_code(country_name, state, place, row_num)
-    # if not country_code:
-    #     logger.error(f"{country_name} is not recognized as a valid country name.")
     publisher = next(_col)
     pub_date, pub_date_is_approx = check_for_approx(norm_year(next(_col)))
     copyright_ = norm_copyright(next(_col))
     pagination, pagination_is_approx = norm_pages(next(_col))
     size = norm_size(next(_col))
-    is_illustrated = norm_illustrations(next(_col))
+    illustrations = norm_illustrations(next(_col))
     series_title = next(_col)
     series_enum = next(_col)
     volume = next(_col)
     notes = next(_col)
-    sale_code = next(_col)
-    date_of_sale = create_date_list(next(_col))
+    sales_code = next(_col)
+    sale_dates = create_date_list(next(_col))
     hol_notes, item_policy = get_item_policy_from_hol_notes(next(_col))
     donation = next(_col)
     barcode = norm_barcode(next(_col), row_num)
 
-    authors = next(_col)
+    title = Title(title_orig, title_tr)
+    subtitle = Title(subtitle_orig, subtitle_tr)
+    parallel_title = Title(parallel_title_orig, parallel_title_tr)
+    parallel_subtitle = Title(parallel_subtitle_orig, parallel_subtitle_tr)
+    place, state, country_code = get_country_code(country_name, place, row_num)
+
+    authors = norm_authors(next(_col))
     artist = next(_col)
     call_number = next(_col)
 
@@ -945,13 +976,13 @@ def parse_row(
         copyright_,
         pagination,
         size,
-        is_illustrated,
+        illustrations,
         series_title,
         series_enum,
         volume,
         notes,
-        sale_code,
-        date_of_sale,
+        sales_code,
+        sale_dates,
         hol_notes,
         donation,
         barcode,
@@ -1041,7 +1072,7 @@ def build_008(record: Record) -> Result:
 
     # books_configuration = [14*"|", " ", 2*"|"]
     # illustrations = "|a||" if record.is_illustrated else "||||"  ## pos 18-21
-    illustrations = "||||" if record.is_illustrated.lower() == "none" else "|a||"  ## pos 18-21
+    illustrations = "||||" if record.illustrations.lower() == "none" else "|a||"  ## pos 18-21
     target_audience = "|"  ## 22
     form_of_item = "|"  ## 23
     nature_of_contents = "||||"  ## 24-27
@@ -1249,7 +1280,7 @@ def build_300(record: Record) -> Result:
     punctuation = ISBD["."] if record.series_title else ""
     size = Subfield(value=f"{record.size} cm{punctuation}", code="c")
     # if record.is_illustrated:
-    if record.is_illustrated.lower() != "none":
+    if record.illustrations.lower() != "none":
         pages = Subfield(value=pages_content + ISBD[":"], code="a")
         illustrations = Subfield(value=f"illustrations{ISBD[";"]}", code="b")
         content = [pages, illustrations, size]
@@ -1277,7 +1308,7 @@ def build_336(record: Record) -> Result:
 
     # if record.is_illustrated:
     # print(f">>>>> {record.is_illustrated.lower()=}, {record.is_illustrated.lower() == "full"}")
-    if record.is_illustrated.lower() == "full":
+    if record.illustrations.lower() == "full":
         illus_content = [
             Subfield(value="still image", code="a"),
             Subfield(value="rdacontent", code="2"),
@@ -1733,6 +1764,11 @@ def save_as_marc_files(
     """
     records = parse_rows_into_records(rows_from_gui, live_settings)
     # if create_chu_file:
+    # for i, record in enumerate(records):
+    #     print(f"*** marc record no.: {i + 1}")
+    #     for j, field in enumerate(fields(record)):
+    #         print(f"\t{j} {field.name}: {getattr(record, field.name)}")
+
     if live_settings.create_chu_file:
         write_chu_file(records, file_name_with_path)
     # if create_excel_file:
