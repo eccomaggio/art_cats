@@ -54,6 +54,8 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QAbstractItemView,
+    QHBoxLayout,
+    QSpinBox,
     # QSpacerItem,
 )
 from PySide6.QtCore import (
@@ -1434,6 +1436,57 @@ class DialogueOkCancel(QDialog):
         self.setLayout(layout)
 
 
+class LauncherDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Project Starter")
+        self.setFixedSize(350, 180)
+
+        # Data to be retrieved
+        self.selected_path = None
+        self.column_count = None
+
+        layout = QVBoxLayout(self)
+
+        # --- Section 1: Open Existing ---
+        self.btn_open = QPushButton("Open Existing Data File")
+        self.btn_open.clicked.connect(self.handle_open_file)
+        layout.addWidget(self.btn_open)
+
+        layout.addWidget(QLabel("OR", alignment=Qt.AlignmentFlag.AlignCenter))
+
+        # --- Section 2: Create New ---
+        new_layout = QHBoxLayout()
+        new_layout.addWidget(QLabel("New File Columns:"))
+        self.spin_columns = QSpinBox()
+        self.spin_columns.setRange(1, 50)
+        self.spin_columns.setValue(10)  # Default
+        new_layout.addWidget(self.spin_columns)
+
+        self.btn_create = QPushButton("Create New")
+        self.btn_create.clicked.connect(self.handle_create_new)
+        new_layout.addWidget(self.btn_create)
+
+        layout.addLayout(new_layout)
+
+    def handle_open_file(self):
+        # file_filter = "Data Files (*.csv *.tsv *.xlsx *.xls *.xlsm)"
+        file_filter = (
+            "Data Files (*.csv *.tsv *.xlsx *.xls *.xlsm);;"
+            "Excel Files (*.xlsx *.xls *.xlsm);;"
+            "Text Tables (*.csv *.tsv);;"
+            "All Files (*.*)"
+        )
+        path, _ = QFileDialog.getOpenFileName(self, "Select File", "", file_filter)
+        if path:
+            self.selected_path = path
+            self.accept()  # Closes dialog with 'Accepted' result
+
+    def handle_create_new(self):
+        self.column_count = self.spin_columns.value()
+        self.accept()
+
+
 def create_max_lengths(rows: list[list[str]]) -> list[int]:
     """
     Given a spreadsheet (i.e. list of rows, i.e. list[list[str]])
@@ -1510,6 +1563,23 @@ def setup_environment(settings: Default_settings, expected_col_count: int):
 
 
 def run(settings: Default_settings, COL):
+    app = QApplication(sys.argv)
+    print(f"Starting up: {len(COL)}")
+    if not len(COL):
+        launcher = LauncherDialog()
+        # exec() blocks until accept() or reject() is called
+        if launcher.exec() == QDialog.DialogCode.Accepted:
+            if launcher.selected_path:
+                print(f"Loading UI for file: {launcher.selected_path}")
+                # Logic to open your MainGui with this file
+            elif launcher.column_count:
+                print(f"Loading UI for new file with {launcher.column_count} columns")
+                # Logic to open your MainGui with empty columns
+        else:
+            print("User exited.")
+            sys.exit(0)
+        sys.exit(0)
+
 
     if settings.combos.data_file:
         settings.combos.data = io.open_yaml_file(
@@ -1517,9 +1587,7 @@ def run(settings: Default_settings, COL):
         )
     # print(f"run: {settings.default_template=}")
     grid, rows, headers = setup_environment(settings, len(COL))
-    # print(f"{headers=}, {rows=}")
-    app = QApplication(sys.argv)
-    # print(f"headers: {headers}")
+    # app = QApplication(sys.argv)
     window = WindowWithRightTogglePanel(grid, rows, settings, COL, app)
     # if sys.platform == "darwin":
     #     font = QFont("Menlo")

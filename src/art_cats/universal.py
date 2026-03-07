@@ -54,63 +54,23 @@ def main():
     settings.headers = [member.display_title for member in COL]
     settings.show_table_view = True
     settings.locking_is_enabled = False
-    # settings.combos.data_file = "data/combo_data.yaml"
     settings.use_default_layout = False
 
     settings.validation.fields_to_clear = [
         # COL.Isbn,
-        # COL.Reporting_code_1,
-        # COL.Reporting_code_2,
-        # COL.Reporting_code_3,
-        # COL.Notify,
-        # COL.Hold_for,
-        # COL.Bib_info,
-        # COL.Additional_info,
     ]
 
-    # settings.validation.fields_to_fill = {}
     settings.validation.required_fields = [
         # COL.Subject_consultant.name,
-        # COL.Fund_code.name,
-        # COL.Order_type.name,
-        # COL.Bib_info.name,
-        # COL.Library.name,
-        # COL.Location.name,
-        # COL.Item_policy.name,
-        # COL.Bib_info.name,
     ]
 
-    # settings.validation.validate_always = []
-    # settings.validation.validate_if_present = [
     settings.validation.must_validate = [
         # COL.Isbn.name,
-        # COL.Hold_for.name,
-        # COL.Notify.name,
     ]
-
-    # settings.validation.validation_skip_fieldname = COL.Additional_info.name
 
     settings.combos.independents = [
         # COL.Subject_consultant.name,
-        # COL.Order_type.name,
-        # COL.Library.name,
-        # COL.Item_policy.name,
-        # COL.Reporting_code_1.name,
-        # COL.Reporting_code_2.name,
-        # COL.Reporting_code_3.name,
     ]
-
-    # settings.combos.leaders = [COL.Subject_consultant.name, COL.Library.name]
-
-    # settings.combos.followers = [COL.Fund_code.name, COL.Location.name]
-
-    # settings.combos.dict_by_follower = dict(
-    #     list(zip(settings.combos.followers, settings.combos.leaders))
-    # )
-
-    # settings.combos.dict_by_leader = dict(
-    #     list(zip(settings.combos.leaders, settings.combos.followers))
-    # )
 
     # settings.default_template = [
     #     ## non-algorithmic version needs to be: [title, brick-type, start-row, start-col, widget-type=line/area/drop]
@@ -133,7 +93,6 @@ def main():
     # ]
 
     # settings.files.help_file = "html/help_order_form.html"
-    # settings.files.output_dir = Path("your_order")
     settings.files.full_output_dir = (
         settings.files.module_dir / settings.files.output_dir
     )
@@ -142,7 +101,6 @@ def main():
         settings.files.full_output_dir.mkdir(exist_ok=True)
 
     CUSTOM_LOG_FILE = (
-        # settings.files.full_output_dir / f"logger.{settings.timestamp}.log"
         settings.files.full_output_dir / "logger.log"
     )
 
