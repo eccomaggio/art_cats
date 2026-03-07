@@ -610,6 +610,37 @@ code_by_city = {
 # code_can_be_expanded = set(["xxu", "xxk", "xxc", "at"])
 code_can_be_expanded = {"xxu", "xxk", "xxc", "at"}
 
+def flexible_split(raw:str, ignore_commas=False) -> list[str]:
+    """
+    splits a given string according to a variety of delimiters:
+    1) if ; / & | are present, it will split on these
+    2) if none of the above, then it will split on commas
+    3) otherwise returns empty list or list with single entry
+    e.g.
+    blah blah   -> ['blah blah'] (1)
+    blah, blah  -> ['blah', 'blah'] (2)
+    blah, blah & duhh   -> ['blah, blah', 'duhh'] (2)
+    blah, a; blah, b;duhh,c -> ['blah, a', 'blah, b', 'duhh,c'] (3)
+    """
+    processed = []
+    raw = raw.strip()
+    if not raw:
+        return processed
+    big_delimiters = re.compile(r"[;/&|]")
+    # has_comma = raw.find(",") >= 0
+    has_comma = False if ignore_commas else raw.find(",") >= 0
+    has_big_delimiter = big_delimiters.search(raw) != None
+    if has_big_delimiter or has_comma:
+        if has_big_delimiter:
+            expanded = big_delimiters.split(raw)
+        else:
+            expanded = raw.split(",")
+        processed = [el.strip() for el in expanded if el]
+    else:
+        processed = [raw]
+    return processed
+
+
 def norm_langs(raw: str) -> list[str]:
     code_by_language = {
         "english": "eng",
@@ -817,11 +848,17 @@ def norm_year(year_raw: str) -> str:
     return year
 
 
-def norm_authors(authors_raw:list[str]|str) -> list[str]:
-    if isinstance(authors_raw, str):
-        return [authors_raw]
-    else:
-        return authors_raw
+# def norm_authors(authors_raw:list[str]|str) -> list[str]:
+#     if isinstance(authors_raw, str):
+#         return [authors_raw]
+#     else:
+#         return authors_raw
+
+def norm_authors(authors_raw:str) -> list[str]:
+    processed = flexible_split(authors_raw, True)
+    # print(f"\tnormed authors: {processed}")
+    return processed
+
 
 def norm_isbn(raw_isbn: str, row_num: int) -> str:
     isbn = re.sub(r"[\s-]", "", raw_isbn)
@@ -880,7 +917,8 @@ def check_for_approx(raw_string: str) -> tuple[str, bool]:
 
 def create_date_list(dates_raw: str) -> list[str]:
     dates_raw = re.sub(r"\s|\.0", "", dates_raw)
-    dates = dates_raw.split(",")
+    # dates = dates_raw.split(",")
+    dates = flexible_split(dates_raw)
     return dates
 
 
@@ -1446,11 +1484,12 @@ def build_700(record: Record) -> Result:  ##optional
     i2 = ISBD["BLANK"]
     contents = []
     if record.authors[0]:
-        value = record.authors
         print(f"oh-oh! authors: {record.authors=} ({record.artist=})")
         fields = []
-        for author in value:
-            contents.append(Subfield(value=author, code="a"))
+        for author in record.authors:
+            # contents.append(Subfield(value=author, code="a"))
+            author = author.replace(".","") + ISBD["."]
+            contents = [Subfield(value=author, code="a")]
             fields.append(
                 Field(
                     tag=link_num(tag), indicators=Indicators(i1, i2), subfields=contents
