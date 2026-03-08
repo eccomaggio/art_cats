@@ -51,7 +51,7 @@ def main():
 
     settings = Default_settings()
     settings.title = "universal"
-    settings.headers = [member.display_title for member in COL]
+    # settings.headers = [member.display_title for member in COL]
     settings.show_table_view = True
     settings.locking_is_enabled = False
     settings.use_default_layout = False

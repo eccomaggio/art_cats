@@ -111,7 +111,7 @@ def main():
         list(zip(settings.combos.leaders, settings.combos.followers))
     )
 
-    settings.default_template = [
+    settings.template = [
         ## non-algorithmic version needs to be: [title, brick-type, start-row, start-col, widget-type=line/area/drop]
         (COL.Subject_consultant, (1, 2), 0, 0, "combo"),
         (COL.Fund_code, (1, 2), 1, 0, "combo"),
@@ -142,7 +142,8 @@ def main():
 
     CUSTOM_LOG_FILE = (
         # settings.files.full_output_dir / f"logger.{settings.timestamp}.log"
-        settings.files.full_output_dir / "logger.log"
+        settings.files.full_output_dir
+        / "logger.log"
     )
 
     log_setup.setup_app_logging(log_file_path=CUSTOM_LOG_FILE)

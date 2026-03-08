@@ -47,7 +47,8 @@ def setup_app_logging(log_file_path: Path, level=logging.INFO):
 
     # 5. Optionally, add a Stream Handler for console output
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.WARNING)  # Only show warnings/errors in console
+    # console_handler.setLevel(logging.WARNING)  # Only show warnings/errors in console
+    console_handler.setLevel(logging.DEBUG)  # Only show warnings/errors in console
     console_handler.setFormatter(formatter)
     ROOT_LOGGER.addHandler(console_handler)
 

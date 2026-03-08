@@ -59,7 +59,25 @@ def main():
     settings.title = "strachan"
     settings.show_marc_button = True
     settings.column_names = [column.name for column in COL]
-    settings.csv_to_marc_mappings = [0, 1, 2, 3, 15, 5, 4, 6, 7, 8, 9, 10, 11, 14, 16, 12, 13]
+    settings.csv_to_marc_mappings = [
+        0,
+        1,
+        2,
+        3,
+        15,
+        5,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        14,
+        16,
+        12,
+        13,
+    ]
     settings.headers = [member.display_title for member in COL]
     settings.show_table_view = True
     settings.locking_is_enabled = True
@@ -111,14 +129,13 @@ def main():
 
     settings.validation.validation_skip_fieldname = COL.barcode.name
 
-    settings.default_template = [
+    settings.template = [
         ## non-algorithmic version needs to be:
         # [title,
         # (brick height, brick length),
         # start-row (0-indexed),
         # start-col]
         ## needs to be in same order as COL specification
-
         (COL.langs, (1, 2), 0, 0, "line"),
         (COL.isbn, (1, 2), 0, 2, "line"),
         (COL.title, (2, 3), 1, 0, "text"),
@@ -147,10 +164,7 @@ def main():
     if settings.create_output_dir:
         settings.files.full_output_dir.mkdir(exist_ok=True)
 
-    CUSTOM_LOG_FILE = (
-        settings.files.full_output_dir
-        / "logger_strachan.log"
-    )
+    CUSTOM_LOG_FILE = settings.files.full_output_dir / "logger_strachan.log"
 
     log_setup.setup_app_logging(log_file_path=CUSTOM_LOG_FILE)
     form_gui.run(settings, COL)

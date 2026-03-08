@@ -873,11 +873,11 @@ def get_item_policy_from_hol_notes(raw_note: str) -> tuple[str, str]:
     # trigger_string = "**lib only**"
     trigger_string = "**f week**"
     if raw_note.lower().startswith(trigger_string.lower()):
-        # return (raw_note[len(trigger_string):], "LUO-DIG-Y")
-        return (raw_note, "")
-    else:
-        # return (raw_note, "")
         return (raw_note[len(trigger_string):], "LUO-DIG-Y")
+        # return (raw_note, "")
+    else:
+        return (raw_note, "")
+        # return (raw_note[len(trigger_string):], "LUO-DIG-Y")
 
 
 def norm_barcode(raw_barcode: str, row_num: int) -> str:
@@ -1483,7 +1483,7 @@ def build_700(record: Record) -> Result:  ##optional
     i1 = "1"
     i2 = ISBD["BLANK"]
     contents = []
-    if record.authors[0]:
+    if record.authors and record.authors[0]:
         print(f"oh-oh! authors: {record.authors=} ({record.artist=})")
         fields = []
         for author in record.authors:
@@ -1878,21 +1878,15 @@ def save_as_marc_files(
     for once the marc files have been uploaded to ALMA
     """
     records = parse_rows_into_records(rows_from_gui, live_settings)
-    # if create_chu_file:
-    # for i, record in enumerate(records):
-    #     print(f"*** marc record no.: {i + 1}")
-    #     for j, field in enumerate(fields(record)):
-    #         print(f"\t{j} {field.name}: {getattr(record, field.name)}")
+    marc_records = build_marc_records(records)
+    write_marc21_files(marc_records, Path(file_name_with_path))
 
     if live_settings.create_chu_file:
         write_chu_file(records, file_name_with_path)
-    # if create_excel_file:
+
     if live_settings.create_excel_file:
         # excel_rows = add_policy_into_hol_notes(records, excel_rows, hol_index)
         io.write_data_to_excel([headers, *rows_from_gui], file_name_with_path.with_suffix(".xlsx"))
-    # marc_records = build_marc_records(parse_rows_into_records(excel_rows))
-    marc_records = build_marc_records(records)
-    write_marc21_files(marc_records, Path(file_name_with_path))
 
     ## TODO: code for this value!
     file_operations_successful = True

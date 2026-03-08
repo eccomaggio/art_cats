@@ -276,7 +276,6 @@ class WindowWithRightTogglePanel(QWidget):
         self.HELP_PANEL_WIDTH = 350
 
         # --- 1. Main Editor Setup (Column 0, Expanding) ---
-        # self.edit_panel_widget = Editor(grid, rows, settings.files.in_file, self, settings, COL, app)
         self.edit_panel_widget = Editor(grid, rows, self, settings, COL, app)
         self.edit_panel_widget.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
@@ -288,7 +287,6 @@ class WindowWithRightTogglePanel(QWidget):
         html_path = Path.cwd() / settings.files.app_dir / settings.files.help_file
         html_content = io.load_plaintext_from_file(str(html_path))
         self.help_widget.setHtml(html_content)
-        # self.help_widget.anchorClicked.connect(self.handle_internal_link)
         self.help_widget.anchorClicked.connect(self.handle_link_click)
 
         self.help_widget.setReadOnly(True)
@@ -1269,7 +1267,6 @@ class Editor(QWidget):
             self.next_btn.setEnabled(True)
         return msg
 
-
     def save_as_csv(self, file_name: Path) -> None:
         # def save_as_csv(self, file_name="") -> None:
         # is_backup_file = bool(file_name)
@@ -1286,8 +1283,12 @@ class Editor(QWidget):
         file_name_with_path = (
             self.settings.files.full_output_dir / self.settings.files.out_file
         )
-        records_to_export = logic.remove_dummy_records(self.data.excel_rows, self.settings, self.COL)
-        records_in_marc_format = logic.format_list_for_marc(records_to_export, self.settings)
+        records_to_export = logic.remove_dummy_records(
+            self.data.excel_rows, self.settings, self.COL
+        )
+        records_in_marc_format = logic.format_list_for_marc(
+            records_to_export, self.settings
+        )
         files_successfully_created = marc_21.save_as_marc_files(
             self.data.headers,
             records_in_marc_format,
@@ -1302,7 +1303,6 @@ class Editor(QWidget):
         msg_box = QMessageBox()
         msg_box.setText(msg)
         msg_box.exec()
-
 
     def choose_to_save_on_barcode(self) -> None:
         if (
@@ -1528,6 +1528,80 @@ def create_max_lengths(rows: list[list[str]]) -> list[int]:
 #     # settings.layout_template = default_template
 
 
+# def setup_environment(settings: Default_settings, COL):
+#     """
+#     NB. further updates settings
+#     """
+#     # read_cli_into_settings(settings)
+#     app = QApplication(sys.argv)
+#     grid = Grid()
+#     headers = []
+#     expected_col_count = len(COL)
+#     print(f"Starting up: {len(COL)}")
+#     if not len(COL):
+#         launcher = LauncherDialog()
+#         # exec() blocks until accept() or reject() is called
+#         if launcher.exec() == QDialog.DialogCode.Accepted:
+#             if launcher.selected_path:
+#                 print(f"Loading UI for file: {launcher.selected_path}")
+#                 settings.files.in_file = launcher.selected_path
+#                 settings.is_existing_file = True
+#                 # Logic to open your MainGui with this file
+#             elif launcher.column_count:
+#                 print(f"Loading UI for new file with {launcher.column_count} columns")
+#                 # Logic to open your MainGui with empty columns
+#         else:
+#             print("User exited.")
+#             sys.exit(0)
+#         # sys.exit(0)
+
+#     if settings.is_existing_file:
+#         ## NB. this is never used as no command line arguments
+#         logging.info(f"processing file: {settings.files.in_file}")
+#         # headers, rows = marc_21.parse_file_into_rows(
+#         headers, rows = io.parse_file_into_rows(
+#             Path(settings.files.in_file), settings.first_row_is_header
+#         )
+#         file_resembles_expectations = len(headers) == expected_col_count
+#         print(f"{headers=}")
+#         print(
+#             f"Setup environment: {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}"
+#         )
+#         if settings.use_default_layout:
+#             settings.layout_template = settings.template
+#             grid.add_bricks_by_template(settings.layout_template)
+#         else:
+#             # headers = settings.headers
+#             settings.headers = headers
+#             # TODO: offer the user the chance to customise the names? NO, only the text labels
+#             col_names = tuple(f"col{i}" for i, _ in enumerate(headers))
+#             print(f"{col_names=}")
+#             max_lengths = create_max_lengths(rows)
+#             layout = [select_brick_by_content_length(length) for length in max_lengths]
+#             # for id, brick_enum in enumerate(layout):
+#             #     brick = brick_enum.value
+#             for id, brick in enumerate(layout):
+#                 grid.add_brick_algorithmically(id, brick, headers[id])
+#     else:
+#         print("creating new file")
+#         rows = []
+#         # grid.add_bricks_by_template(settings.layout_template)
+#         grid.add_bricks_by_template(settings.template)
+#     if settings.combos.data_file:
+#         settings.combos.data = io.open_yaml_file(
+#             settings.files.app_dir / settings.combos.data_file
+#         )
+#     return (grid, rows, headers, COL, app)
+
+
+# def run(settings: Default_settings, COL):
+#     grid, rows, headers, COL, app = setup_environment(settings, COL)
+#     window = WindowWithRightTogglePanel(grid, rows, settings, COL, app)
+#     window.show()
+#     sys.exit(app.exec())
+
+#*** Below are the 'safe' files to merge back into main
+
 def setup_environment(settings: Default_settings, expected_col_count: int):
     # read_cli_into_settings(settings)
     grid = Grid()
@@ -1544,7 +1618,7 @@ def setup_environment(settings: Default_settings, expected_col_count: int):
             f"Setup environment: {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}"
         )
         if settings.use_default_layout:
-            settings.layout_template = settings.default_template
+            settings.layout_template = settings.template
             grid.add_bricks_by_template(settings.layout_template)
         else:
             headers = settings.headers
@@ -1558,7 +1632,7 @@ def setup_environment(settings: Default_settings, expected_col_count: int):
         print("creating new file")
         rows = []
         # grid.add_bricks_by_template(settings.layout_template)
-        grid.add_bricks_by_template(settings.default_template)
+        grid.add_bricks_by_template(settings.template)
     return (grid, rows, headers)
 
 
@@ -1589,13 +1663,5 @@ def run(settings: Default_settings, COL):
     grid, rows, headers = setup_environment(settings, len(COL))
     # app = QApplication(sys.argv)
     window = WindowWithRightTogglePanel(grid, rows, settings, COL, app)
-    # if sys.platform == "darwin":
-    #     font = QFont("Menlo")
-    # elif sys.platform.startswith("win"):
-    #     font = QFont("Consolas")
-    # else:
-    #     font = QFont("DejaVu Sans Mono")
-    # font.setStyleHint(QFont.StyleHint.Monospace)
-    # app.setFont(font)
     window.show()
     sys.exit(app.exec())

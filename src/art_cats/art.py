@@ -119,7 +119,7 @@ def main():
 
     settings.validation.validation_skip_fieldname = COL.barcode.name
 
-    settings.default_template = [
+    settings.template = [
         ## non-algorithmic version needs to be: [title, (brick height, brick length), start-row, start-col]
         ## needs to be in same order as COL specification
         # (COL.sublib, (1,2), 0, 0, "line"),
