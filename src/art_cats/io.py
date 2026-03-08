@@ -15,6 +15,7 @@ from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.utils import quote_sheetname, absolute_coordinate
 from datetime import date
 import logging
+import re
 
 from art_cats.settings import Default_settings
 
@@ -127,6 +128,8 @@ def parse_file_into_rows(
         headers, raw_rows = extract_from_excel(worksheet, first_row_is_header)
     else:
         headers, raw_rows = extract_from_csv(file_path, first_row_is_header)
+    #* strip out any tabs or newlines
+    headers = [re.sub(r"\s+", " ", header) for header in headers]
     return (headers, raw_rows)
 
 

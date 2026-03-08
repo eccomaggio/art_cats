@@ -4,15 +4,14 @@ Common resources
 
 import logging
 from tkinter import W
+import pprint
 
-# from dev.OLD_edit import COL
-# from re import I
 from . import log_setup
 
 
 # import inspect  ## for debugging only
 # import settings as setup
-from enum import Enum
+from enum import Enum, EnumType
 from .settings import Default_settings
 from . import marc_21
 from . import validation
@@ -98,20 +97,20 @@ class Cell:
         return f"<{f'@{self.brick_id}' if is_occupied else "##"}> 1 else " "}>"
 
 
-# def select_brick_by_content_length(length: int) -> BRICK:
-def select_brick_by_content_length(length: int) -> Brick:
+# def select_brick_by_content_length(length: int) -> (BRICK, widget-type):
+def select_brick_by_content_length(length: int) -> tuple[Brick, str]:
     if length < 50:
         # return BRICK.oneone
-        return Brick(1, 1)
+        return (Brick(1, 1), "line")
     elif length < 100:
         # return BRICK.onetwo
-        return Brick(1, 2)
+        return (Brick(1, 2), "line")
     elif length < 400:
         # return BRICK.twotwo
-        return Brick(2, 2)
+        return (Brick(2, 2), "text")
     else:
         # return BRICK.fourtwo
-        return Brick(4, 2)
+        return (Brick(4, 2), "text")
 
 
 class STATUS(Enum):
@@ -151,7 +150,7 @@ class Grid:
         return [-1 for _ in range(self.grid_width)]
 
     def add_brick_algorithmically(
-        self, brick_id: int, brick: Brick, title="", name=""
+        self, brick_id: int, brick: Brick, title="", name="", widget_type=""
     ) -> None:
         """
         algorithm:
@@ -189,7 +188,7 @@ class Grid:
                 if enough_space_across and enough_space_down and no_following_bricks:
                     no_place_found_for_brick = False
                     self.place_brick_in_grid(brick, brick_id, row_i, col_i)
-                    self.widget_info[brick_id] = (row_i, col_i, brick, title, name, "")
+                    self.widget_info[brick_id] = (row_i, col_i, brick, title, name, widget_type)
                     self.current_row = row_i
                     break
             row_i += 1
@@ -1155,8 +1154,9 @@ class Editor(QWidget):
         if headers:
             table.setHorizontalHeaderLabels(headers)
         if self.data.has_records:
-            if self.settings.show_table_view:
-                table.setSpan(0, 0, 1, 1)
+            # if self.settings.show_table_view:
+            #     print("...in A")
+            #     table.setSpan(0, 0, 1, 1)
             for row_i, row in enumerate(rows):
                 for col_i, column in enumerate(row):
                     table.setItem(row_i, col_i, QTableWidgetItem(column))
@@ -1528,140 +1528,147 @@ def create_max_lengths(rows: list[list[str]]) -> list[int]:
 #     # settings.layout_template = default_template
 
 
-# def setup_environment(settings: Default_settings, COL):
+# def create_dynamic_enum(
+#     class_name: str, internal_names: list[str], display_labels: list[str]
+# ):
 #     """
-#     NB. further updates settings
+#     Creates an Enum where names and display labels are specified independently.
+#     - internal_names: list of valid Python identifiers (e.g., ['sub_lib', 'isbn'])
+#     - display_labels: list of UI-friendly strings (e.g., ['Sub Library', 'ISBN-13'])
 #     """
-#     # read_cli_into_settings(settings)
-#     app = QApplication(sys.argv)
-#     grid = Grid()
-#     headers = []
-#     expected_col_count = len(COL)
-#     print(f"Starting up: {len(COL)}")
-#     if not len(COL):
-#         launcher = LauncherDialog()
-#         # exec() blocks until accept() or reject() is called
-#         if launcher.exec() == QDialog.DialogCode.Accepted:
-#             if launcher.selected_path:
-#                 print(f"Loading UI for file: {launcher.selected_path}")
-#                 settings.files.in_file = launcher.selected_path
-#                 settings.is_existing_file = True
-#                 # Logic to open your MainGui with this file
-#             elif launcher.column_count:
-#                 print(f"Loading UI for new file with {launcher.column_count} columns")
-#                 # Logic to open your MainGui with empty columns
-#         else:
-#             print("User exited.")
-#             sys.exit(0)
-#         # sys.exit(0)
 
-#     if settings.is_existing_file:
-#         ## NB. this is never used as no command line arguments
-#         logging.info(f"processing file: {settings.files.in_file}")
-#         # headers, rows = marc_21.parse_file_into_rows(
-#         headers, rows = io.parse_file_into_rows(
-#             Path(settings.files.in_file), settings.first_row_is_header
-#         )
-#         file_resembles_expectations = len(headers) == expected_col_count
-#         print(f"{headers=}")
-#         print(
-#             f"Setup environment: {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}"
-#         )
-#         if settings.use_default_layout:
-#             settings.layout_template = settings.template
-#             grid.add_bricks_by_template(settings.layout_template)
-#         else:
-#             # headers = settings.headers
-#             settings.headers = headers
-#             # TODO: offer the user the chance to customise the names? NO, only the text labels
-#             col_names = tuple(f"col{i}" for i, _ in enumerate(headers))
-#             print(f"{col_names=}")
-#             max_lengths = create_max_lengths(rows)
-#             layout = [select_brick_by_content_length(length) for length in max_lengths]
-#             # for id, brick_enum in enumerate(layout):
-#             #     brick = brick_enum.value
-#             for id, brick in enumerate(layout):
-#                 grid.add_brick_algorithmically(id, brick, headers[id])
-#     else:
-#         print("creating new file")
-#         rows = []
-#         # grid.add_bricks_by_template(settings.layout_template)
-#         grid.add_bricks_by_template(settings.template)
-#     if settings.combos.data_file:
-#         settings.combos.data = io.open_yaml_file(
-#             settings.files.app_dir / settings.combos.data_file
-#         )
-#     return (grid, rows, headers, COL, app)
+#     class DynamicBase(Enum):
+#         display_title:str
+
+#         def __new__(cls, value, display_title):
+#             member = object.__new__(cls)
+#             member._value_ = value
+#             member.display_title = display_title
+#             return member
+
+#     # Combine the lists: (InternalName, (Index, DisplayLabel))
+#     # zip() ensures we stop at the shortest list if they aren't the same length
+#     enum_members = [
+#         (name, (index, label))
+#         for index, (name, label) in enumerate(zip(internal_names, display_labels))
+#     ]
+
+#     return DynamicBase(class_name, enum_members)
 
 
-# def run(settings: Default_settings, COL):
-#     grid, rows, headers, COL, app = setup_environment(settings, COL)
-#     window = WindowWithRightTogglePanel(grid, rows, settings, COL, app)
-#     window.show()
-#     sys.exit(app.exec())
+def create_dynamic_enum(
+    class_name: str, internal_names: list[str], display_labels: list[str]
+):
+    # 1. Define the logic in a plain object mixin (NOT an Enum yet)
+    class MemberMixin:
+        _value_:str
+        display_title:str
 
-#*** Below are the 'safe' files to merge back into main
+        def __new__(cls, value, display_title):
+            member = object.__new__(cls)
+            member._value_ = value
+            member.display_title = display_title
+            return member
 
-def setup_environment(settings: Default_settings, expected_col_count: int):
+    # 2. Build the members dictionary: { 'name': (value, label) }
+    members = {
+        n: (i, l.strip())
+        for i, (n, l) in enumerate(zip(internal_names, display_labels))
+    }
+
+    # 3. Use the functional API with explicit inheritance
+    # By passing (MemberMixin, Enum) as the bases, we force the
+    # unpacking logic to be active during member creation.
+    return Enum(
+        value=class_name,
+        names=members,
+        module=__name__,
+        type=MemberMixin,  # In some 3.13 builds, this is the key
+    )
+
+
+def analyse_existing_file(settings: Default_settings, grid:Grid, COL):
+    logging.info(f"processing file: {settings.files.in_file}")
+    # headers, rows = marc_21.parse_file_into_rows(
+    headers, rows = io.parse_file_into_rows(
+        Path(settings.files.in_file), settings.first_row_is_header
+    )
+    expected_col_count = len(COL)
+    file_resembles_expectations = len(headers) == expected_col_count
+    # print(f"{headers=}")
+    # pprint(rows)
+    print(
+        f"Setup environment: {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}"
+    )
+    if settings.use_default_layout:
+        settings.layout_template = settings.template
+        grid.add_bricks_by_template(settings.layout_template)
+    else:
+        settings.headers = headers
+        # TODO: offer the user the chance to customise the names? NO, only the text labels
+        col_names = [f"col{i}" for i, _ in enumerate(headers)]
+        COL:Enum = create_dynamic_enum("COL", col_names, headers)
+        max_lengths = create_max_lengths(rows)
+        layout = [select_brick_by_content_length(length) for length in max_lengths]
+        for id, (brick, widget_type) in enumerate(layout):
+            grid.add_brick_algorithmically(id, brick, headers[id], "", widget_type)
+        # print(f"{col_names=}\n\tHeader count matches cols?: {len(headers)==len(col_names)}")
+        # show_col(COL)
+        # print("**Layout:**")
+        # pprint(layout)
+        # pprint(grid.rows)
+    return (headers, rows, grid, COL)
+
+
+def show_col(enum) -> None:
+    print("COL =")
+    for member in enum:
+        print(f"\t{member.value}: {member.name}->{member.display_title}")
+
+
+def setup_environment(settings: Default_settings, COL):
+    """
+    NB. further updates settings
+    """
     # read_cli_into_settings(settings)
+    app = QApplication(sys.argv)
     grid = Grid()
     headers = []
-    if settings.is_existing_file:
-        ## NB. this is never used as no command line arguments
-        logging.info(f"processing file: {settings.files.in_file}")
-        # headers, rows = marc_21.parse_file_into_rows(
-        headers, rows = io.parse_file_into_rows(
-            Path(settings.files.in_file), settings.first_row_is_header
-        )
-        file_resembles_expectations = len(headers) == expected_col_count
-        print(
-            f"Setup environment: {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}"
-        )
-        if settings.use_default_layout:
-            settings.layout_template = settings.template
-            grid.add_bricks_by_template(settings.layout_template)
-        else:
-            headers = settings.headers
-            max_lengths = create_max_lengths(rows)
-            layout = [select_brick_by_content_length(length) for length in max_lengths]
-            # for id, brick_enum in enumerate(layout):
-            #     brick = brick_enum.value
-            for id, brick in enumerate(layout):
-                grid.add_brick_algorithmically(id, brick, headers[id])
-    else:
-        print("creating new file")
-        rows = []
-        # grid.add_bricks_by_template(settings.layout_template)
-        grid.add_bricks_by_template(settings.template)
-    return (grid, rows, headers)
-
-
-def run(settings: Default_settings, COL):
-    app = QApplication(sys.argv)
-    print(f"Starting up: {len(COL)}")
+    # print(f"Starting up: {len(COL)}")
     if not len(COL):
         launcher = LauncherDialog()
         # exec() blocks until accept() or reject() is called
         if launcher.exec() == QDialog.DialogCode.Accepted:
             if launcher.selected_path:
                 print(f"Loading UI for file: {launcher.selected_path}")
+                settings.files.in_file = launcher.selected_path
+                settings.is_existing_file = True
                 # Logic to open your MainGui with this file
             elif launcher.column_count:
                 print(f"Loading UI for new file with {launcher.column_count} columns")
+                sys.exit(0)
                 # Logic to open your MainGui with empty columns
         else:
             print("User exited.")
             sys.exit(0)
-        sys.exit(0)
 
-
+    if settings.is_existing_file:
+        headers, rows, grid, COL = analyse_existing_file(settings, grid, COL)
+    else:
+        # TODO: this step will have been replaced by the generic version soon
+        print("creating new file")
+        rows = []
+        grid.add_bricks_by_template(settings.template)
+    show_col(COL)
     if settings.combos.data_file:
         settings.combos.data = io.open_yaml_file(
             settings.files.app_dir / settings.combos.data_file
         )
-    # print(f"run: {settings.default_template=}")
-    grid, rows, headers = setup_environment(settings, len(COL))
-    # app = QApplication(sys.argv)
+    return (grid, rows, headers, COL, app)
+
+
+def run(settings: Default_settings, COL):
+    grid, rows, headers, COL, app = setup_environment(settings, COL)
     window = WindowWithRightTogglePanel(grid, rows, settings, COL, app)
     window.show()
     sys.exit(app.exec())
