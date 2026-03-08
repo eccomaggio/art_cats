@@ -51,6 +51,8 @@ def main():
 
     settings = Default_settings()
     settings.title = "order_form"
+    # TODO: take these from 'known_types' & construct COL on the fly
+    settings.column_names = [column.name for column in COL]
     settings.headers = [member.display_title for member in COL]
     settings.show_table_view = True
     settings.locking_is_enabled = False

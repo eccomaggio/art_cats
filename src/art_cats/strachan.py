@@ -58,7 +58,9 @@ def main():
     settings = Default_settings()
     settings.title = "strachan"
     settings.show_marc_button = True
+    # TODO: take these from 'known_types' & construct COL on the fly
     settings.column_names = [column.name for column in COL]
+    settings.headers = [member.display_title for member in COL]
     settings.csv_to_marc_mappings = [
         0,
         1,
@@ -78,7 +80,6 @@ def main():
         12,
         13,
     ]
-    settings.headers = [member.display_title for member in COL]
     settings.show_table_view = True
     settings.locking_is_enabled = True
     settings.combos.data_file = "data/combo_data_artcats.yaml"

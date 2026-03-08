@@ -844,7 +844,8 @@ class Editor(QWidget):
         authorised_to_continue = logic.gatekeeper("submit", self)
         if authorised_to_continue:
             logic.save_record_externally(self)
-            self.marc_btn.setEnabled(True)
+            if self.settings.show_marc_button:
+                self.marc_btn.setEnabled(True)
         return authorised_to_continue
 
     def highlight_fields(self, field_names: list[str]) -> None:
@@ -1399,7 +1400,8 @@ class Editor(QWidget):
             )
             self.data.all_text_is_saved = True
             self.data.has_records = True
-            self.marc_btn.setEnabled(True)
+            if self.settings.show_marc_button:
+                self.marc_btn.setEnabled(True)
             self.go_to_last_record()
             logger.info(
                 f"Just opened {file_path} containing {self.data.record_count} records."
@@ -1600,18 +1602,20 @@ def analyse_existing_file(settings: Default_settings, grid:Grid, COL):
     print(
         f"Setup environment: {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}"
     )
-    if settings.use_default_layout:
-        settings.layout_template = settings.template
-        grid.add_bricks_by_template(settings.layout_template)
-    else:
-        settings.headers = headers
-        # TODO: offer the user the chance to customise the names? NO, only the text labels
-        col_names = [f"col{i}" for i, _ in enumerate(headers)]
-        COL:Enum = create_dynamic_enum("COL", col_names, headers)
-        max_lengths = create_max_lengths(rows)
-        layout = [select_brick_by_content_length(length) for length in max_lengths]
-        for id, (brick, widget_type) in enumerate(layout):
-            grid.add_brick_algorithmically(id, brick, headers[id], "", widget_type)
+    # if settings.use_default_layout:
+    #     settings.layout_template = settings.template
+    #     grid.add_bricks_by_template(settings.layout_template)
+    # else:
+    settings.headers = headers
+    # TODO: offer the user the chance to customise the names? NO, only the text labels
+    col_names = [f"col{i}" for i, _ in enumerate(headers)]
+    known_match = get_match_to_known_type(settings, headers)
+    print(f"{10*"*"}\nMatches: {known_match or "...nowt..."}\n{10*"*"}")
+    COL:Enum = create_dynamic_enum("COL", col_names, headers)
+    max_lengths = create_max_lengths(rows)
+    layout = [select_brick_by_content_length(length) for length in max_lengths]
+    for id, (brick, widget_type) in enumerate(layout):
+        grid.add_brick_algorithmically(id, brick, headers[id], "", widget_type)
         # print(f"{col_names=}\n\tHeader count matches cols?: {len(headers)==len(col_names)}")
         # show_col(COL)
         # print("**Layout:**")
@@ -1624,6 +1628,14 @@ def show_col(enum) -> None:
     print("COL =")
     for member in enum:
         print(f"\t{member.value}: {member.name}->{member.display_title}")
+
+
+def get_match_to_known_type(settings:Default_settings, headers:list[str]) -> str:
+    for title, (col_names, display_titles) in settings.known_types.items():
+        # print(f">>>>>>\n\tA:({len(headers)}) {headers}\n\tB:{len(display_titles)}() {display_titles}")
+        if (len(headers) == len(col_names)) and headers == display_titles:
+            return title
+    return ""
 
 
 def setup_environment(settings: Default_settings, COL):
@@ -1653,13 +1665,14 @@ def setup_environment(settings: Default_settings, COL):
             sys.exit(0)
 
     if settings.is_existing_file:
+        ## * entry point for universal.py; generalise for all files
         headers, rows, grid, COL = analyse_existing_file(settings, grid, COL)
     else:
-        # TODO: this step will have been replaced by the generic version soon
+        ## * entry point for art.py / strachan.py / orders.py routes
         print("creating new file")
         rows = []
         grid.add_bricks_by_template(settings.template)
-    show_col(COL)
+    # show_col(COL)
     if settings.combos.data_file:
         settings.combos.data = io.open_yaml_file(
             settings.files.app_dir / settings.combos.data_file

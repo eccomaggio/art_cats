@@ -13,13 +13,16 @@ To do:
 
 - **check 'holding_notes'** - they seem to have different uses / marc fields between art_cats and strachan
 
-- make sure 'algorithmic display' still works for new csvs: create a "general" entry point which uses the algorithm to build gui
+- if file type recognized by universal.py, apply relevant settings
+- rewrite art.py / strachan.py / orders.py to send headers/col_names to create COL on the fly
+- add in a way to force a filetype on a file EVEN IF the headers don't match AS LONG AS the number of columns matches.
 
-DONE - allow record that is totally empty to be deleted (i.e. sum of all cols = "")
-DONE - save when leaving barcode field should only work when the record is unlocked
-DONE - illustrations should carry over when new record is created
-DONE - illustrations should default to 'none'?
-DONE - move logic out of form_gui.py into logic.py (so can easily switch GUIs)
++ Done - make sure 'algorithmic display' still works for new csvs: create a "general" entry point which uses the algorithm to build gui
++ DONE - allow record that is totally empty to be deleted (i.e. sum of all cols = "")
++ DONE - save when leaving barcode field should only work when the record is unlocked
++ DONE - illustrations should carry over when new record is created
++ DONE - illustrations should default to 'none'?
++ DONE - move logic out of form_gui.py into logic.py (so can easily switch GUIs)
 
 EITHER
 select a file pattern
@@ -30,13 +33,13 @@ use this to identify file pattern
 apply pattern accordingly either to open the file or to create a new one
 
 
-DONE - allow blank records to be saved & then delete them (allows user to delete a record by clearing it)
-DONE - stop submit record alert appearing twice
-DONE - robust indication of 1) changed field, 2) error in field
++ DONE - allow blank records to be saved & then delete them (allows user to delete a record by clearing it)
++ DONE - stop submit record alert appearing twice
++ DONE - robust indication of 1) changed field, 2) error in field
 
-DONE - make it so that barcode submits when the lineEdit loses focus, not when text changes (otherwise can't type it in manually!)
-DONE - moved common.py validation code into validation.py
-DONE - moved file functions from common.py into io.py
++ DONE - make it so that barcode submits when the lineEdit loses focus, not when text changes (otherwise can't type it in manually!)
++ DONE - moved common.py validation code into validation.py
++ - - - ++++ DONE - moved file functions from common.py into io.py
 
 NEW DIRECTIVES:
 analyse common.py & refactor to focus on gui

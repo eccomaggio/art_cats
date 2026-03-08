@@ -69,6 +69,7 @@ def main():
     settings = Default_settings()
     settings.title = "art_catalogue"
     settings.show_marc_button = True
+    # TODO: take these from 'known_types' & construct COL on the fly
     settings.column_names = [column.name for column in COL]
     settings.headers = [member.display_title for member in COL]
     settings.show_table_view = False

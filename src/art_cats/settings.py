@@ -10,6 +10,153 @@ from typing import Any
 from datetime import datetime, timezone
 
 
+# known_types = {
+#     # {title: [ [col_names], [display_titles] ]}
+#     "art_cats": [
+#         [
+#             "sublib",
+#             "langs",
+#             "isbn",
+#             "title",
+#             "tr_title",
+#             "subtitle",
+#             "tr_subtitle",
+#             "parallel_title",
+#             "tr_parallel_title",
+#             "parallel_subtitle",
+#             "tr_parallel_subtitle",
+#             "country_name",
+#             "place",
+#             "publisher",
+#             "pub_year",
+#             "copyright",
+#             "pagination",
+#             "size",
+#             "illustrations",
+#             "series_title",
+#             "series_enum",
+#             "volume",
+#             "notes",
+#             "sales_code",
+#             "sale_dates",
+#             "hol_notes",
+#             "donation",
+#             "barcode",
+#             ],
+
+#         [
+#             "Library",
+#             "language of resource",
+#             "ISBN",
+#             "Title",
+#             "Title transliteration",
+#             "Subtitle",
+#             "Subtitle transliteration",
+#             "Parallel title (dual language only)",
+#             "Parallel title transliteration",
+#             "Parallel subtitle (dual language only)",
+#             "Parallel subtitle transliteration",
+#             "Country of publication",
+#             "(State,) City of publication",
+#             "Publisher's name",
+#             "Year of publication",
+#             "Year of copyright",
+#             "Number of pages",
+#             "Size (height)",
+#             "Illustrations",
+#             "Series title",
+#             "Series enumeration",
+#             "Volume",
+#             "Note",
+#             "Sale code",
+#             "Date of auction",
+#             "HOL notes",
+#             "Donor note",
+#             "Barcode",
+#             ]
+#         ],
+
+#     "strachan": [
+#         [
+#             "langs",
+#             "isbn",
+#             "title",
+#             "subtitle",
+#             "artist",
+#             "place",
+#             "country_name",
+#             "publisher",
+#             "pub_year",
+#             "copyright",
+#             "pagination",
+#             "size",
+#             "notes",
+#             "authors",
+#             "call_number",
+#             "hol_notes",
+#             "barcode",
+#         ],
+
+#         [
+#             "language of resource",
+#             "ISBN",
+#             "Title",
+#             "Subtitle",
+#             "Artist",
+#             "(State,) City of publication",
+#             "Country of publication",
+#             "Publisher's name",
+#             "Year of publication",
+#             "Year of copyright",
+#             "Pagination",
+#             "Size (height)",
+#             "Note",
+#             "Author(s)",
+#             "Call number",
+#             "Holding note",
+#             "Barcode",],
+#         ],
+
+#     "orders": [
+#         [
+#             "Subject_consultant",
+#             "Fund_code",
+#             "Order_type",
+#             "Bib_info",
+#             "Creator",
+#             "Date",
+#             "Isbn",
+#             "Library",
+#             "Location",
+#             "Item_policy",
+#             "Reporting_code_1",
+#             "Reporting_code_2",
+#             "Reporting_code_3",
+#             "Hold_for",
+#             "Notify",
+#             "Additional_info",
+#         ],
+
+#         [
+#             "Subject consultant",
+#             "Fund code",
+#             "Order type",
+#             "Bibliographic information",
+#             "Creator",
+#             "Publishing date",
+#             "ISBN",
+#             "Library",
+#             "Location",
+#             "Item policy",
+#             "Reporting code 1",
+#             "Reporting code 2",
+#             "Reporting code 3",
+#             "Hold for",
+#             "Notify",
+#             "Additional order instructions",
+#         ],
+#     ],
+# }
 # class COL(Enum):
 #     pass
 
@@ -122,3 +269,6 @@ class Default_settings:
         .replace(" ", "_")
         .replace(":", "-")
     )
+
+    # known_types = known_types
+    known_types = {}
