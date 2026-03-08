@@ -1530,34 +1530,6 @@ def create_max_lengths(rows: list[list[str]]) -> list[int]:
 #     # settings.layout_template = default_template
 
 
-# def create_dynamic_enum(
-#     class_name: str, internal_names: list[str], display_labels: list[str]
-# ):
-#     """
-#     Creates an Enum where names and display labels are specified independently.
-#     - internal_names: list of valid Python identifiers (e.g., ['sub_lib', 'isbn'])
-#     - display_labels: list of UI-friendly strings (e.g., ['Sub Library', 'ISBN-13'])
-#     """
-
-#     class DynamicBase(Enum):
-#         display_title:str
-
-#         def __new__(cls, value, display_title):
-#             member = object.__new__(cls)
-#             member._value_ = value
-#             member.display_title = display_title
-#             return member
-
-#     # Combine the lists: (InternalName, (Index, DisplayLabel))
-#     # zip() ensures we stop at the shortest list if they aren't the same length
-#     enum_members = [
-#         (name, (index, label))
-#         for index, (name, label) in enumerate(zip(internal_names, display_labels))
-#     ]
-
-#     return DynamicBase(class_name, enum_members)
-
-
 def create_dynamic_enum(
     class_name: str, internal_names: list[str], display_labels: list[str]
 ):
@@ -1602,25 +1574,35 @@ def analyse_existing_file(settings: Default_settings, grid:Grid, COL):
     print(
         f"Setup environment: {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}"
     )
-    # if settings.use_default_layout:
-    #     settings.layout_template = settings.template
-    #     grid.add_bricks_by_template(settings.layout_template)
-    # else:
     settings.headers = headers
     # TODO: offer the user the chance to customise the names? NO, only the text labels
-    col_names = [f"col{i}" for i, _ in enumerate(headers)]
+    # col_names = [f"col{i}" for i, _ in enumerate(headers)]
     known_match = get_match_to_known_type(settings, headers)
     print(f"{10*"*"}\nMatches: {known_match or "...nowt..."}\n{10*"*"}")
-    COL:Enum = create_dynamic_enum("COL", col_names, headers)
-    max_lengths = create_max_lengths(rows)
-    layout = [select_brick_by_content_length(length) for length in max_lengths]
-    for id, (brick, widget_type) in enumerate(layout):
-        grid.add_brick_algorithmically(id, brick, headers[id], "", widget_type)
-        # print(f"{col_names=}\n\tHeader count matches cols?: {len(headers)==len(col_names)}")
+    # COL:Enum = create_dynamic_enum("COL", col_names, headers)
+    if known_match:
+        cols, display_titles = settings.known_types[known_match]
+        col_names = [col[0] for col in cols]
+        COL = create_dynamic_enum("COL", col_names, display_titles)
         # show_col(COL)
-        # print("**Layout:**")
-        # pprint(layout)
-        # pprint(grid.rows)
+        template = []
+        for i, col in enumerate(COL):
+            line = (col, *cols[i][1:])
+            template.append(line)
+        settings.template = template
+        grid.add_bricks_by_template(settings.template)
+    else:
+        col_names = [f"col{i}" for i, _ in enumerate(headers)]
+        COL:Enum = create_dynamic_enum("COL", col_names, headers)
+        max_lengths = create_max_lengths(rows)
+        layout = [select_brick_by_content_length(length) for length in max_lengths]
+        for id, (brick, widget_type) in enumerate(layout):
+            grid.add_brick_algorithmically(id, brick, headers[id], "", widget_type)
+            # print(f"{col_names=}\n\tHeader count matches cols?: {len(headers)==len(col_names)}")
+            # show_col(COL)
+            # print("**Layout:**")
+            # pprint(layout)
+            # pprint(grid.rows)
     return (headers, rows, grid, COL)
 
 
@@ -1631,8 +1613,9 @@ def show_col(enum) -> None:
 
 
 def get_match_to_known_type(settings:Default_settings, headers:list[str]) -> str:
-    for title, (col_names, display_titles) in settings.known_types.items():
+    for title, (cols, display_titles) in settings.known_types.items():
         # print(f">>>>>>\n\tA:({len(headers)}) {headers}\n\tB:{len(display_titles)}() {display_titles}")
+        col_names = [col[0] for col in cols]
         if (len(headers) == len(col_names)) and headers == display_titles:
             return title
     return ""
@@ -1646,10 +1629,9 @@ def setup_environment(settings: Default_settings, COL):
     app = QApplication(sys.argv)
     grid = Grid()
     headers = []
-    # print(f"Starting up: {len(COL)}")
     if not len(COL):
         launcher = LauncherDialog()
-        # exec() blocks until accept() or reject() is called
+        ##* exec() blocks until accept() or reject() is called
         if launcher.exec() == QDialog.DialogCode.Accepted:
             if launcher.selected_path:
                 print(f"Loading UI for file: {launcher.selected_path}")

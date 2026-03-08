@@ -14,15 +14,16 @@ To do:
 - **check 'holding_notes'** - they seem to have different uses / marc fields between art_cats and strachan
 
 - if file type recognized by universal.py, apply relevant settings
-- rewrite art.py / strachan.py / orders.py to send headers/col_names to create COL on the fly
+- remove redundant COL declarations from entry point files (when file-specific settings are plumbed in)
+- DONE - rewrite art.py / strachan.py / orders.py to send headers/col_names to create COL on the fly
 - add in a way to force a filetype on a file EVEN IF the headers don't match AS LONG AS the number of columns matches.
 
-+ Done - make sure 'algorithmic display' still works for new csvs: create a "general" entry point which uses the algorithm to build gui
-+ DONE - allow record that is totally empty to be deleted (i.e. sum of all cols = "")
-+ DONE - save when leaving barcode field should only work when the record is unlocked
-+ DONE - illustrations should carry over when new record is created
-+ DONE - illustrations should default to 'none'?
-+ DONE - move logic out of form_gui.py into logic.py (so can easily switch GUIs)
+- DONE - make sure 'algorithmic display' still works for new csvs: create a "general" entry point which uses the algorithm to build gui
+- DONE - allow record that is totally empty to be deleted (i.e. sum of all cols = "")
+- DONE - save when leaving barcode field should only work when the record is unlocked
+- DONE - illustrations should carry over when new record is created
+- DONE - illustrations should default to 'none'?
+- DONE - move logic out of form_gui.py into logic.py (so can easily switch GUIs)
 
 EITHER
 select a file pattern
