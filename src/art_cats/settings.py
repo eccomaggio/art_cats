@@ -18,7 +18,10 @@ class Files:
     module_dir = Path(__file__).parent.parent.parent.parent
     output_dir = Path("output_files")
     full_output_dir = Path(__file__).parent  # module_dir / output_dir
-    help_file = "help.html"
+    full_output_dir = (
+        module_dir / output_dir
+    )
+    help_file = "html/help_default.html"
     backup_file = "backup.bak"
     # in_file_full = ""
     in_file = ""
@@ -29,6 +32,7 @@ class Files:
 @dataclass
 class Validation:
     fields_to_clear = []
+    clear_all_fields = True
     fields_to_fill_info = {
         # [COL.sublib.name : "ARTBL",
     }
@@ -81,8 +85,10 @@ class Combos:
 @dataclass
 class Default_settings:
     title = "default"
-    # is_existing_file = True
+    # is_existing_file = True:w
+    
     is_existing_file = False
+    file_newly_created = False
     use_default_layout = True
     show_marc_button = False
     column_names = []

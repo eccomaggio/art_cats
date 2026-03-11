@@ -497,7 +497,6 @@ class Editor(QWidget):
         self.grid = grid
 
         ## Set up record information
-        # self.data.headers = self.settings.headers
         self.data.headers = headers
         if excel_rows:
             self.data.excel_rows = excel_rows
@@ -505,12 +504,16 @@ class Editor(QWidget):
         else:
             self.data.excel_rows = [["" for _ in range(len(settings.layout_template))]]
             self.data.has_records = False
+            # self.settings.file_newly_created = False
 
         # self.file_name = file_name
         self.data.file_name = settings.files.in_file
         # self.short_file_name = self.get_filename_only(settings.files.in_file)
         self.data.current_row_index = len(excel_rows) - 1
         self.data.record_is_locked = True
+        # print(f"\t{self.settings.file_newly_created=}")
+        # if self.settings.file_newly_created:
+        #     self.data.record_is_locked = False
         self.data.all_text_is_saved = True
 
         self.add_input_widgets(inputs_layout)
@@ -848,6 +851,8 @@ class Editor(QWidget):
         """
         Gather data from form & save it to file
         """
+        # print(f"\tCHECKETY-CHECK2:{self.settings.file_newly_created=}")
+        self.settings.file_newly_created = False
         authorised_to_continue = logic.gatekeeper("submit", self)
         if authorised_to_continue:
             csv_file = io.get_csv_file_name_and_path(self.settings)
@@ -875,7 +880,7 @@ class Editor(QWidget):
             record_as_dict[name] = value
             if value and not isinstance(input, QCheckBox):
                 is_empty = False
-            # print(f"{name}: {value} [{type(input)}], {is_empty=}")
+            # print(f"{name=}: {value=} [{type(input)=}], {is_empty=}")
             # if validation.is_a_dummy_record(name, value, self.settings.validation):
             #     is_dummy = True
         # print(f">>>>>>>>>>> {is_dummy=}, {is_empty=}\n{record_as_dict}")
@@ -971,25 +976,21 @@ class Editor(QWidget):
     def update_title_with_record_number(self, prefix="Record no. ") -> None:
         # text = f"{self.get_human_readable_record_number()} of {self.data.record_count}"
         text = f"{logic.get_human_readable_record_number(self.data.current_row_index)} of {self.data.record_count}"
-        # status = " **locked**" if self.record_is_locked else " (editable)"
         if self.settings.locking_is_enabled:
             if self.data.record_is_locked:
-                # status = " **locked**"
                 status = "locked"
             else:
-                # status = " (editable)"
                 status = "editable"
+            status = f"          [{status}]"
         else:
             status = ""
         # print(f"title >>> {self.record_is_locked=}, {status}")
         if self.data.has_records:
-            # file = self.settings.in_file
             file = self.settings.files.out_file
-            # file = f"file:{self.settings.files.out_file}"
         else:
             file = "*unsaved*"
         # status_line = f"FILE: {file} -- {prefix}{text}{status}"
-        status_line = f"{prefix}{text} in {file}          [{status}]"
+        status_line = f"{prefix}{text} in {file}{status}"
         self.caller.setWindowTitle(status_line)
         # print(f"{status_line=}")
 
@@ -1056,9 +1057,11 @@ class Editor(QWidget):
         NB. the order of the inputs in self.inputs matches the column order
         ...but the display order does not necessarily match
         """
+        # print(f"load_record_into_gui: {row_to_load=}, {len(self.data.excel_rows)=} & {self.settings.column_names}")
         for col_i, input_widget in enumerate(self.inputs):
+            # print(f"{col_i=}")
             cell_contents = "" if not row_to_load else row_to_load[col_i]
-            # print(f">>>..>>{input_widget.objectName()}={cell_contents}")
+            # print(f"{input_widget.objectName()=} -> {cell_contents}")
             self.load_record(input_widget, cell_contents)
             self.update_input_styling(input_widget, "input_active")
         self.add_signal_to_fire_on_text_change()
@@ -1085,7 +1088,14 @@ class Editor(QWidget):
         if not authorised_to_continue:
             return
         self.data.current_row_index = -1
-        for field in self.settings.validation.fields_to_clear:
+
+        if (self.settings.validation.clear_all_fields and
+            not self.settings.validation.fields_to_clear):
+            fields_to_clear = self.COL
+        else:
+            fields_to_clear = self.settings.validation.fields_to_clear
+        # for field in self.settings.validation.fields_to_clear:
+        for field in fields_to_clear:
             input_widget = self.inputs[field.value]
             self.load_record(input_widget, "")
         self.data.all_text_is_saved = True
@@ -1190,7 +1200,8 @@ class Editor(QWidget):
             self.toggle_record_editable("lock")
 
     def toggle_record_editable(self, mode="edit") -> None:
-        if not self.settings.locking_is_enabled:
+        # print(f"\tCHECKETY-CHECK1:{self.settings.file_newly_created=}")
+        if not self.settings.locking_is_enabled or self.settings.file_newly_created:
             return
         Option = namedtuple(
             "Option", ["label_style", "input_style", "locked_status", "btn_text"]
@@ -1280,7 +1291,6 @@ class Editor(QWidget):
             records_to_export, self.settings
         )
         files_successfully_created = marc_21.save_as_marc_files(
-            # self.data.headers,
             self.data,
             records_in_marc_format,
             file_name_with_path,
@@ -1352,25 +1362,19 @@ class Editor(QWidget):
         file, _ = file_dialog.getOpenFileName(
             parent=self,  # The parent widget (for centering)
             caption="Select a file.",
-            # dir="./excel_files",
             dir=f"./{self.settings.files.data_dir}",
             filter="Database Files (*.xls *.xlsx *.xlsm *.csv *.tsv)",
         )
         if file:
             file_path = Path(file)
             logger.info(f"File Selected: {self.settings.files.in_file} ({file_path})")
-            # tmp_headers, tmp_excel_rows = marc_21.parse_file_into_rows(
             tmp_headers, tmp_excel_rows = io.parse_file_into_rows(
                 Path(file_path), self.settings.first_row_is_header
             )
-            # if self.analyse_new_file(tmp_headers):
             if logic.is_expected_filetype(tmp_headers, self.COL):
                 self.data.headers = tmp_headers
                 self.data.excel_rows = tmp_excel_rows
                 self.settings.files.in_file = file_path.name
-                # self.settings.files.out_file = (
-                #     f"{file_path.stem}.new{file_path.suffix}"
-                # )
                 self.settings.files.out_file = io.get_base_filename(file_path)
             else:
                 msg = f"This template expects {len(self.COL)} fields, \nbut {file_path.name} has {len(tmp_headers)}. \nPlease try with another file."
@@ -1378,13 +1382,8 @@ class Editor(QWidget):
                 logger.error(msg)
                 return
 
-            # if self.settings.title == "art_catalogue":
-            #     self.headers, self.excel_rows = self.update_csv_fields(
-            #         self.headers, self.excel_rows
-            #     )
             if not self.settings.use_default_layout:
                 logger.warning("Haven't coded for non-default layout yet!")
-                ## TODO: code for change of layout on file loading (i.e. make a standalone: 'load file and update grid' function)
             logger.info(
                 f"\n** file dialog -> records loaded: {len(self.data.excel_rows)}"
             )
@@ -1574,7 +1573,7 @@ def create_dynamic_enum(
 
 
 # def analyse_existing_file(settings: Default_settings, grid:Grid, COL):
-def analyse_existing_file(settings: Default_settings, COL):
+def get_existing_file(settings: Default_settings, COL):
     logging.info(f"processing file: {settings.files.in_file}")
     headers, rows = io.parse_file_into_rows(
         Path(settings.files.in_file), settings.first_row_is_header
@@ -1590,7 +1589,7 @@ def analyse_existing_file(settings: Default_settings, COL):
     else:
         ## *UNKNOWN PATTERN i.e. it doesn't recognise the file
         COL = create_columns(settings, "default", headers)
-        grid = get_grid_from_algorithm(rows, headers)
+        grid = get_grid_from_algorithm(settings, rows, headers)
 
             # print(f"{col_names=}\n\tHeader count matches cols?: {len(headers)==len(col_names)}")
             # show_col(COL)
@@ -1607,6 +1606,7 @@ def create_columns(settings:Default_settings, pattern_name, headers: list[str], 
         col_names = [col[0].lower() for col in cols]
     # settings.column_names = col_names
     COL = create_dynamic_enum("COL", col_names, headers)
+    show_col(COL)
     logic.update_settings(settings, COL, pattern_name)
     settings.column_names = col_names
     return COL
@@ -1639,12 +1639,13 @@ def get_grid_from_pattern(settings:Default_settings, pattern_name:str, COL:Enum)
     return grid
 
 
-def get_grid_from_algorithm(rows:list[list[str]], headers:list[str]) -> Grid:
+def get_grid_from_algorithm(settings:Default_settings, rows:list[list[str]], headers:list[str]) -> Grid:
     grid = Grid()
     max_lengths = create_max_lengths(rows)
     layout = [select_brick_by_content_length(length) for length in max_lengths]
     for id, (brick, widget_type) in enumerate(layout):
-        grid.add_brick_algorithmically(id, brick, headers[id], "", widget_type)
+        # grid.add_brick_algorithmically(id, brick, headers[id], "", widget_type)
+        grid.add_brick_algorithmically(id, brick, headers[id], settings.column_names[id], widget_type)
     return grid
 
 
@@ -1655,8 +1656,8 @@ def create_file_from_column_count(settings:Default_settings, column_count:int) -
     headers = [f"Col{i}" for i in range(0, column_count)]
     COL = create_columns(settings, "default", headers)
     settings.files.out_file = f"tmp_{column_count}_cols.csv"
-    rows = [["" for _ in range(0,column_count)]]
-    grid = get_grid_from_algorithm(rows, headers)
+    rows = [["" for _ in range(0, column_count)]]
+    grid = get_grid_from_algorithm(settings, rows, headers)
     # sys.exit(0)
     return (headers, rows, grid, COL)
 
@@ -1665,10 +1666,11 @@ def create_file_from_pattern(settings:Default_settings, pattern_name:str) -> tup
     ## need to create new file + add in settings & col names from settings.known_patterns
     print(f"**Loading UI for new file using the {pattern_name} pattern")
     cols, headers = settings.known_types[pattern_name]
-    COL = create_columns(settings, pattern_name, headers)
+    COL = create_columns(settings, pattern_name, headers, cols)
     settings.files.out_file = f"tmp_{pattern_name}_cols.csv"
+    rows = [["" for _ in range(0, len(settings.column_names))]]
     grid = get_grid_from_pattern(settings, pattern_name, COL)
-    rows = []
+    # rows = []
     # sys.exit(0)
     return (headers, rows, grid, COL)
 
@@ -1686,11 +1688,13 @@ def setup_environment(settings: Default_settings, headers:list[str], COL):
         from_file, column_count, pattern_name = get_file_pattern_and_name_from_user(settings)
         if from_file:
             # headers, rows, grid, COL = analyse_existing_file(settings, grid, COL)
-            headers, rows, grid, COL = analyse_existing_file(settings, COL)
+            headers, rows, grid, COL = get_existing_file(settings, COL)
         elif column_count:
             headers, rows, grid, COL = create_file_from_column_count(settings, column_count)
+            settings.file_newly_created = True
         else:
             headers, rows, grid, COL = create_file_from_pattern(settings, pattern_name)
+            settings.file_newly_created = True
 
     else:
         ## * entry point for art.py / strachan.py / orders.py routes
@@ -1703,6 +1707,7 @@ def setup_environment(settings: Default_settings, headers:list[str], COL):
         settings.combos.data = io.open_yaml_file(
             settings.files.app_dir / settings.combos.data_file
         )
+    # print(f"setup_environ: {len(rows)=}, {len(rows[0])=}, {headers=}")
     return (grid, rows, headers, COL, app)
 
 
@@ -1727,6 +1732,7 @@ def get_file_pattern_and_name_from_user(settings:Default_settings) -> tuple[bool
 
 def run(settings: Default_settings, headers:list[str], COL):
     grid, rows, headers, COL, app = setup_environment(settings, headers, COL)
+    # print(f"form_gui.run(): {rows=}, {headers=}\n")
     window = WindowWithRightTogglePanel(grid, rows, settings, headers, COL, app)
     window.show()
     sys.exit(app.exec())

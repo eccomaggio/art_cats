@@ -157,7 +157,7 @@ def handle_empty_records(editor, source: str) -> bool:
 
 def add_record(editor, record_as_dict) -> None:
     record_as_data_row = list(record_as_dict.values())
-    # print("OK... data passes as valid for submission...")
+    # print(f"OK... data passes as valid for submission...{record_as_data_row}")
     if editor.data.current_record_is_new:
         # print(f"***{self.has_records=}, record count: {self.record_count} {data=}")
         if editor.data.has_records:
@@ -528,6 +528,7 @@ def update_settings(settings, COL, pattern_name: str) -> None:
                 COL.sale_dates,
                 COL.sales_code,
             ]
+            settings.clear_all_fields = False
             settings.validation.fields_to_fill_info = {
                 # COL.sublib.name : "ARTBL",
             }
@@ -553,10 +554,10 @@ def update_settings(settings, COL, pattern_name: str) -> None:
             settings.validation.must_validate = [COL.barcode.name, COL.isbn.name]
             settings.validation.validation_skip_fieldname = COL.barcode.name
             settings.files.help_file = "html/help_art_cats.html"
-            settings.files.output_dir = Path("your_marc_files")
-            settings.files.full_output_dir = (
-                settings.files.module_dir / settings.files.output_dir
-            )
+            # settings.files.output_dir = Path("your_marc_files")
+            # settings.files.full_output_dir = (
+            #     settings.files.module_dir / settings.files.output_dir
+            # )
 
         case "strachan":
             settings.title = "strachan"
@@ -601,6 +602,7 @@ def update_settings(settings, COL, pattern_name: str) -> None:
                 COL.hol_notes,
                 COL.barcode,
             ]
+            settings.clear_all_fields = False
             settings.validation.fields_to_fill_info = {
                 # COL.sublib.name : "ARTBL",
             }
@@ -624,10 +626,10 @@ def update_settings(settings, COL, pattern_name: str) -> None:
             settings.validation.must_validate = [COL.barcode.name, COL.isbn.name]
             settings.validation.validation_skip_fieldname = COL.barcode.name
             settings.files.help_file = "html/help_art_cats.html"
-            settings.files.output_dir = Path("your_marc_files")
-            settings.files.full_output_dir = (
-                settings.files.module_dir / settings.files.output_dir
-            )
+            # settings.files.output_dir = Path("your_marc_files")
+            # settings.files.full_output_dir = (
+            #     settings.files.module_dir / settings.files.output_dir
+            # )
 
         case "orders":
             settings.title = pattern_name
@@ -635,7 +637,7 @@ def update_settings(settings, COL, pattern_name: str) -> None:
             # settings.headers = [member.display_title for member in COL]
             settings.show_table_view = True
             settings.locking_is_enabled = False
-            settings.combos.data_file = "data/combo_data.yaml"
+            settings.combos.data_file = "data/combo_data_orders.yaml"
             settings.validation.fields_to_clear = [
                 COL.isbn,
                 COL.reporting_code_1,
@@ -646,6 +648,7 @@ def update_settings(settings, COL, pattern_name: str) -> None:
                 COL.bib_info,
                 COL.additional_info,
             ]
+            settings.clear_all_fields = False
             settings.validation.required_fields = [
                 COL.subject_consultant.name,
                 COL.fund_code.name,
@@ -680,37 +683,40 @@ def update_settings(settings, COL, pattern_name: str) -> None:
                 list(zip(settings.combos.leaders, settings.combos.followers))
             )
             settings.files.help_file = "html/help_order_form.html"
-            settings.files.output_dir = Path("your_order")
-            settings.files.full_output_dir = (
-                settings.files.module_dir / settings.files.output_dir
-            )
+            # settings.files.output_dir = Path("your_order")
+            # settings.files.full_output_dir = (
+            #     settings.files.module_dir / settings.files.output_dir
+            # )
 
         case "default":
-            ## TODO: delete settings below and keep them in settings.py??
-            settings.title = pattern_name
-            settings.show_table_view = True
-            settings.locking_is_enabled = False
-            settings.use_default_layout = False
-            settings.validation.fields_to_clear = [
-                # COL.isbn,
-            ]
+            ## *Default settings are in settings.py
+            pass
+            # settings.title = pattern_name
+            # settings.show_table_view = True
+            # settings.locking_is_enabled = False
+            # settings.use_default_layout = False
+            # settings.validation.fields_to_clear = [
+            #     # COL.isbn,
+            # ]
 
-            settings.validation.required_fields = [
-                # COL.subject_consultant.name,
-            ]
+            # settings.validation.required_fields = [
+            #     # COL.subject_consultant.name,
+            # ]
 
-            settings.validation.must_validate = [
-                # COL.isbn.name,
-            ]
+            # settings.validation.must_validate = [
+            #     # COL.isbn.name,
+            # ]
 
-            settings.combos.independents = [
-                # COL.subject_consultant.name,
-            ]
+            # settings.combos.independents = [
+            #     # COL.subject_consultant.name,
+            # ]
 
-            settings.files.full_output_dir = (
-                settings.files.module_dir / settings.files.output_dir
-            )
+            # settings.files.help_file = "html/help_default.html"
+            # settings.files.output_dir = Path("")
+            # settings.files.full_output_dir = (
+            #     settings.files.module_dir / settings.files.output_dir
+            # )
 
         case _:
             # logging.warning()
-            print(f"{pattern_name} is not a recognised filetype.")
+            logger.warning(f"{pattern_name} is not a recognised filetype.")

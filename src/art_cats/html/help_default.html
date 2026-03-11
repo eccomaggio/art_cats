@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <title>Page Title</title>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <style type="text/css">
+    /* Based on spcss copyright (c) 2020-2022 Susam Pal */
+body {
+  background-color: white;
+  color: #333;
+  font-family: helvetica, arial, sans-serif;
+  line-height: 1.2;
+  margin: 3px;
+  max-width: 40em;
+  padding: 0 0em;
+  /* padding-bottom: 98vh; */
+}
+h1, h2, h3, h4, h5, h6 {
+  margin: 1.25em 0 0.2em 0;
+  line-height: 1.2;
+  color:burlywood;
+}
+h4 { color: black;}
+a:link {
+  color: #00e;
+}
+a:visited {
+  color: #518;
+}
+a:focus, a:hover {
+  color: #03f;
+}
+a:active {
+  color: #e00;
+}
+h1 a:empty:before, h2 a:empty:before, h3 a:empty:before,
+h4 a:empty:before, h5 a:empty:before, h6 a:empty:before {
+  content: "#";
+}
+h1 a:empty, h2 a:empty, h3 a:empty, h4 a:empty, h5 a:empty, h6 a:empty {
+  visibility: hidden;
+  padding-left: 0.25em;
+}
+h1:hover a:empty, h2:hover a:empty, h3:hover a:empty,
+h4:hover a:empty, h5:hover a:empty, h6:hover a:empty {
+  visibility: visible;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 1em 0;
+  text-align: center;
+}
+figcaption {
+  font-size: small;
+}
+pre, code, samp, kbd {
+  font-family: monospace;
+}
+pre, code, kbd {
+  color: #050;
+  background-color:#eee;
+}
+samp {
+  color: #730;
+}
+pre, blockquote {
+  background: #eee;
+  padding: 0.5em;
+}
+pre {
+  overflow: auto;
+}
+p {
+  margin: 0 0 8px 8px;
+}
+blockquote {
+  border-left: medium solid #ccc;
+  margin: 1em 0;
+}
+blockquote :first-child {
+  margin-top: 0;
+}
+blockquote :last-child {
+  margin-bottom: 0;
+}
+table {
+  border-collapse: collapse;
+}
+th, td {
+  border: thin solid #999;
+  padding: 0.3em 0.4em;
+  text-align: left;
+}
+  </style>
+</head>
+<body>
+
+  <!-- <h1>Spreadsheet cataloguing</h1>
+  <p>This app is designed for non-cataloguers to enter information which can then be transformed into bibliographic records (Marc 21 RDA records) for upload to ALMA. It deals with most of the tricky markup and linking aspects but there are a few things that you need to know in order to use it effectively. The following information should help you:</p>
+
+  <h4>First, check title against SOLO!!!</h4>
+  <p>This is essential to avoid creating duplicate records. If a record already exists, do not enter the details on the spreadsheet.
+  <p>NB. It may be more efficient to check a number of titles against SOLO and then switch to enter the details into the spreadsheet, rather than jumping between SOLO and the app each time.</p>
+
+  <h4>Capitalisation</h4>
+  <p>Data is generally entered in sentence case (even if it is all in capital letters on the resource) unless there is a reason for it to be capitalised, e.g. an acronym, proper noun, or entering text in say German, where all nouns must be capitalised. </p>
+
+  <h4>Incomplete records</h4>
+  <p>Records must include the following minimum information to be saved:</p>
+    <ul>
+      <li>the language(s)</li>
+      <li>a title</li>
+      <li>a country and place of publication</li>
+      <li>a publisher</li>
+      <li>the height and number of pages</li>
+      <li>a year of publication</li>
+      <li>the barcode</li>
+    </ul>
+  <p>These mandatory fields are marked with an * in their title on the form.</p>
+  <p>Records must also be complete to be locked.</p>
+
+  <h4>More help</h4>
+  <p>There is detailed help below about each of the input fields. You can either scroll down or <b>click on a title</b> in the form: that will automatically bring the help topic into view.</p> -->
+
+  <h4>Locking / Editing</h4>
+  <p>By default, complete records are locked for safety. Toggle the <code>unlock</code> button if you want to edit them further.</p>
+
+  <h4>Red Backgrounds</h4>
+  <p style="background-color: mistyrose;">Don't worry if the background of the field you are typing in suddenly turns pink: it just means that you are overwriting an existing record.</p>
+  <p> If this is your aim, continue to type and press <code>Save</code> when you've amended the record and it will be saved in its new form.  </p>
+  <p>If you were overtyping a record by mistake, just go backwards or forwards to the next record and your overtyping will be forgotten.</p>
+  <p>Alternatively, press <code>New</code> if you want to keep your changes as a new record.</p>
+
+  <h4>Backups</h4>
+  <p>Everytime a record is submitted, it is backed up to a file unimaginatively named <code>[original file name].new.csv</code></p>
+
+  <h4>Deleting records</h4>
+  <p>If you <code>Clear</code> a record and then <code>Save</code> it, it will be deleted.</p>
+
+
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+
+</body>
+</html>
