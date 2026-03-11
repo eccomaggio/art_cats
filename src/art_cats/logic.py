@@ -1,5 +1,6 @@
 from dataclasses import dataclass, fields
-from tkinter import W
+# from tkinter import W
+from pathlib import Path
 
 from art_cats.settings import Default_settings
 from . import validation
@@ -214,10 +215,10 @@ def map_list(orig: list, mappings: list) -> list:
     come from 'orig'
     but moved to the index specified in 'mappings'
     TEST:
-    x = ["a", "b", "c", "d", "e"]
-    y = [1, 4, 2, 3, 0]
-    z = map_list(x, y)
-    assert z == ["e", "a", "c", "d", "b"]
+    csv_cols = ["a", "b", "c", "d", "e"]
+    mappings = [1, 4, 2, 3, 0]
+    remapped_cols  = map_list(csv_cols, mappings)
+    assert remapped_cols == ["e", "a", "c", "d", "b"]
     """
     if not map_fits_list(mappings, orig):
         return orig
@@ -344,3 +345,375 @@ def remove_dummy_records(records: list[list[str]], live_settings: Default_settin
 
 def singular_or_plural(count:int, plural="s", singular="") -> str:
     return plural if count != 1 else singular
+
+
+
+
+known_types = {
+    # {data-name: [
+    # [col_name,
+    # (brick height, brick length),
+    # start-row (0-indexed),
+    # start-col, widget-type]
+    # , [display_titles]
+    # ]}
+    "art_cats": [
+        [
+            ("sublib", (1, 2), 0, 0, "combo"),
+            ("langs", (1, 2), 0, 2, "line"),
+            ("isbn", (1, 2), 0, 4, "line"),
+            ("title", (2, 3), 1, 0, "text"),
+            ("tr_title", (2, 3), 1, 3, "text"),
+            ("subtitle", (2, 3), 3, 0, "text"),
+            ("tr_subtitle", (2, 3), 3, 3, "text"),
+            ("parallel_title", (2, 3), 5, 0, "text"),
+            ("tr_parallel_title", (2, 3), 5, 3, "text"),
+            ("parallel_subtitle", (2, 3), 7, 0, "text"),
+            ("tr_parallel_subtitle", (2, 3), 7, 3, "text"),
+            ("country_name", (1, 2), 13, 0, "line"),
+            ("place", (1, 4), 13, 2, "line"),
+            ("publisher", (1, 4), 14, 0, "line"),
+            ("pub_year", (1, 1), 14, 4, "line"),
+            ("copyright", (1, 1), 14, 5, "line"),
+            ("pagination", (1, 1), 15, 1, "line"),
+            ("size", (1, 1), 15, 0, "line"),
+            ("illustrations", (1, 1), 15, 3, "combo"),
+            ("series_title", (1, 3), 12, 0, "line"),
+            ("series_enum", (1, 2), 12, 3, "line"),
+            ("volume", (1, 1), 12, 5, "line"),
+            ("notes", (3, 3), 9, 0, "text"),
+            ("sales_code", (1, 1), 15, 2, "line"),
+            ("sale_dates", (1, 2), 15, 4, "line"),
+            ("hol_notes", (3, 3), 9, 3, "text"),
+            ("donation", (1, 4), 16, 0, "line"),
+            ("barcode", (1, 2), 16, 4, "line"),
+            ],
+
+        [
+            "Library",
+            "language of resource",
+            "ISBN",
+            "Title",
+            "Title transliteration",
+            "Subtitle",
+            "Subtitle transliteration",
+            "Parallel title (dual language only)",
+            "Parallel title transliteration",
+            "Parallel subtitle (dual language only)",
+            "Parallel subtitle transliteration",
+            "Country of publication",
+            "(State,) City of publication",
+            "Publisher's name",
+            "Year of publication",
+            "Year of copyright",
+            "Number of pages",
+            "Size (height)",
+            "Illustrations",
+            "Series title",
+            "Series enumeration",
+            "Volume",
+            "Note",
+            "Sale code",
+            "Date of auction",
+            "HOL notes",
+            "Donor note",
+            "Barcode",
+            ]
+        ],
+
+    "strachan": [
+        [
+            ("langs", (1, 2), 0, 0, "line"),
+            ("isbn", (1, 2), 0, 2, "line"),
+            ("title", (2, 3), 1, 0, "text"),
+            ("subtitle", (2, 3), 1, 3, "text"),
+            ("artist", (1, 2), 0, 4, "line"),
+            ("place", (1, 3), 3, 0, "line"),
+            ("country_name", (1, 3), 3, 3, "line"),
+            ("publisher", (1, 2), 4, 0, "line"),
+            ("pub_year", (1, 1), 4, 2, "line"),
+            ("copyright", (1, 1), 4, 3, "line"),
+            ("pagination", (1, 1), 4, 4, "line"),
+            ("size", (1, 1), 4, 5, "line"),
+            ("notes", (2, 2), 6, 0, "text"),
+            ("authors", (1, 4), 5, 0, "line"),
+            ("call_number", (1, 2), 5, 4, "line"),
+            ("hol_notes", (2, 2), 6, 2, "text"),
+            ("barcode", (1, 2), 7, 4, "line"),
+        ],
+
+        [
+            "Language of resource",
+            "ISBN",
+            "Title",
+            "Subtitle",
+            "Artist",
+            "(State,) City of publication",
+            "Country of publication",
+            "Publisher's name",
+            "Year of publication",
+            "Year of copyright",
+            "Pagination",
+            "Size",
+            "Note",
+            "Author(s)",
+            "Call number",
+            "Holding note",
+            "Barcode",],
+        ],
+
+    "orders": [
+        [
+            ("subject_consultant", (1, 2), 0, 0, "combo"),
+            ("fund_code", (1, 2), 1, 0, "combo"),
+            ("order_type", (1, 2), 2, 0, "combo"),
+            ("bib_info", (2, 6), 3, 0, "text"),
+            ("creator", (1, 2), 7, 0, "line"),
+            ("date", (1, 2), 7, 2, "line"),
+            ("isbn", (1, 2), 7, 4, "line"),
+            ("library", (1, 2), 0, 2, "combo"),
+            ("location", (1, 2), 1, 2, "combo"),
+            ("item_policy", (1, 2), 2, 2, "combo"),
+            ("reporting_code_1", (1, 2), 0, 4, "combo"),
+            ("reporting_code_2", (1, 2), 1, 4, "combo"),
+            ("reporting_code_3", (1, 2), 2, 4, "combo"),
+            ("hold_for", (1, 2), 8, 0, "line"),
+            ("notify", (1, 2), 9, 0, "line"),
+            ("additional_info", (2, 4), 8, 2, "text"),
+        ],
+
+        [
+            "Subject consultant",
+            "Fund code",
+            "Order type",
+            "Bibliographic information",
+            "Creator",
+            "Publishing date",
+            "ISBN",
+            "Library",
+            "Location",
+            "Item policy",
+            "Reporting code 1",
+            "Reporting code 2",
+            "Reporting code 3",
+            "Hold for",
+            "Notify",
+            "Additional order instructions",
+        ],
+    ],
+}
+
+
+def update_settings(settings, COL, title_of_filetype:str) -> None:
+    match title_of_filetype:
+        case "art_cats":
+            settings.title = title_of_filetype
+            settings.show_marc_button = True
+            # TODO: take these from 'known_types' & construct COL on the fly
+            settings.column_names = [column.name for column in COL]
+            settings.headers = [member.display_title for member in COL]
+            settings.show_table_view = False
+            settings.locking_is_enabled = True
+            settings.combos.data_file = "data/combo_data_artcats.yaml"
+            settings.auto_submit_form_on_x_field = True
+            settings.auto_submit_form_field_name = COL.barcode.name
+            settings.validation.fields_to_clear = [
+                COL.barcode,
+                # COL.hol_notes,  # temporarily contains 'item policy'
+                COL.pagination,
+                COL.pub_year,
+                COL.sale_dates,
+                COL.copyright,
+                COL.sale_dates,
+                COL.sales_code,
+            ]
+            settings.validation.fields_to_fill_info = {
+                # COL.sublib.name : "ARTBL",
+            }
+            settings.validation.fields_to_fill = list(
+                settings.validation.fields_to_fill_info.keys()
+            )
+            settings.validation.required_fields = [
+                COL.langs.name,
+                COL.title.name,
+                # COL.extent.name,
+                COL.pub_year.name,
+                COL.publisher.name,
+                COL.country_name.name,
+                COL.place.name,
+                COL.pagination.name,
+                COL.size.name,
+                COL.barcode.name,
+                COL.illustrations,
+            ]
+            settings.combos.independents = [
+                COL.illustrations.name,
+            ]
+            settings.validation.must_validate = [COL.barcode.name, COL.isbn.name]
+            settings.validation.validation_skip_fieldname = COL.barcode.name
+            settings.files.help_file = "html/help_art_cats.html"
+            settings.files.output_dir = Path("your_marc_files")
+            settings.files.full_output_dir = (
+                settings.files.module_dir / settings.files.output_dir
+            )
+
+        case "strachan":
+            settings.title = "strachan"
+            settings.show_marc_button = True
+            # TODO: take these from 'known_types' & construct COL on the fly
+            settings.column_names = [column.name for column in COL]
+            settings.headers = [member.display_title for member in COL]
+            settings.csv_to_marc_mappings = [
+                0,
+                1,
+                2,
+                3,
+                15,
+                5,
+                4,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                14,
+                16,
+                12,
+                13,
+            ]
+            settings.show_table_view = True
+            settings.locking_is_enabled = True
+            settings.combos.data_file = "data/combo_data_artcats.yaml"
+            settings.auto_submit_form_on_x_field = True
+            settings.auto_submit_form_field_name = COL.barcode.name
+            settings.validation.fields_to_clear = [
+                COL.isbn,
+                COL.title,
+                COL.subtitle,
+                COL.artist,
+                COL.pagination,
+                COL.pub_year,
+                COL.notes,
+                COL.copyright,
+                COL.authors,
+                COL.call_number,
+                COL.hol_notes,
+                COL.barcode,
+            ]
+            settings.validation.fields_to_fill_info = {
+                # COL.sublib.name : "ARTBL",
+            }
+            settings.validation.fields_to_fill = list(
+                settings.validation.fields_to_fill_info.keys()
+            )
+            settings.validation.required_fields = [
+                COL.langs.name,
+                COL.title.name,
+                COL.pub_year.name,
+                COL.publisher.name,
+                COL.country_name.name,
+                COL.place.name,
+                COL.pagination.name,
+                COL.size.name,
+                COL.barcode.name,
+            ]
+            settings.combos.independents = [
+                # COL.is_illustrated.name,
+            ]
+            settings.validation.must_validate = [COL.barcode.name, COL.isbn.name]
+            settings.validation.validation_skip_fieldname = COL.barcode.name
+            settings.files.help_file = "html/help_art_cats.html"
+            settings.files.output_dir = Path("your_marc_files")
+            settings.files.full_output_dir = (
+                settings.files.module_dir / settings.files.output_dir
+            )
+
+
+        case "orders":
+            settings.title = title_of_filetype
+            # TODO: take these from 'known_types' & construct COL on the fly
+            # settings.column_names = [column.name for column in COL]
+            # settings.headers = [member.display_title for member in COL]
+            settings.show_table_view = True
+            settings.locking_is_enabled = False
+            settings.combos.data_file = "data/combo_data.yaml"
+            settings.validation.fields_to_clear = [
+                COL.isbn,
+                COL.reporting_code_1,
+                COL.reporting_code_2,
+                COL.reporting_code_3,
+                COL.notify,
+                COL.hold_for,
+                COL.bib_info,
+                COL.additional_info,
+            ]
+            settings.validation.required_fields = [
+                COL.subject_consultant.name,
+                COL.fund_code.name,
+                COL.order_type.name,
+                COL.bib_info.name,
+                COL.library.name,
+                COL.location.name,
+                COL.item_policy.name,
+                COL.bib_info.name,
+            ]
+            settings.validation.must_validate = [
+                COL.isbn.name,
+                COL.hold_for.name,
+                COL.notify.name,
+            ]
+            settings.validation.validation_skip_fieldname = COL.additional_info.name
+            settings.combos.independents = [
+                COL.subject_consultant.name,
+                COL.order_type.name,
+                COL.library.name,
+                COL.item_policy.name,
+                COL.reporting_code_1.name,
+                COL.reporting_code_2.name,
+                COL.reporting_code_3.name,
+            ]
+            settings.combos.leaders = [COL.subject_consultant.name, COL.library.name]
+            settings.combos.followers = [COL.fund_code.name, COL.location.name]
+            settings.combos.dict_by_follower = dict(
+                list(zip(settings.combos.followers, settings.combos.leaders))
+            )
+            settings.combos.dict_by_leader = dict(
+                list(zip(settings.combos.leaders, settings.combos.followers))
+            )
+            settings.files.help_file = "html/help_order_form.html"
+            settings.files.output_dir = Path("your_order")
+            settings.files.full_output_dir = (
+                settings.files.module_dir / settings.files.output_dir
+            )
+
+
+        case "default":
+            settings.title = title_of_filetype
+            settings.show_table_view = True
+            settings.locking_is_enabled = False
+            settings.use_default_layout = False
+            settings.validation.fields_to_clear = [
+                # COL.isbn,
+            ]
+
+            settings.validation.required_fields = [
+                # COL.subject_consultant.name,
+            ]
+
+            settings.validation.must_validate = [
+                # COL.isbn.name,
+            ]
+
+            settings.combos.independents = [
+                # COL.subject_consultant.name,
+            ]
+
+            settings.files.full_output_dir = (
+                settings.files.module_dir / settings.files.output_dir
+            )
+
+
+        case _:
+            # logging.warning()
+            print(f"{title_of_filetype} is not a recognised filetype.")

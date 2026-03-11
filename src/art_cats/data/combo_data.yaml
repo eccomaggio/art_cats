@@ -1,4 +1,4 @@
-Library:
+library:
 - ARTBL_Art_Archaeology_and_Ancient_World_Library
 - BJLBL_Bodleian_Japanese_Library
 - BODBL_Bodleian_Library
@@ -166,11 +166,11 @@ WESBL_Weston_Library:
 - WESOFF_Offsite_Storage_Special_Collections
 - WLBHN_Weston_Blackwell_Hall_North
 - WLOPM_Weston_RBMSS_Reference_Area_(Opie Microfiches)
-Order_type:
+order_type:
 - Electronic_Book_One_Time
 - Physical_One_Time
 - Print_Book_One_Time
-Item_policy:
+item_policy:
 - Equipment_Loanable
 - Equipment_Use_in_Library_Only
 - Fixed_Week_Loan
@@ -179,7 +179,7 @@ Item_policy:
 - Short_Loan
 - Use_in_Library_Only
 - Use_in_Library_Only_Not_Digitisable
-Reporting_code_1:
+reporting_code_1:
 - READING_LIST_Reading_list
 - READING_LISTPGT_Reading_list_PGT_(Hist only)
 - REQUEST_Reader_request
@@ -189,7 +189,7 @@ Reporting_code_1:
 - REPLACE_LD_LOST_Replacement_for_lost_legal_deposit_item
 - REPLACE_LD_DAMAGED_Replacement_for_damaged_legal_deposit_item
 - SUBSTITUTE_ELD_Substitute_for_electronic_legal_deposit
-Reporting_code_2:
+reporting_code_2:
 - FC8007BOOKSERIES_FC8007_Book_series
 - FC8007LAWJOURNALS_FC8007_Law_journals
 - FC8007LAWREPORTS_FC8007_Law_reports
@@ -209,11 +209,11 @@ Reporting_code_2:
 - FK8011PORTUGUESE_FK8011_Portuguese
 - FX8030EASTASIAKOREA_Fx8030_East_Asia_Korea
 - FKXXXXSOCSCI_FKxxxx_Social_Sciences_ex_Hums_TFs
-Reporting_code_3:
+reporting_code_3:
 - VATDATABASE_VAT_Database
 - VATDVD_VAT_DVD
 - VATPUBLISH_VAT_Publish costs
-Subject_consultant:
+subject_consultant:
 - Adina_Bradeanu
 - Alan_Coates
 - Alessandra_Vetrugno

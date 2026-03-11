@@ -73,8 +73,8 @@ from PySide6.QtGui import (
 )
 
 # from art_cats import settings
-# from . import io
-# from art_cats import settings
+from . import io
+from art_cats import settings
 
 logger = logging.getLogger(__name__)
 
@@ -259,7 +259,6 @@ class WindowWithRightTogglePanel(QWidget):
         grid: Grid,
         rows: list[list[str]],
         settings: Default_settings,
-        headers:list[str],
         COL: Enum,
         app,
     ):
@@ -276,7 +275,7 @@ class WindowWithRightTogglePanel(QWidget):
         self.HELP_PANEL_WIDTH = 350
 
         # --- 1. Main Editor Setup (Column 0, Expanding) ---
-        self.edit_panel_widget = Editor(grid, rows, self, settings, headers, COL, app)
+        self.edit_panel_widget = Editor(grid, rows, self, settings, COL, app)
         self.edit_panel_widget.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
@@ -475,7 +474,6 @@ class Editor(QWidget):
         excel_rows: list[list[str]],
         caller: WindowWithRightTogglePanel,
         settings: Default_settings,
-        headers:list[str],
         COL,
         app,
     ):
@@ -497,8 +495,7 @@ class Editor(QWidget):
         self.grid = grid
 
         ## Set up record information
-        # self.data.headers = self.settings.headers
-        self.data.headers = headers
+        self.data.headers = self.settings.headers
         if excel_rows:
             self.data.excel_rows = excel_rows
             self.data.has_records = True
@@ -521,11 +518,7 @@ class Editor(QWidget):
         self.setLayout(self.master_layout)
 
         self.customize_fields()
-        if self.data.has_records:
-            self.load_record_into_gui(self.data.current_row)
-        else:
-            self.load_record_into_gui()
-        # self.load_record_into_gui()
+        self.load_record_into_gui()
         self.update_title_with_record_number()
         self.update_nav_buttons()
         self.add_signal_to_fire_on_text_change()
@@ -943,6 +936,8 @@ class Editor(QWidget):
             case _:
                 if self.data.current_row_index < self.data.index_of_last_record:
                     self.data.current_row_index += 1
+        # msg = str(self.current_row)
+        # msg = self.get_human_readable_record_number()
         msg = logic.get_human_readable_record_number(self.data.current_row_index)
         msg += self.update_nav_buttons()
         self.update_title_with_record_number(msg)
@@ -1051,10 +1046,14 @@ class Editor(QWidget):
         NB. the order of the inputs in self.inputs matches the column order
         ...but the display order does not necessarily match
         """
+        # need_to_load_table = True
         for col_i, input_widget in enumerate(self.inputs):
             cell_contents = "" if not row_to_load else row_to_load[col_i]
             # print(f">>>..>>{input_widget.objectName()}={cell_contents}")
+            # if not cell_contents and input_widget.objectName() in self.settings.validation.fields_to_fill:
+            #     cell_contents = self.settings.validation.fields_to_fill_info[input_widget.objectName()]
             self.load_record(input_widget, cell_contents)
+            # input_widget.setStyleSheet(self.settings.styles["input_active"])
             self.update_input_styling(input_widget, "input_active")
         self.add_signal_to_fire_on_text_change()
         if self.settings.show_table_view:
@@ -1063,8 +1062,6 @@ class Editor(QWidget):
         mode = "lock" if row_to_load else "edit"
         self.toggle_record_editable(mode)
         self.update_title_with_record_number()
-        if self.settings.show_marc_button and self.marc_btn and self.data.has_records:
-            self.marc_btn.setEnabled(True)
         # print(f">>>>>{mode=}, {row_to_load=} {self.has_records=}, {self.headers}")
         self.data.all_text_is_saved = True
 
@@ -1088,6 +1085,8 @@ class Editor(QWidget):
         self.update_title_with_record_number()
 
     def load_record(self, input_widget: QWidget, value: Any, options=[]) -> None:
+        # caller = inspect.stack()[1].function
+        # print(f"++++ load record: {input_widget.objectName()}={value} ({self.settings.validation.fields_to_fill})")
         if (
             not value
             and input_widget.objectName() in self.settings.validation.fields_to_fill
@@ -1135,17 +1134,30 @@ class Editor(QWidget):
         combo_box.setCurrentIndex(index)
 
     def load_table(self, table: QTableWidget, rows: list[list], headers=[]) -> None:
+        # print(f"   === {rows=}, {headers=}")
+        # if not rows or rows == [[]]:
+        # if not rows:
         table.setEnabled(True)
         if not headers:
             headers = self.data.headers
         if not self.data.has_records:
+            # headers = ["empty"]
+            # rows = [["no order items added yet"]]
             rows = [["" for _ in headers]]
+            # rows[0][0] = "no order items added yet"
             table.setEnabled(False)
+        # elif rows and not headers:
+        # headers = self.headers
+        # table.setSpan(0,0,0, len(self.headers))
         table.setColumnCount(len(rows[0]))
         table.setRowCount(len(rows))
+        # print(f"<><>{self.headers=}")
         if headers:
             table.setHorizontalHeaderLabels(headers)
         if self.data.has_records:
+            # if self.settings.show_table_view:
+            #     print("...in A")
+            #     table.setSpan(0, 0, 1, 1)
             for row_i, row in enumerate(rows):
                 for col_i, column in enumerate(row):
                     table.setItem(row_i, col_i, QTableWidgetItem(column))
@@ -1154,7 +1166,9 @@ class Editor(QWidget):
             table.setSpan(0, 0, 1, len(self.data.headers))
             empty_cell = QTableWidgetItem("no order items added yet")
             table.setItem(0, 0, empty_cell)
+            # empty_cell.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         table.cellClicked.connect(self.pass_table_row_index)
+        # table.setMinimumHeight(200)
         row_count = max(2, min(len(rows), 5))
         row_height = 30  # or whatever you use for row height
         table.setMinimumHeight(
@@ -1165,6 +1179,7 @@ class Editor(QWidget):
         )
 
     def pass_table_row_index(self, row, column) -> None:
+        # print(f"$$$$$$$$$ {row=}, {column=}")
         self.highlight_row_by_index(self.tableView, row)
         self.go_to_record_number(row)
 
@@ -1172,6 +1187,7 @@ class Editor(QWidget):
         input_widget.setText(value)
 
     def load_text_edit(self, input_widget: QTextEdit, value="") -> None:
+        # self.inputs[input_widget.value].setText(value)
         input_widget.setPlainText(value)
 
     def handle_unlock(self) -> None:
@@ -1275,8 +1291,7 @@ class Editor(QWidget):
             records_to_export, self.settings
         )
         files_successfully_created = marc_21.save_as_marc_files(
-            # self.data.headers,
-            self.data,
+            self.data.headers,
             records_in_marc_format,
             file_name_with_path,
             self.settings,
@@ -1424,9 +1439,8 @@ class DialogueOkCancel(QDialog):
 
 
 class LauncherDialog(QDialog):
-    def __init__(self, directory):
+    def __init__(self):
         super().__init__()
-        self.directory = directory
         self.setWindowTitle("Project Starter")
         self.setFixedSize(350, 180)
 
@@ -1438,7 +1452,7 @@ class LauncherDialog(QDialog):
 
         # --- Section 1: Open Existing ---
         self.btn_open = QPushButton("Open Existing Data File")
-        self.btn_open.clicked.connect(lambda : self.handle_open_file(self.directory))
+        self.btn_open.clicked.connect(self.handle_open_file)
         layout.addWidget(self.btn_open)
 
         layout.addWidget(QLabel("OR", alignment=Qt.AlignmentFlag.AlignCenter))
@@ -1457,7 +1471,7 @@ class LauncherDialog(QDialog):
 
         layout.addLayout(new_layout)
 
-    def handle_open_file(self, directory:str):
+    def handle_open_file(self):
         # file_filter = "Data Files (*.csv *.tsv *.xlsx *.xls *.xlsm)"
         file_filter = (
             "Data Files (*.csv *.tsv *.xlsx *.xls *.xlsm);;"
@@ -1465,8 +1479,7 @@ class LauncherDialog(QDialog):
             "Text Tables (*.csv *.tsv);;"
             "All Files (*.*)"
         )
-        # path, _ = QFileDialog.getOpenFileName(self, "Select File", "", file_filter)
-        path, _ = QFileDialog.getOpenFileName(self, "Select File",dir=directory, filter=file_filter)
+        path, _ = QFileDialog.getOpenFileName(self, "Select File", "", file_filter)
         if path:
             self.selected_path = path
             self.accept()  # Closes dialog with 'Accepted' result
@@ -1550,15 +1563,18 @@ def create_dynamic_enum(
 
 def analyse_existing_file(settings: Default_settings, grid:Grid, COL):
     logging.info(f"processing file: {settings.files.in_file}")
+    # headers, rows = marc_21.parse_file_into_rows(
     headers, rows = io.parse_file_into_rows(
         Path(settings.files.in_file), settings.first_row_is_header
     )
-    settings.files.out_file = f"{Path(settings.files.in_file).stem}.new"
     expected_col_count = len(COL)
     file_resembles_expectations = len(headers) == expected_col_count
+    # print(f"{headers=}")
+    # pprint(rows)
     print(
         f"Setup environment: {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}"
     )
+    settings.headers = headers
     # TODO: offer the user the chance to customise the names? NO, only the text labels
     # col_names = [f"col{i}" for i, _ in enumerate(headers)]
     known_match = get_match_to_known_type(settings, headers)
@@ -1566,12 +1582,9 @@ def analyse_existing_file(settings: Default_settings, grid:Grid, COL):
     # COL:Enum = create_dynamic_enum("COL", col_names, headers)
     if known_match:
         cols, display_titles = settings.known_types[known_match]
-        col_names = [col[0].lower() for col in cols]
-        settings.column_names = col_names
-        # settings.headers = display_titles
+        col_names = [col[0] for col in cols]
         COL = create_dynamic_enum("COL", col_names, display_titles)
         # show_col(COL)
-        logic.update_settings(settings, COL, known_match)
         template = []
         for i, col in enumerate(COL):
             line = (col, *cols[i][1:])
@@ -1581,7 +1594,6 @@ def analyse_existing_file(settings: Default_settings, grid:Grid, COL):
     else:
         col_names = [f"col{i}" for i, _ in enumerate(headers)]
         COL:Enum = create_dynamic_enum("COL", col_names, headers)
-        logic.update_settings(settings, COL, "default")
         max_lengths = create_max_lengths(rows)
         layout = [select_brick_by_content_length(length) for length in max_lengths]
         for id, (brick, widget_type) in enumerate(layout):
@@ -1609,21 +1621,36 @@ def get_match_to_known_type(settings:Default_settings, headers:list[str]) -> str
     return ""
 
 
-def setup_environment(settings: Default_settings, headers:list[str], COL):
+def setup_environment(settings: Default_settings, COL):
     """
     NB. further updates settings
     """
     # read_cli_into_settings(settings)
     app = QApplication(sys.argv)
     grid = Grid()
-    undefined_file_pattern = len(COL) == 0
-    if undefined_file_pattern:
+    headers = []
+    if not len(COL):
+        launcher = LauncherDialog()
+        ##* exec() blocks until accept() or reject() is called
+        if launcher.exec() == QDialog.DialogCode.Accepted:
+            if launcher.selected_path:
+                print(f"Loading UI for file: {launcher.selected_path}")
+                settings.files.in_file = launcher.selected_path
+                settings.is_existing_file = True
+                # Logic to open your MainGui with this file
+            elif launcher.column_count:
+                print(f"Loading UI for new file with {launcher.column_count} columns")
+                sys.exit(0)
+                # Logic to open your MainGui with empty columns
+        else:
+            print("User exited.")
+            sys.exit(0)
+
+    if settings.is_existing_file:
         ## * entry point for universal.py; generalise for all files
-        get_file_pattern_and_name_from_user(settings)
         headers, rows, grid, COL = analyse_existing_file(settings, grid, COL)
     else:
         ## * entry point for art.py / strachan.py / orders.py routes
-        ## NOW DEPRECATED
         print("creating new file")
         rows = []
         grid.add_bricks_by_template(settings.template)
@@ -1635,26 +1662,8 @@ def setup_environment(settings: Default_settings, headers:list[str], COL):
     return (grid, rows, headers, COL, app)
 
 
-def get_file_pattern_and_name_from_user(settings:Default_settings) -> None:
-    launcher = LauncherDialog(f"./{settings.files.data_dir}")
-    ##* exec() blocks until accept() or reject() is called
-    if launcher.exec() == QDialog.DialogCode.Accepted:
-        if launcher.selected_path:
-            print(f"Loading UI for file: {launcher.selected_path}")
-            settings.files.in_file = launcher.selected_path
-            settings.is_existing_file = True
-            # Logic to open your MainGui with this file
-        elif launcher.column_count:
-            print(f"Loading UI for new file with {launcher.column_count} columns")
-            sys.exit(0)
-            # Logic to open your MainGui with empty columns
-    else:
-        print("User exited.")
-        sys.exit(0)
-
-
-def run(settings: Default_settings, headers:list[str], COL):
-    grid, rows, headers, COL, app = setup_environment(settings, headers, COL)
-    window = WindowWithRightTogglePanel(grid, rows, settings, headers, COL, app)
+def run(settings: Default_settings, COL):
+    grid, rows, headers, COL, app = setup_environment(settings, COL)
+    window = WindowWithRightTogglePanel(grid, rows, settings, COL, app)
     window.show()
     sys.exit(app.exec())

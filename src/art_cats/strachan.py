@@ -60,7 +60,7 @@ def main():
     settings.show_marc_button = True
     # TODO: take these from 'known_types' & construct COL on the fly
     settings.column_names = [column.name for column in COL]
-    settings.headers = [member.display_title for member in COL]
+    # settings.headers = [member.display_title for member in COL]
     settings.csv_to_marc_mappings = [
         0,
         1,
@@ -165,10 +165,11 @@ def main():
     if settings.create_output_dir:
         settings.files.full_output_dir.mkdir(exist_ok=True)
 
+    headers = [member.display_title for member in COL]
     CUSTOM_LOG_FILE = settings.files.full_output_dir / "logger_strachan.log"
 
     log_setup.setup_app_logging(log_file_path=CUSTOM_LOG_FILE)
-    form_gui.run(settings, COL)
+    form_gui.run(settings, headers, COL)
 
 
 if __name__ == "__main__":

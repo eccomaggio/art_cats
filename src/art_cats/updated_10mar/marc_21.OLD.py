@@ -6,7 +6,6 @@ import from / export to csv / excel files
 import enum
 import logging
 
-# from art_cats.logic import Data
 from art_cats.settings import Default_settings
 
 # from . import log_setup
@@ -87,8 +86,8 @@ class Record:
     donation: str
     barcode: str
 
-    authors: list
-    artist: str # not needed as Strachan artists == first author [handled in parse_row()]
+    authors: list[str]
+    artist: str
     call_number: str
 
     pub_year_is_approx: bool
@@ -123,7 +122,6 @@ class Result:
 class MissingFieldError(Exception):
     pass
 
-split_marker = "*//*"
 
 code_by_state = {
     "england": "enk",
@@ -995,17 +993,6 @@ def parse_row(
     if not donation and live_settings.title == "art_catalogue":
        donation = "Anonymous donation"
 
-
-    ##* logic: if more than one author, the first goes in 100, the remainder in 700
-    ##  For the Strachan donation, the separate artist field is considered the first author
-    if artist:
-        if authors:
-            authors = [artist, *authors]
-        else:
-            authors = [artist]
-        artist = ""
-    authors = process_authors(authors)
-
     record = Record(
         sublibrary,
         langs,
@@ -1169,20 +1156,17 @@ def build_008(record: Record) -> Result:
 def build_033(record: Record) -> Result:
     """sales dates"""
     tag = 33
-    if record.sale_dates:
-        i1 = "0" if len(record.sale_dates) == 1 else "1"
-        # i2 = "\\"
-        i2 = ISBD["BLANK"]
-        result = Result(
-            Field(
-                tag=link_num(tag),
-                indicators=Indicators(i1, i2),
-                subfields=[Subfield(value=date, code="a") for date in record.sale_dates],
-            ),
-            None,
-        )
-    else:
-        result = Result(None, (tag, ""))
+    i1 = "0" if len(record.sale_dates) == 1 else "1"
+    # i2 = "\\"
+    i2 = ISBD["BLANK"]
+    result = Result(
+        Field(
+            tag=link_num(tag),
+            indicators=Indicators(i1, i2),
+            subfields=[Subfield(value=date, code="a") for date in record.sale_dates],
+        ),
+        None,
+    )
     return result
 
 
@@ -1208,9 +1192,8 @@ def build_245(record: Record) -> Result:
     Field 245 ends with a period, even when another mark of punctuation is present, unless the last word in the field is an abbreviation, initial/letter, or data that ends with final punctuation.
     If the source data contains an alternative title, this is separated into a 246 field.
     """
-    ## TODO:
     tag = 245
-    i1 = "1" if record.authors else "0"
+    i1 = "0"
     nonfiling = "0"
     error = None
     alt_title = ""
@@ -1224,8 +1207,7 @@ def build_245(record: Record) -> Result:
         title, subtitle = record.title.original, record.subtitle.original
         ## TODO: inject settings.alt_title_signifier into this one function. (OR inject settings into all, but no others use them...)
         # check_for_alt_title = title.split(settings.alt_title_signifier)
-        # check_for_alt_title = title.split("*//*")
-        check_for_alt_title = title.split(split_marker)
+        check_for_alt_title = title.split("*//*")
         if len(check_for_alt_title) > 1:
             title, alt_title = [el.strip() for el in check_for_alt_title]
             # alt_title_field = create_alternative_title(alt_title, record.langs[0]).is_ok
@@ -1336,7 +1318,7 @@ def build_300(record: Record) -> Result:
     punctuation = ISBD["."] if record.series_title else ""
     size = Subfield(value=f"{record.size} cm{punctuation}", code="c")
     # if record.is_illustrated:
-    if record.illustrations and record.illustrations.lower() != "none":
+    if record.illustrations.lower() != "none":
         pages = Subfield(value=pages_content + ISBD[":"], code="a")
         illustrations = Subfield(value=f"illustrations{ISBD[";"]}", code="b")
         content = [pages, illustrations, size]
@@ -1481,19 +1463,13 @@ def build_852(record: Record) -> Result:  ##optional
 
 
 def build_100(record: Record) -> Result:  ##optional
-    """Person chiefly responsible for the work (usually first author)
-    where authors = [ [name, dates], ...]"""
+    """Artist (if exists)"""
     tag = 100
     i1 = "1"
     i2 = ISBD["BLANK"]
-    # contents = []
-    ##* logic: if more than one author, the first goes in 100, the remainder in 700
-    if record.authors:
-        # name, dates = record.authors[0]
-        # contents.append(Subfield(value=name, code="a"))
-        # if dates:
-        #     contents.append(Subfield(value=dates, code="d"))
-        contents = get_author_subfields(record.authors[0])
+    contents = []
+    if value := record.artist:
+        contents.append(Subfield(value=value, code="a"))
         result = Result(
             Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=contents), None,)
     else:
@@ -1502,20 +1478,18 @@ def build_100(record: Record) -> Result:  ##optional
 
 
 def build_700(record: Record) -> Result:  ##optional
-    """Author(s) (if exists) where authors = [ [name, dates], ...]"""
+    """Author(s) (if exists)"""
     tag = 700
     i1 = "1"
     i2 = ISBD["BLANK"]
-    # contents = []
-    ##* logic: if more than one author, the first goes in 100, the remainder in 700
-    if len(record.authors) > 1:
-        info = record.authors[1:]
+    contents = []
+    if record.authors and record.authors[0]:
+        print(f"oh-oh! authors: {record.authors=} ({record.artist=})")
         fields = []
-        for author in info:
+        for author in record.authors:
             # contents.append(Subfield(value=author, code="a"))
-            # author = author.replace(".","") + ISBD["."]
-            # contents = [Subfield(value=author, code="a")]
-            contents = get_author_subfields(author)
+            author = author.replace(".","") + ISBD["."]
+            contents = [Subfield(value=author, code="a")]
             fields.append(
                 Field(
                     tag=link_num(tag), indicators=Indicators(i1, i2), subfields=contents
@@ -1529,18 +1503,6 @@ def build_700(record: Record) -> Result:  ##optional
         result = Result(None, (tag, ""))
     return result
 
-
-def get_author_subfields(author: tuple[str, str]) -> list[Subfield]:
-    contents = []
-    name, dates = author
-    if dates:
-        dates += ISBD["."]
-    else:
-        name += ISBD["."]
-    contents.append(Subfield(value=name, code="a"))
-    if dates:
-        contents.append(Subfield(value=dates, code="d"))
-    return contents
 
 # def build_951(record: Record) -> Result:  ##optional
 #     """Holding (if exists)"""
@@ -1732,32 +1694,17 @@ def build_500(record: Record) -> Result:  ##optional
     tag = 500
     # i1, i2 = "\\", "\\"
     i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
-    # notes_text = add_period_if_necessary(record.notes)
-    if record.notes:
-        # notes_text = notes_text[0] + notes_text[1:]
-        # split_notes = notes_text.split(split_marker)
-        split_notes = record.notes.split(split_marker)
-        contents = []
-        for note in split_notes:
-            note = add_period_if_necessary(note)
-            note_field = Field(
+    notes_text = add_period_if_necessary(record.notes)
+    if notes_text:
+        notes_text = notes_text[0] + notes_text[1:]
+        result = Result(
+            Field(
                 tag=link_num(tag),
                 indicators=Indicators(i1, i2),
-                subfields=[Subfield(value=note, code="a")],
-            )
-            contents.append(note_field)
-        result = Result(
-            contents,
+                subfields=[Subfield(value=notes_text, code="a")],
+            ),
             None,
         )
-        # result = Result(
-        #     Field(
-        #         tag=link_num(tag),
-        #         indicators=Indicators(i1, i2),
-        #         subfields=[Subfield(value=notes_text, code="a")],
-        #     ),
-        #     None,
-        # )
     else:
         result = Result(None, (tag, ""))
     return result
@@ -1780,22 +1727,6 @@ def build_880(
     content.extend(title_subfield)
     field = Field(tag=str(tag), indicators=Indicators(i1, i2), subfields=content)
     record.links.append(field)
-
-
-def process_authors(authors: list[str])-> list[tuple[str, str]]:
-    """returns normalised name, dates; if no dates, then returns dates as empty string"""
-    author_dates = re.compile(r"(^.*?)(\d.*$)")
-    revised = []
-    for author in authors:
-        split = author_dates.search(author)
-        if split:
-            name = split.group(1).strip(" ,.") + ISBD[","]
-            dates = split.group(2).strip(" ,.")
-        else:
-            name = author.strip(" ,.")
-            dates = ""
-        revised.append((name, dates))
-    return revised
 
 
 def add_period_if_necessary(title: str) -> str:
@@ -1821,7 +1752,7 @@ def check_if_mandatory(result: Result, is_mandatory: bool) -> list[Field] | None
                 else f"Data for required field {str(numeric_tag).zfill(3)} is required."
             )
             logger.warning(msg)
-            # raise MissingFieldError(msg)
+            raise MissingFieldError(msg)
     elif result.is_ok:
         if isinstance(result.is_ok, list):
             output = result.is_ok
@@ -1933,11 +1864,13 @@ def apply_marc_logic(record: Record) -> PyRecord:
 
 
 def save_as_marc_files(
-    # headers: list[str],
-    data,
+    headers: list[str],
     rows_from_gui: list[list[str]],
+    # hol_index: int,
     file_name_with_path: Path,
     live_settings: Default_settings,
+    # create_excel_file=True,
+    # create_chu_file=True,
 ) -> bool:
     """
     Saves the record set as .mrk & .mrc files;
@@ -1953,10 +1886,7 @@ def save_as_marc_files(
 
     if live_settings.create_excel_file:
         # excel_rows = add_policy_into_hol_notes(records, excel_rows, hol_index)
-        # print(f"marc_21.py: saving marc files ->\n{len(headers)}: {headers=}\n{len(rows_from_gui)}: {rows_from_gui=}")
-        # io.write_data_to_excel([headers, *rows_from_gui], file_name_with_path.with_suffix(".xlsx"))
-        print(f"marc_21.py: saving marc files ->\n{len(data.headers)}: {data.headers=}\n{len(rows_from_gui)}: {rows_from_gui=}")
-        io.write_data_to_excel([data.headers, *data.excel_rows], file_name_with_path.with_suffix(".xlsx"))
+        io.write_data_to_excel([headers, *rows_from_gui], file_name_with_path.with_suffix(".xlsx"))
 
     ## TODO: code for this value!
     file_operations_successful = True
