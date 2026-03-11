@@ -1,4 +1,5 @@
 from dataclasses import dataclass, fields
+
 # from tkinter import W
 from pathlib import Path
 
@@ -171,12 +172,12 @@ def add_record(editor, record_as_dict) -> None:
         editor.data.current_row = record_as_data_row
 
 
-def save_record_externally(editor) -> None:
-    csv_file = io.get_csv_file_name_and_path(editor.settings)
-    logger.info(f"{csv_file=}")
-    editor.save_as_csv(csv_file)
-    editor.update_nav_buttons()
-    editor.load_record_into_gui(editor.data.current_row)
+# def save_record_externally(editor) -> None:
+#     csv_file = io.get_csv_file_name_and_path(editor.settings)
+#     logger.info(f"{csv_file=}")
+#     editor.save_as_csv(csv_file)
+#     editor.update_nav_buttons()
+#     editor.load_record_into_gui(editor.data.current_row)
 
 
 def delete_record(editor, index=-1) -> None:
@@ -256,7 +257,9 @@ def map_fits_list(mappings: list, orig: list) -> bool:
         if test1 != test2:
             result = False
     if not result:
-        logger.warning("The mappings don't fit the list. (The mappings file is probably invalid or does not match the columns in the .csv)")
+        logger.warning(
+            "The mappings don't fit the list. (The mappings file is probably invalid or does not match the columns in the .csv)"
+        )
     return result
 
 
@@ -274,7 +277,9 @@ def map_fits_list(mappings: list, orig: list) -> bool:
 #     return True
 
 
-def format_list_for_marc(records: list[list[str]], live_settings: Default_settings) -> list[list[str]]:
+def format_list_for_marc(
+    records: list[list[str]], live_settings: Default_settings
+) -> list[list[str]]:
     internal_fields = {
         "state",
         "country_code",
@@ -314,7 +319,10 @@ def format_list_for_marc(records: list[list[str]], live_settings: Default_settin
     # print(f"{len(marc_column_names)}->{marc_column_names}\n")
     return augmented_records
 
-def remove_dummy_records(records: list[list[str]], live_settings: Default_settings, COL) -> list:
+
+def remove_dummy_records(
+    records: list[list[str]], live_settings: Default_settings, COL
+) -> list:
     target_col_name = live_settings.validation.validation_skip_fieldname
     if not target_col_name:
         return records
@@ -343,13 +351,11 @@ def remove_dummy_records(records: list[list[str]], live_settings: Default_settin
     return list_without_dummies
 
 
-def singular_or_plural(count:int, plural="s", singular="") -> str:
+def singular_or_plural(count: int, plural="s", singular="") -> str:
     return plural if count != 1 else singular
 
 
-
-
-known_types = {
+known_patterns = {
     # {data-name: [
     # [col_name,
     # (brick height, brick length),
@@ -387,8 +393,7 @@ known_types = {
             ("hol_notes", (3, 3), 9, 3, "text"),
             ("donation", (1, 4), 16, 0, "line"),
             ("barcode", (1, 2), 16, 4, "line"),
-            ],
-
+        ],
         [
             "Library",
             "language of resource",
@@ -418,9 +423,8 @@ known_types = {
             "HOL notes",
             "Donor note",
             "Barcode",
-            ]
         ],
-
+    ],
     "strachan": [
         [
             ("langs", (1, 2), 0, 0, "line"),
@@ -441,7 +445,6 @@ known_types = {
             ("hol_notes", (2, 2), 6, 2, "text"),
             ("barcode", (1, 2), 7, 4, "line"),
         ],
-
         [
             "Language of resource",
             "ISBN",
@@ -459,9 +462,9 @@ known_types = {
             "Author(s)",
             "Call number",
             "Holding note",
-            "Barcode",],
+            "Barcode",
         ],
-
+    ],
     "orders": [
         [
             ("subject_consultant", (1, 2), 0, 0, "combo"),
@@ -481,7 +484,6 @@ known_types = {
             ("notify", (1, 2), 9, 0, "line"),
             ("additional_info", (2, 4), 8, 2, "text"),
         ],
-
         [
             "Subject consultant",
             "Fund code",
@@ -504,14 +506,13 @@ known_types = {
 }
 
 
-def update_settings(settings, COL, title_of_filetype:str) -> None:
+def update_settings(settings, COL, title_of_filetype: str) -> None:
     match title_of_filetype:
         case "art_cats":
             settings.title = title_of_filetype
             settings.show_marc_button = True
-            # TODO: take these from 'known_types' & construct COL on the fly
-            settings.column_names = [column.name for column in COL]
-            settings.headers = [member.display_title for member in COL]
+            # settings.column_names = [column.name for column in COL]
+            # settings.headers = [member.display_title for member in COL]
             settings.show_table_view = False
             settings.locking_is_enabled = True
             settings.combos.data_file = "data/combo_data_artcats.yaml"
@@ -560,9 +561,8 @@ def update_settings(settings, COL, title_of_filetype:str) -> None:
         case "strachan":
             settings.title = "strachan"
             settings.show_marc_button = True
-            # TODO: take these from 'known_types' & construct COL on the fly
-            settings.column_names = [column.name for column in COL]
-            settings.headers = [member.display_title for member in COL]
+            # settings.column_names = [column.name for column in COL]
+            # settings.headers = [member.display_title for member in COL]
             settings.csv_to_marc_mappings = [
                 0,
                 1,
@@ -629,10 +629,8 @@ def update_settings(settings, COL, title_of_filetype:str) -> None:
                 settings.files.module_dir / settings.files.output_dir
             )
 
-
         case "orders":
             settings.title = title_of_filetype
-            # TODO: take these from 'known_types' & construct COL on the fly
             # settings.column_names = [column.name for column in COL]
             # settings.headers = [member.display_title for member in COL]
             settings.show_table_view = True
@@ -687,7 +685,6 @@ def update_settings(settings, COL, title_of_filetype:str) -> None:
                 settings.files.module_dir / settings.files.output_dir
             )
 
-
         case "default":
             settings.title = title_of_filetype
             settings.show_table_view = True
@@ -712,7 +709,6 @@ def update_settings(settings, COL, title_of_filetype:str) -> None:
             settings.files.full_output_dir = (
                 settings.files.module_dir / settings.files.output_dir
             )
-
 
         case _:
             # logging.warning()

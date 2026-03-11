@@ -32,15 +32,13 @@ def main():
     ##### Tailor settings
 
     settings = Default_settings()
-    settings.known_types = logic.known_types
+    settings.known_types = logic.known_patterns
     headers = []
 
     if settings.create_output_dir:
         settings.files.full_output_dir.mkdir(exist_ok=True)
 
-    CUSTOM_LOG_FILE = (
-        settings.files.full_output_dir / "logger.log"
-    )
+    CUSTOM_LOG_FILE = settings.files.full_output_dir / "logger.log"
 
     log_setup.setup_app_logging(log_file_path=CUSTOM_LOG_FILE)
     form_gui.run(settings, headers, COL)

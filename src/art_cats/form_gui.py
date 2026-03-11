@@ -850,7 +850,12 @@ class Editor(QWidget):
         """
         authorised_to_continue = logic.gatekeeper("submit", self)
         if authorised_to_continue:
-            logic.save_record_externally(self)
+            csv_file = io.get_csv_file_name_and_path(self.settings)
+            headers = [el[3] for el in self.grid.widget_info.values()]
+            io.write_to_csv(csv_file, self.data.excel_rows, headers)
+            self.data.all_text_is_saved = True
+            self.update_nav_buttons()
+            self.load_record_into_gui(self.data.current_row)
             if self.settings.show_marc_button:
                 self.marc_btn.setEnabled(True)
         return authorised_to_continue
@@ -1252,14 +1257,14 @@ class Editor(QWidget):
             self.next_btn.setEnabled(True)
         return msg
 
-    def save_as_csv(self, file_name: Path) -> None:
-        # def save_as_csv(self, file_name="") -> None:
-        # is_backup_file = bool(file_name)
-        headers = [el[3] for el in self.grid.widget_info.values()]
-        # write_to_csv(self.settings.out_file, self.excel_rows, headers)
-        io.write_to_csv(file_name, self.data.excel_rows, headers)
-        self.data.all_text_is_saved = True
-        # print(f"*** records saved as {self.settings.out_file}")
+    # def save_as_csv(self, file_name: Path) -> None:
+    #     # def save_as_csv(self, file_name="") -> None:
+    #     # is_backup_file = bool(file_name)
+    #     headers = [el[3] for el in self.grid.widget_info.values()]
+    #     # write_to_csv(self.settings.out_file, self.excel_rows, headers)
+    #     io.write_to_csv(file_name, self.data.excel_rows, headers)
+    #     self.data.all_text_is_saved = True
+    #     # print(f"*** records saved as {self.settings.out_file}")
 
     def handle_marc_files(self) -> None:
         authorised_to_continue = logic.gatekeeper("marc", self)
@@ -1424,38 +1429,52 @@ class DialogueOkCancel(QDialog):
 
 
 class LauncherDialog(QDialog):
-    def __init__(self, directory):
+    def __init__(self, directory:str, file_patterns:list[str]):
         super().__init__()
         self.directory = directory
         self.setWindowTitle("Project Starter")
-        self.setFixedSize(350, 180)
+        self.setFixedSize(350, 250)
 
         # Data to be retrieved
-        self.selected_path = None
-        self.column_count = None
+        self.selected_path:str = "" #None
+        self.column_count:int = 0   #None
+        self.pattern_name:str = ""  #file_patterns
 
-        layout = QVBoxLayout(self)
+        main_layout = QVBoxLayout(self)
 
         # --- Section 1: Open Existing ---
         self.btn_open = QPushButton("Open Existing Data File")
         self.btn_open.clicked.connect(lambda : self.handle_open_file(self.directory))
-        layout.addWidget(self.btn_open)
+        main_layout.addWidget(self.btn_open)
 
-        layout.addWidget(QLabel("OR", alignment=Qt.AlignmentFlag.AlignCenter))
+        main_layout.addWidget(QLabel("OR", alignment=Qt.AlignmentFlag.AlignCenter))
 
-        # --- Section 2: Create New ---
-        new_layout = QHBoxLayout()
-        new_layout.addWidget(QLabel("New File Columns:"))
+        # --- Section 2: Create new from columns ---
+        select_columns_layout = QHBoxLayout()
+        select_columns_layout.addWidget(QLabel("New File Columns:"))
         self.spin_columns = QSpinBox()
         self.spin_columns.setRange(1, 50)
         self.spin_columns.setValue(10)  # Default
-        new_layout.addWidget(self.spin_columns)
+        select_columns_layout.addWidget(self.spin_columns)
 
-        self.btn_create = QPushButton("Create New")
-        self.btn_create.clicked.connect(self.handle_create_new)
-        new_layout.addWidget(self.btn_create)
+        self.btn_cols_create = QPushButton("Create New")
+        self.btn_cols_create.clicked.connect(self.handle_new_columns)
+        select_columns_layout.addWidget(self.btn_cols_create)
+        main_layout.addLayout(select_columns_layout)
 
-        layout.addLayout(new_layout)
+        main_layout.addWidget(QLabel("OR", alignment=Qt.AlignmentFlag.AlignCenter))
+
+        # --- Section 3: Create new from pattern ---
+        select_pattern_layout = QHBoxLayout()
+        select_pattern_layout.addWidget(QLabel("Existing Patterns:"))
+        self.pattern_combo = QComboBox(self)
+        self.pattern_combo.addItems(file_patterns)
+        select_pattern_layout.addWidget(self.pattern_combo)
+
+        self.btn_pattern_create = QPushButton("Create New")
+        self.btn_pattern_create.clicked.connect(self.handle_new_pattern)
+        select_pattern_layout.addWidget(self.btn_pattern_create)
+        main_layout.addLayout(select_pattern_layout)
 
     def handle_open_file(self, directory:str):
         # file_filter = "Data Files (*.csv *.tsv *.xlsx *.xls *.xlsm)"
@@ -1471,8 +1490,12 @@ class LauncherDialog(QDialog):
             self.selected_path = path
             self.accept()  # Closes dialog with 'Accepted' result
 
-    def handle_create_new(self):
+    def handle_new_columns(self) -> None:
         self.column_count = self.spin_columns.value()
+        self.accept()
+
+    def handle_new_pattern(self) -> None:
+        self.pattern_name = self.pattern_combo.currentText()
         self.accept()
 
 
@@ -1609,6 +1632,18 @@ def get_match_to_known_type(settings:Default_settings, headers:list[str]) -> str
     return ""
 
 
+def create_file_from_column_count(column_count:int):
+    ## need to create new file + add in programmatic col names
+    print(f"**Loading UI for new file with {column_count} columns")
+    sys.exit(0)
+
+
+def create_file_from_pattern(pattern_name:str):
+    ## need to create new file + add in settings & col names from settings.known_patterns
+    print(f"**Loading UI for new file using the {pattern_name} pattern")
+    sys.exit(0)
+
+
 def setup_environment(settings: Default_settings, headers:list[str], COL):
     """
     NB. further updates settings
@@ -1619,8 +1654,14 @@ def setup_environment(settings: Default_settings, headers:list[str], COL):
     undefined_file_pattern = len(COL) == 0
     if undefined_file_pattern:
         ## * entry point for universal.py; generalise for all files
-        get_file_pattern_and_name_from_user(settings)
-        headers, rows, grid, COL = analyse_existing_file(settings, grid, COL)
+        from_file, column_count, pattern_name = get_file_pattern_and_name_from_user(settings)
+        if from_file:
+            headers, rows, grid, COL = analyse_existing_file(settings, grid, COL)
+        elif column_count:
+            create_file_from_column_count(column_count)
+        else:
+            create_file_from_pattern(pattern_name)
+
     else:
         ## * entry point for art.py / strachan.py / orders.py routes
         ## NOW DEPRECATED
@@ -1635,19 +1676,20 @@ def setup_environment(settings: Default_settings, headers:list[str], COL):
     return (grid, rows, headers, COL, app)
 
 
-def get_file_pattern_and_name_from_user(settings:Default_settings) -> None:
-    launcher = LauncherDialog(f"./{settings.files.data_dir}")
+def get_file_pattern_and_name_from_user(settings:Default_settings) -> tuple[bool, int, str]:
+    file_patterns = list(settings.known_types.keys())
+    launcher = LauncherDialog(f"./{settings.files.data_dir}", file_patterns)
     ##* exec() blocks until accept() or reject() is called
     if launcher.exec() == QDialog.DialogCode.Accepted:
         if launcher.selected_path:
             print(f"Loading UI for file: {launcher.selected_path}")
             settings.files.in_file = launcher.selected_path
             settings.is_existing_file = True
-            # Logic to open your MainGui with this file
+            return(True, 0, "")
         elif launcher.column_count:
-            print(f"Loading UI for new file with {launcher.column_count} columns")
-            sys.exit(0)
-            # Logic to open your MainGui with empty columns
+            return(False, launcher.column_count, "")
+        elif launcher.pattern_name:
+            return(False, 0, launcher.pattern_name)
     else:
         print("User exited.")
         sys.exit(0)

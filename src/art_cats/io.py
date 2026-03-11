@@ -54,9 +54,6 @@ def load_plaintext_from_file(file_name: str) -> str:
 
 
 def write_to_csv(file_name: Path, data: list[list[str]], headers: list[str]) -> None:
-    # def write_to_csv(file_name: str, data: list[list[str]], headers: list[str]) -> None:
-    # out_file = Path(settings.files.full_output_dir) / Path(file_name)
-    # with open(out_file, "w", newline="", encoding="utf-8") as f:
     logger.info(f"Exporting records as csv to {file_name}")
     with open(file_name, "w", newline="", encoding="utf-8") as f:
         csvwriter = csv.writer(f)
@@ -66,12 +63,9 @@ def write_to_csv(file_name: Path, data: list[list[str]], headers: list[str]) -> 
 
 def get_csv_file_name_and_path(live_settings: Default_settings) -> Path:
     csv_file = (
-        # live_settings.files.full_output_dir / f"{live_settings.files.out_file}.csv"
         live_settings.files.full_output_dir / live_settings.files.out_file
     )
     return csv_file
-
-## +++++++++++ from marc_21.py
 
 
 def extract_from_excel(excel_sheet, first_row_is_header:bool) -> tuple[list[str], list[list[str]]]:
@@ -83,12 +77,10 @@ def extract_from_excel(excel_sheet, first_row_is_header:bool) -> tuple[list[str]
     """
     sheet = []
     headers = []
-    # for excel_row in excel_sheet.iter_rows(min_row=2, values_only=True):
     for i, excel_row in enumerate(excel_sheet.iter_rows(min_row=1, values_only=True)):
         if not excel_row[0] and not excel_row[1]:
-            break  ## needed as openpyxl keeps spitting out empty rows at the end
+            break  ## needed as openpyxl adds empty rows at the end
         row = normalize_row(excel_row)
-        # if i == 0 and settings.first_row_is_header:
         if i == 0 and first_row_is_header:
             headers = row
         else:
@@ -108,9 +100,6 @@ def normalize_row(row: list) -> list:
     return clean_row
 
 
-# def trim_mistaken_decimals(value: str | int) -> str:
-#     if not isinstance(value, str):
-#         value = str(value)
 def trim_mistaken_decimals(value: str) -> str:
     if value.endswith(".0"):
         value = value[:-2]
