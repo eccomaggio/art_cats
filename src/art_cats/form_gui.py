@@ -55,6 +55,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
     QSpinBox,
+    QFrame,
     # QSpacerItem,
 )
 from PySide6.QtCore import (
@@ -489,6 +490,12 @@ class Editor(QWidget):
         self.caller = caller
         self.settings = settings
         inputs_layout = QGridLayout()
+
+        # self.container = QFrame()
+        # self.container.setObjectName("myContainer") # ID for targeted CSS
+        # self.container.setStyleSheet("#myContainer { background-color: #2c3e50; border-radius: 10px; }")
+
+        # nav_grid = QGridLayout(self.container)
         nav_grid = QGridLayout()
         self.nav_grouped_layout = QGroupBox("Navigation")
 
@@ -504,16 +511,10 @@ class Editor(QWidget):
         else:
             self.data.excel_rows = [["" for _ in range(len(settings.layout_template))]]
             self.data.has_records = False
-            # self.settings.file_newly_created = False
 
-        # self.file_name = file_name
         self.data.file_name = settings.files.in_file
-        # self.short_file_name = self.get_filename_only(settings.files.in_file)
         self.data.current_row_index = len(excel_rows) - 1
         self.data.record_is_locked = True
-        # print(f"\t{self.settings.file_newly_created=}")
-        # if self.settings.file_newly_created:
-        #     self.data.record_is_locked = False
         self.data.all_text_is_saved = True
 
         self.add_input_widgets(inputs_layout)
@@ -521,6 +522,7 @@ class Editor(QWidget):
 
         self.master_layout.addLayout(inputs_layout)
         self.master_layout.addWidget(self.nav_grouped_layout)
+        # self.master_layout.addWidget(self.container)
         self.setLayout(self.master_layout)
 
         self.customize_fields()
@@ -528,7 +530,6 @@ class Editor(QWidget):
             self.load_record_into_gui(self.data.current_row)
         else:
             self.load_record_into_gui()
-        # self.load_record_into_gui()
         self.update_title_with_record_number()
         self.update_nav_buttons()
         self.add_signal_to_fire_on_text_change()
@@ -563,7 +564,6 @@ class Editor(QWidget):
                 title = f"* {title}"
             if (
                 self.settings.auto_submit_form_on_x_field
-                # and name.lower() == "barcode"
                 and name.lower() == self.settings.auto_submit_form_field_name.lower()
                 and isinstance(tmp_input, QLineEdit)
             ):
@@ -686,7 +686,8 @@ class Editor(QWidget):
         self.nav_grouped_layout.setLayout(nav_grid)
 
     def customize_fields(self) -> None:
-        if self.settings.title == "art_catalogue":
+        ## ** CUSTOMISED BEHAVIOUR GOES HERE
+        if self.settings.title == "art_cats":
             sale_dates = self.inputs[self.COL.sale_dates.value]
             if isinstance(sale_dates, QLineEdit):
                 sale_dates.editingFinished.connect(self.saledates_action)
@@ -697,7 +698,8 @@ class Editor(QWidget):
                     font.setItalic(True)
                     label.setFont(font)
 
-        elif self.settings.title == "order_form":
+        # elif self.settings.title == "order_form":
+        if self.settings.combos.leaders:
             self.setup_combo_boxes()
             self.load_table(self.tableView, self.data.excel_rows)
 
@@ -707,7 +709,7 @@ class Editor(QWidget):
             if isinstance(input_widget, QComboBox):
                 name = input_widget.objectName()
                 if name in self.settings.combos.independents:
-                    # print(f" ======= {name} is independent")
+                    print(f" ======= {name} is independent")
                     raw_options = self.get_raw_combo_options(
                         self.transform_into_yaml_lookup(name)
                     )
@@ -717,7 +719,7 @@ class Editor(QWidget):
                 else:
                     leader_name = self.settings.combos.dict_by_follower[name]
                     leader_widget = self.leader_inputs[leader_name]
-                    # print(f" ======= {name} is a follower -> {leader_name}")
+                    print(f" ======= {name} is a follower -> {leader_name}")
                     leader_widget.currentTextChanged.connect(
                         self.handle_update_follower
                     )

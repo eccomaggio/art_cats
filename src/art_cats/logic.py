@@ -691,31 +691,6 @@ def update_settings(settings, COL, pattern_name: str) -> None:
         case "default":
             ## *Default settings are in settings.py
             pass
-            # settings.title = pattern_name
-            # settings.show_table_view = True
-            # settings.locking_is_enabled = False
-            # settings.use_default_layout = False
-            # settings.validation.fields_to_clear = [
-            #     # COL.isbn,
-            # ]
-
-            # settings.validation.required_fields = [
-            #     # COL.subject_consultant.name,
-            # ]
-
-            # settings.validation.must_validate = [
-            #     # COL.isbn.name,
-            # ]
-
-            # settings.combos.independents = [
-            #     # COL.subject_consultant.name,
-            # ]
-
-            # settings.files.help_file = "html/help_default.html"
-            # settings.files.output_dir = Path("")
-            # settings.files.full_output_dir = (
-            #     settings.files.module_dir / settings.files.output_dir
-            # )
 
         case _:
             # logging.warning()
