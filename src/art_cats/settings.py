@@ -80,7 +80,7 @@ class Combos:
 
 @dataclass
 class Default_settings:
-    title = "art_catalogue"
+    title = "default"
     # is_existing_file = True
     is_existing_file = False
     use_default_layout = True

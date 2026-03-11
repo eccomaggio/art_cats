@@ -1508,7 +1508,9 @@ def create_max_lengths(rows: list[list[str]]) -> list[int]:
     max_lengths: list[list[int]] = [[] for _ in rows[0]]
     for row in rows:
         for i, col in enumerate(row):
-            max_lengths[i].append(len(col))
+            length_of_content = 10 if not col else len(col)
+            # max_lengths[i].append(len(col))
+            max_lengths[i].append(length_of_content)
     return [max(col) for col in max_lengths]
 
 
@@ -1542,7 +1544,7 @@ def create_max_lengths(rows: list[list[str]]) -> list[int]:
 
 def create_dynamic_enum(
     class_name: str, internal_names: list[str], display_labels: list[str]
-):
+) -> Enum:
     # 1. Define the logic in a plain object mixin (NOT an Enum yet)
     class MemberMixin:
         _value_:str
@@ -1571,50 +1573,43 @@ def create_dynamic_enum(
     )
 
 
-def analyse_existing_file(settings: Default_settings, grid:Grid, COL):
+# def analyse_existing_file(settings: Default_settings, grid:Grid, COL):
+def analyse_existing_file(settings: Default_settings, COL):
     logging.info(f"processing file: {settings.files.in_file}")
     headers, rows = io.parse_file_into_rows(
         Path(settings.files.in_file), settings.first_row_is_header
     )
     settings.files.out_file = f"{Path(settings.files.in_file).stem}.new"
-    expected_col_count = len(COL)
-    file_resembles_expectations = len(headers) == expected_col_count
-    print(
-        f"Setup environment: {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}"
-    )
-    # TODO: offer the user the chance to customise the names? NO, only the text labels
-    # col_names = [f"col{i}" for i, _ in enumerate(headers)]
-    known_match = get_match_to_known_type(settings, headers)
-    print(f"{10*"*"}\nMatches: {known_match or "...nowt..."}\n{10*"*"}")
-    # COL:Enum = create_dynamic_enum("COL", col_names, headers)
-    if known_match:
-        cols, display_titles = settings.known_types[known_match]
-        col_names = [col[0].lower() for col in cols]
-        settings.column_names = col_names
-        # settings.headers = display_titles
-        COL = create_dynamic_enum("COL", col_names, display_titles)
-        # show_col(COL)
-        logic.update_settings(settings, COL, known_match)
-        template = []
-        for i, col in enumerate(COL):
-            line = (col, *cols[i][1:])
-            template.append(line)
-        settings.template = template
-        grid.add_bricks_by_template(settings.template)
+    pattern_name = get_match_to_known_type(settings, headers)
+    logger.info(f"{10*"*"}\nMatches: {pattern_name or "...nowt..."}\n{10*"*"}")
+    if pattern_name:
+        ## *NAMED PATTERN i.e. it recognises the file
+        cols, headers = settings.known_types[pattern_name]
+        COL = create_columns(settings, pattern_name, headers, cols)
+        grid = get_grid_from_pattern(settings, pattern_name, COL)
     else:
-        col_names = [f"col{i}" for i, _ in enumerate(headers)]
-        COL:Enum = create_dynamic_enum("COL", col_names, headers)
-        logic.update_settings(settings, COL, "default")
-        max_lengths = create_max_lengths(rows)
-        layout = [select_brick_by_content_length(length) for length in max_lengths]
-        for id, (brick, widget_type) in enumerate(layout):
-            grid.add_brick_algorithmically(id, brick, headers[id], "", widget_type)
+        ## *UNKNOWN PATTERN i.e. it doesn't recognise the file
+        COL = create_columns(settings, "default", headers)
+        grid = get_grid_from_algorithm(rows, headers)
+
             # print(f"{col_names=}\n\tHeader count matches cols?: {len(headers)==len(col_names)}")
             # show_col(COL)
             # print("**Layout:**")
             # pprint(layout)
             # pprint(grid.rows)
     return (headers, rows, grid, COL)
+
+
+def create_columns(settings:Default_settings, pattern_name, headers: list[str], cols:None | list[str]=None) -> Enum:
+    if not cols:
+        col_names = [f"col{i}" for i, _ in enumerate(headers)]
+    else:
+        col_names = [col[0].lower() for col in cols]
+    # settings.column_names = col_names
+    COL = create_dynamic_enum("COL", col_names, headers)
+    logic.update_settings(settings, COL, pattern_name)
+    settings.column_names = col_names
+    return COL
 
 
 def show_col(enum) -> None:
@@ -1632,16 +1627,50 @@ def get_match_to_known_type(settings:Default_settings, headers:list[str]) -> str
     return ""
 
 
-def create_file_from_column_count(column_count:int):
+def get_grid_from_pattern(settings:Default_settings, pattern_name:str, COL:Enum) -> Grid:
+    template = []
+    grid = Grid()
+    cols, headers = settings.known_types[pattern_name]
+    for i, col in enumerate(COL):
+        line = (col, *cols[i][1:])
+        template.append(line)
+    settings.template = template
+    grid.add_bricks_by_template(settings.template)
+    return grid
+
+
+def get_grid_from_algorithm(rows:list[list[str]], headers:list[str]) -> Grid:
+    grid = Grid()
+    max_lengths = create_max_lengths(rows)
+    layout = [select_brick_by_content_length(length) for length in max_lengths]
+    for id, (brick, widget_type) in enumerate(layout):
+        grid.add_brick_algorithmically(id, brick, headers[id], "", widget_type)
+    return grid
+
+
+def create_file_from_column_count(settings:Default_settings, column_count:int) -> tuple[list[str], list[list[str]], Grid, Enum]:
     ## need to create new file + add in programmatic col names
     print(f"**Loading UI for new file with {column_count} columns")
-    sys.exit(0)
+    settings.files.out_file = f"tmp_{column_count}_cols.csv"
+    headers = [f"Col{i}" for i in range(0, column_count)]
+    COL = create_columns(settings, "default", headers)
+    settings.files.out_file = f"tmp_{column_count}_cols.csv"
+    rows = [["" for _ in range(0,column_count)]]
+    grid = get_grid_from_algorithm(rows, headers)
+    # sys.exit(0)
+    return (headers, rows, grid, COL)
 
 
-def create_file_from_pattern(pattern_name:str):
+def create_file_from_pattern(settings:Default_settings, pattern_name:str) -> tuple[list[str], list[list[str]], Grid, Enum]:
     ## need to create new file + add in settings & col names from settings.known_patterns
     print(f"**Loading UI for new file using the {pattern_name} pattern")
-    sys.exit(0)
+    cols, headers = settings.known_types[pattern_name]
+    COL = create_columns(settings, pattern_name, headers)
+    settings.files.out_file = f"tmp_{pattern_name}_cols.csv"
+    grid = get_grid_from_pattern(settings, pattern_name, COL)
+    rows = []
+    # sys.exit(0)
+    return (headers, rows, grid, COL)
 
 
 def setup_environment(settings: Default_settings, headers:list[str], COL):
@@ -1656,11 +1685,12 @@ def setup_environment(settings: Default_settings, headers:list[str], COL):
         ## * entry point for universal.py; generalise for all files
         from_file, column_count, pattern_name = get_file_pattern_and_name_from_user(settings)
         if from_file:
-            headers, rows, grid, COL = analyse_existing_file(settings, grid, COL)
+            # headers, rows, grid, COL = analyse_existing_file(settings, grid, COL)
+            headers, rows, grid, COL = analyse_existing_file(settings, COL)
         elif column_count:
-            create_file_from_column_count(column_count)
+            headers, rows, grid, COL = create_file_from_column_count(settings, column_count)
         else:
-            create_file_from_pattern(pattern_name)
+            headers, rows, grid, COL = create_file_from_pattern(settings, pattern_name)
 
     else:
         ## * entry point for art.py / strachan.py / orders.py routes

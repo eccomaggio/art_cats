@@ -506,10 +506,10 @@ known_patterns = {
 }
 
 
-def update_settings(settings, COL, title_of_filetype: str) -> None:
-    match title_of_filetype:
+def update_settings(settings, COL, pattern_name: str) -> None:
+    match pattern_name:
         case "art_cats":
-            settings.title = title_of_filetype
+            settings.title = pattern_name
             settings.show_marc_button = True
             # settings.column_names = [column.name for column in COL]
             # settings.headers = [member.display_title for member in COL]
@@ -630,7 +630,7 @@ def update_settings(settings, COL, title_of_filetype: str) -> None:
             )
 
         case "orders":
-            settings.title = title_of_filetype
+            settings.title = pattern_name
             # settings.column_names = [column.name for column in COL]
             # settings.headers = [member.display_title for member in COL]
             settings.show_table_view = True
@@ -686,7 +686,8 @@ def update_settings(settings, COL, title_of_filetype: str) -> None:
             )
 
         case "default":
-            settings.title = title_of_filetype
+            ## TODO: delete settings below and keep them in settings.py??
+            settings.title = pattern_name
             settings.show_table_view = True
             settings.locking_is_enabled = False
             settings.use_default_layout = False
@@ -712,4 +713,4 @@ def update_settings(settings, COL, title_of_filetype: str) -> None:
 
         case _:
             # logging.warning()
-            print(f"{title_of_filetype} is not a recognised filetype.")
+            print(f"{pattern_name} is not a recognised filetype.")
