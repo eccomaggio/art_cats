@@ -11,9 +11,9 @@
 
 To do:
 
-- **check 'holding_notes'** - they seem to have different uses / marc fields between art_cats and strachan
+- DONE - **check 'holding_notes'** - they seem to have different uses / marc fields between art_cats and strachan
 
-- if file type recognized by universal.py, apply relevant settings
+- DONE - if file type recognized by universal.py, apply relevant settings
 - remove redundant COL declarations from entry point files (when file-specific settings are plumbed in)
 - DONE - rewrite art.py / strachan.py / orders.py to send headers/col_names to create COL on the fly
 - add in a way to force a filetype on a file EVEN IF the headers don't match AS LONG AS the number of columns matches.

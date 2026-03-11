@@ -709,7 +709,7 @@ class Editor(QWidget):
             if isinstance(input_widget, QComboBox):
                 name = input_widget.objectName()
                 if name in self.settings.combos.independents:
-                    print(f" ======= {name} is independent")
+                    # print(f" ======= {name} is independent")
                     raw_options = self.get_raw_combo_options(
                         self.transform_into_yaml_lookup(name)
                     )
@@ -719,7 +719,7 @@ class Editor(QWidget):
                 else:
                     leader_name = self.settings.combos.dict_by_follower[name]
                     leader_widget = self.leader_inputs[leader_name]
-                    print(f" ======= {name} is a follower -> {leader_name}")
+                    # print(f" ======= {name} is a follower -> {leader_name}")
                     leader_widget.currentTextChanged.connect(
                         self.handle_update_follower
                     )
@@ -1582,7 +1582,8 @@ def get_existing_file(settings: Default_settings, COL):
     )
     settings.files.out_file = f"{Path(settings.files.in_file).stem}.new"
     pattern_name = get_match_to_known_type(settings, headers)
-    logger.info(f"{10*"*"}\nMatches: {pattern_name or "...nowt..."}\n{10*"*"}")
+    # logger.info(f"{10*"*"}\nMatches: {pattern_name or "...nowt..."}\n{10*"*"}")
+    logger.info(f"{10*"*"} Matches: {pattern_name or "...nowt... "}{10*"*"}")
     if pattern_name:
         ## *NAMED PATTERN i.e. it recognises the file
         cols, headers = settings.known_types[pattern_name]
@@ -1606,7 +1607,6 @@ def create_columns(settings:Default_settings, pattern_name, headers: list[str], 
         col_names = [f"col{i}" for i, _ in enumerate(headers)]
     else:
         col_names = [col[0].lower() for col in cols]
-    # settings.column_names = col_names
     COL = create_dynamic_enum("COL", col_names, headers)
     show_col(COL)
     logic.update_settings(settings, COL, pattern_name)
