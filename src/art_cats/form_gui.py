@@ -1581,12 +1581,12 @@ def get_existing_file(settings: Default_settings, COL):
         Path(settings.files.in_file), settings.first_row_is_header
     )
     settings.files.out_file = f"{Path(settings.files.in_file).stem}.new"
-    pattern_name = get_match_to_known_type(settings, headers)
+    pattern_name = get_identity_of_file_pattern(settings, headers)
     # logger.info(f"{10*"*"}\nMatches: {pattern_name or "...nowt..."}\n{10*"*"}")
     logger.info(f"{10*"*"} Matches: {pattern_name or "...nowt... "}{10*"*"}")
     if pattern_name:
         ## *NAMED PATTERN i.e. it recognises the file
-        cols, headers = settings.known_types[pattern_name]
+        _, cols, headers = settings.known_types[pattern_name]
         COL = create_columns(settings, pattern_name, headers, cols)
         grid = get_grid_from_pattern(settings, pattern_name, COL)
     else:
@@ -1620,19 +1620,37 @@ def show_col(enum) -> None:
         print(f"\t{member.value}: {member.name}->{member.display_title}")
 
 
-def get_match_to_known_type(settings:Default_settings, headers:list[str]) -> str:
-    for title, (cols, display_titles) in settings.known_types.items():
-        # print(f">>>>>>\n\tA:({len(headers)}) {headers}\n\tB:{len(display_titles)}() {display_titles}")
-        col_names = [col[0] for col in cols]
-        if (len(headers) == len(col_names)) and headers == display_titles:
+def get_identity_of_file_pattern(settings:Default_settings, headers:list[str]) -> str:
+    print(f"******{headers}")
+    col_count_of_new_file = len(headers)
+    for (title,((index1, index2),cols,display_titles)) in settings.known_types.items():
+        print(f"{col_count_of_new_file=}=={len(cols)=} {index1=}, {index2=}")
+        if index1 <= col_count_of_new_file:
+            print(f"{headers[index1][:4].lower()} == {cols[index1][0][:4]}")
+        if index2 <= col_count_of_new_file:
+            print(f"{headers[index2][:4].lower()} == {cols[index2][0][:4]}")
+        if (
+            len(headers) == len(cols) and
+            index1 <= col_count_of_new_file and
+            index2 <= col_count_of_new_file and
+            headers[index1][:4].lower() == cols[index1][0][:4] and
+            headers[index2][:4].lower() == cols[index2][0][:4]
+        ):
             return title
     return ""
+# def get_identity_of_file_pattern(settings:Default_settings, headers:list[str]) -> str:
+#     for title, (cols, display_titles) in settings.known_types.items():
+#         # print(f">>>>>>\n\tA:({len(headers)}) {headers}\n\tB:{len(display_titles)}() {display_titles}")
+#         col_names = [col[0] for col in cols]
+#         if (len(headers) == len(col_names)) and headers == display_titles:
+#             return title
+#     return ""
 
 
 def get_grid_from_pattern(settings:Default_settings, pattern_name:str, COL:Enum) -> Grid:
     template = []
     grid = Grid()
-    cols, headers = settings.known_types[pattern_name]
+    _, cols, headers = settings.known_types[pattern_name]
     for i, col in enumerate(COL):
         line = (col, *cols[i][1:])
         template.append(line)
@@ -1667,7 +1685,7 @@ def create_file_from_column_count(settings:Default_settings, column_count:int) -
 def create_file_from_pattern(settings:Default_settings, pattern_name:str) -> tuple[list[str], list[list[str]], Grid, Enum]:
     ## need to create new file + add in settings & col names from settings.known_patterns
     print(f"**Loading UI for new file using the {pattern_name} pattern")
-    cols, headers = settings.known_types[pattern_name]
+    _, cols, headers = settings.known_types[pattern_name]
     COL = create_columns(settings, pattern_name, headers, cols)
     settings.files.out_file = f"tmp_{pattern_name}_cols.csv"
     rows = [["" for _ in range(0, len(settings.column_names))]]

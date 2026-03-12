@@ -355,15 +355,23 @@ def singular_or_plural(count: int, plural="s", singular="") -> str:
     return plural if count != 1 else singular
 
 
+"""
+{file-pattern-name: [
+[col_index to identify 1st 3 letters x2],
+[col_name,
+(brick height, brick length),
+start-row (0-indexed),
+start-col, widget-type]
+, [display_titles]
+]}
+
+The col_indices for identification should be chosen to be
+both diagnostic and unlikely to change (e.g. 'barcode' is safe, although it is nearly always the last column;
+'publication date' isn't great coz it could be 'date of publication'...)
+"""
 known_patterns = {
-    # {data-name: [
-    # [col_name,
-    # (brick height, brick length),
-    # start-row (0-indexed),
-    # start-col, widget-type]
-    # , [display_titles]
-    # ]}
     "art_cats": [
+        [13, 27],
         [
             ("sublib", (1, 2), 0, 0, "combo"),
             ("langs", (1, 2), 0, 2, "line"),
@@ -426,6 +434,7 @@ known_patterns = {
         ],
     ],
     "strachan": [
+        [4, 13],
         [
             ("langs", (1, 2), 0, 0, "line"),
             ("isbn", (1, 2), 0, 2, "line"),
@@ -466,6 +475,7 @@ known_patterns = {
         ],
     ],
     "orders": [
+        [0, 1],
         [
             ("subject_consultant", (1, 2), 0, 0, "combo"),
             ("fund_code", (1, 2), 1, 0, "combo"),

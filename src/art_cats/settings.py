@@ -46,6 +46,7 @@ class Validation:
     validation_skip_text = "*dummy*"
 
 
+
 @dataclass
 class Styles:
     text_changed = "background-color: mistyrose; border: 1px solid silver;"
@@ -86,7 +87,7 @@ class Combos:
 class Default_settings:
     title = "default"
     # is_existing_file = True:w
-    
+
     is_existing_file = False
     file_newly_created = False
     use_default_layout = True
