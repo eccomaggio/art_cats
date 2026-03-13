@@ -539,7 +539,6 @@ def update_settings(settings, COL, pattern_name: str) -> None:
                 COL.sales_code,
             ]
             settings.clear_all_fields = False
-            ## * This supplements .fields_to_clear: if .fields_to_clear is empty and .clear_all_fields is True, then all fields will be cleared when a new record is created.
             settings.validation.fields_to_fill_info = {
                 # COL.sublib.name : "ARTBL",
             }
@@ -559,31 +558,6 @@ def update_settings(settings, COL, pattern_name: str) -> None:
                 COL.barcode.name,
                 COL.illustrations,
             ]
-            settings.validation.mandatory_marc_fields = {
-                0:  True,    # Leader
-                40:  True,   # cataloguing source: Oxford (boilerplate)
-                336: True,   # content type (boilerplate)
-                337: True,   # media type (boilerplate)
-                338: True,   # carrier type (boilerplate)
-                904: True,   # authority Ox Local Record (boilerplate)
-                5:   True,   # timestamp (boilerplate)
-                8:   True,   # pub details
-                33:  True,   # sale date
-                245: True,   # title
-                264: True,   # publisher & copyright
-                300: True,   # physical description
-                490: False,  # series statement
-                876: True,   # notes / barcode
-                20:  False,  # isbn
-                24:  False,  # sales code
-                41:  False,  # language if not monolingual
-                246: False,  # parallel title
-                500: False,  # general notes
-                100: False,  # artist
-                700: False,  # author(s)
-                852: False,  # call number
-
-            }
             settings.combos.independents = [
                 COL.illustrations.name,
             ]
@@ -656,30 +630,6 @@ def update_settings(settings, COL, pattern_name: str) -> None:
                 COL.size.name,
                 COL.barcode.name,
             ]
-            settings.validation.mandatory_marc_fields = {
-                40:  True,   # cataloguing source: Oxford (boilerplate)
-                336: True,   # content type (boilerplate)
-                337: True,   # media type (boilerplate)
-                338: True,   # carrier type (boilerplate)
-                904: True,   # authority Ox Local Record (boilerplate)
-                5:   True,   # timestamp (boilerplate)
-                8:   True,   # pub details
-                33:  False,   # sale date
-                245: True,   # title
-                264: True,   # publisher & copyright
-                300: True,   # physical description
-                490: False,  # series statement
-                876: True,   # notes / barcode
-                20:  False,  # isbn
-                24:  False,  # sales code
-                41:  False,  # language if not monolingual
-                246: False,  # parallel title
-                500: False,  # general notes
-                100: False,  # artist
-                700: False,  # author(s)
-                852: False,  # call number
-
-            }
             settings.combos.independents = [
                 # COL.is_illustrated.name,
             ]
@@ -719,7 +669,6 @@ def update_settings(settings, COL, pattern_name: str) -> None:
                 COL.item_policy.name,
                 COL.bib_info.name,
             ]
-            settings.validation.mandatory_marc_fields = {}
             settings.validation.must_validate = [
                 COL.isbn.name,
                 COL.hold_for.name,

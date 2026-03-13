@@ -934,9 +934,6 @@ def parse_rows_into_records(
     logger.info("\n\n++++ Validating records")
     # print(f"Marc21 parse rows: {live_settings.column_names=}")
     for row_num, row in enumerate(sheet):
-        if "".join(row) == "":
-            logger.warning(f"Row {row_num} is empty.")
-            continue
         record = parse_row(
             row,
             row_num,
@@ -1054,8 +1051,7 @@ def parse_row(
     return record
 
 
-# def build_leader(record: Record) -> Result:
-def build_000(record: Record) -> Result:
+def build_leader(record: Record) -> Result:
     """leader (0 is only for sorting purposes; should read 'LDR')"""
     tag = 0
     # blank = " "
@@ -1654,10 +1650,8 @@ def create_parallel_title(record: Record) -> Result:
         parallel_subtitle = record.parallel_subtitle.transliteration
         parallel_title = record.parallel_title.transliteration
     elif has_parallel_title:  ## (i.e. Western script)
+        lang = record.langs[1]
         parallel_subtitle = record.parallel_subtitle.original
-        if len(record.langs) == 1:
-            logger.critical(f"A parallel title requires two languages ({parallel_subtitle})")
-        lang = record.langs[1] if len(record.langs) > 1 else record.langs[0]
         _, parallel_title_without_initial_article = check_for_nonfiling(
             record.parallel_title.original, lang
         )
@@ -1886,54 +1880,48 @@ def check_for_nonfiling(title: str, lang: str = "eng") -> tuple[str, str]:
     return result
 
 
-def build_marc_records(records: list[Record], mandatory_marc_records:dict) -> list[PyRecord]:
+def build_marc_records(records: list[Record]) -> list[PyRecord]:
     ## NB. This differs from the non-pymarc version
     marc_records: list[PyRecord] = []
-    for i, record in enumerate(records):
-        print(f"Building marc record no.{i+1}")
-        marc = apply_marc_logic(record, mandatory_marc_records)
+    for record in records:
+        marc = apply_marc_logic(record)
         marc_records.append(marc)
     return marc_records
 
 
-def apply_marc_logic(record: Record, mandatory_marc_records:dict) -> PyRecord:
-    fields_to_deploy: tuple[Callable, ...] = (
-        build_000,
-        build_040,  # cataloguing source: Oxford (boilerplate)
-        build_336,  # content type (boilerplate)
-        build_337,  # media type (boilerplate)
-        build_338,  # carrier type (boilerplate)
-        build_904,  # authority Ox Local Record (boilerplate)
-        build_005,  # timestamp (boilerplate)
-        build_008,  # pub details
-        build_033,  # sale date
-        build_245,  # title
-        build_264,  # publisher & copyright
-        build_300,  # physical description
-        build_490,  # series statement
-        build_876,  # notes / barcode
-        build_020,  # isbn
-        build_024,  # sales code
-        build_041,  # language if not monolingual
-        build_246,  # parallel title
-        build_500,  # general notes
-        build_100,  # artist
-        build_700,  # author(s)
-        build_852,  # call number
+def apply_marc_logic(record: Record) -> PyRecord:
+    fields_to_deploy: tuple[tuple[Callable, bool], ...] = (
+        (build_leader, True),
+        (build_040, True),   # cataloguing source: Oxford (boilerplate)
+        (build_336, True),   # content type (boilerplate)
+        (build_337, True),   # media type (boilerplate)
+        (build_338, True),   # carrier type (boilerplate)
+        (build_904, True),   # authority Ox Local Record (boilerplate)
+        (build_005, True),   # timestamp (boilerplate)
+        (build_008, True),   # pub details
+        (build_033, True),   # sale date
+        (build_245, True),   # title
+        (build_264, True),   # publisher & copyright
+        (build_300, True),   # physical description
+        (build_490, False),  # series statement
+        (build_876, True),   # notes / barcode
+        (build_020, False),  # isbn
+        (build_024, False),  # sales code
+        (build_041, False),  # language if not monolingual
+        (build_246, False),  # parallel title
+        (build_500, False),  # general notes
+        (build_100, False),  # artist
+        (build_700, False),  # author(s)
+        (build_852, False),  # call number
     )
     pymarc_record = PyRecord()
-    # for builder, is_mandatory in fields_to_deploy:
-    for builder in fields_to_deploy:
-        field_num = int(builder.__name__[6:])
-        is_mandatory = mandatory_marc_records[field_num]
-        # print(f"DEBUG: {builder.__name__}, {field_num=}, {mandatory_marc_records[field_num]}")
+    for builder, is_mandatory in fields_to_deploy:
         build_output: Result = builder(record)
         # returned_fields = check_if_mandatory(builder(record), is_mandatory)
         returned_fields = check_if_mandatory(build_output, is_mandatory)
         # print(f"apply logic: {build_output=},{returned_fields}")
         if returned_fields:
-            # if builder.__name__ == "build_leader":
-            if builder.__name__ == "build_000":
+            if builder.__name__ == "build_leader":
                 # print(f">>>>>>>>>?>>>>>> {returned_fields[0].value()}")
                 pymarc_record.leader = returned_fields[0].value()
             else:
@@ -1957,7 +1945,7 @@ def save_as_marc_files(
     for once the marc files have been uploaded to ALMA
     """
     records = parse_rows_into_records(rows_from_gui, live_settings)
-    marc_records = build_marc_records(records, live_settings.validation.mandatory_marc_fields)
+    marc_records = build_marc_records(records)
     write_marc21_files(marc_records, Path(file_name_with_path))
 
     if live_settings.create_chu_file:
