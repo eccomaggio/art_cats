@@ -21,7 +21,7 @@ class Data:
     current_row_index = 0
     record_is_locked = False
     all_text_is_saved = True
-    # record_is_new = True
+    form_has_been_cleared = False
 
     @property
     def row_count(self) -> int:
@@ -81,32 +81,50 @@ def gatekeeper(source: str, editor) -> bool:
             barcode -> choose_to_save_on_barcode()
     """
     authorised_to_continue = False
+    data:Data = editor.data
+    # print(f"?? gatekeeper: *{data.form_has_been_cleared=}*")
+    # if data.form_has_been_cleared:
+    #     if source == "submit":
+    #         authorised_to_continue = True
+    #     else:
+    #         authorised_to_continue = False
+    #         editor.show_alert_box(
+    #             "The record is empty. You must either fill it or save it (which will delete it)."
+    #         )
+    #     return authorised_to_continue
 
     is_saved = check_if_saved(editor, source)
-    # print(f"gatekeeping for {source=} [{is_saved=}]")
-    if source not in ["submit"]:
+    # print(f"** gatekeeping for {source=} [{is_saved=}], [{data.form_has_been_cleared=}]")
+    if source in ["submit"]:
+        # print(f"DEBUG: {is_saved=}")
         if is_saved:
+            authorised_to_continue = False
+        else:
+            authorised_to_continue = validate_record_before_saving(editor)
+    else:
+        if data.form_has_been_cleared:
+            editor.show_alert_box(
+                "The record is empty. You must either fill it or save it (which will delete it)."
+            )
+            authorised_to_continue = False
+        elif is_saved:
             authorised_to_continue = True
         else:
             authorised_to_continue = False
             editor.show_alert_box(
                 "Check the record is correct and then save it before continuing."
             )
-    else:
-        if is_saved:
-            authorised_to_continue = False
-        else:
-            authorised_to_continue = check_record_can_be_saved(editor)
     return authorised_to_continue
 
 
-def check_record_can_be_saved(editor, source="submit") -> bool:
-    record_as_dict, is_empty = editor.get_all_inputs()
+def validate_record_before_saving(editor, source="submit") -> bool:
+    row_as_dict, is_empty = editor.get_all_inputs()
+    # print(f"Validate record before saving: {row_as_dict}, {is_empty=}")
     if is_empty:
         authorised_to_continue = handle_empty_records(editor, source)
     else:
         problem_items, error_details, is_dummy = validation.validate(
-            record_as_dict,
+            row_as_dict,
             editor.settings,
         )
         if problem_items:
@@ -114,7 +132,7 @@ def check_record_can_be_saved(editor, source="submit") -> bool:
             editor.show_alert_box(error_details)
             authorised_to_continue = False
         else:
-            add_record(editor, record_as_dict)
+            add_record(editor, row_as_dict)
             authorised_to_continue = True
     return authorised_to_continue
 
@@ -130,12 +148,6 @@ def check_if_saved(editor, source) -> bool:
     record_is_saved = editor.data.all_text_is_saved
     if not record_is_saved and source not in ("submit", "lock"):
         record_is_saved = not editor.choose_to_abort_on_unsaved_text()
-    # treat_as_saved = False
-    # if source != "submit" and not editor.data.all_text_is_saved:
-    #     treat_as_saved = not editor.choose_to_abort_on_unsaved_text()
-    #     # all_saved = False
-    #     # error_msg = "There is some unsaved information. Please save before continuing"
-    #     # editor.show_alert_box(error_msg)
     return record_is_saved
 
 
@@ -149,7 +161,7 @@ def handle_empty_records(editor, source: str) -> bool:
         # return False
         save_is_authorised = False
     else:
-        editor.delete_record()
+        delete_record(editor)
         # return True
         save_is_authorised = True
     return save_is_authorised
@@ -280,7 +292,13 @@ def map_fits_list(mappings: list, orig: list) -> bool:
 def format_list_for_marc(
     records: list[list[str]], live_settings: Default_settings
 ) -> list[list[str]]:
+    """
+    Makes sure the record contains the correct information in the correct order:
+    1) makes order of fields match marc standard
+    2) supplies marc-internal fields with empty strings to be expanded later
+    """
     internal_fields = {
+        "id",
         "state",
         "country_code",
         "pub_year_is_approx",
@@ -300,8 +318,6 @@ def format_list_for_marc(
         # * apply corrective column mapping if necessary
         if must_normalise_column_order:
             record = map_list(record, live_settings.csv_to_marc_mappings)
-        # else:
-        #     record = raw_record
         curr_row = []
         _col = iter(record)
         # print(f"Record number {record_num + 1}:")
@@ -320,7 +336,7 @@ def format_list_for_marc(
     return augmented_records
 
 
-def remove_dummy_records(
+def remove_dummy_rows(
     records: list[list[str]], live_settings: Default_settings, COL
 ) -> list:
     target_col_name = live_settings.validation.validation_skip_fieldname
@@ -339,16 +355,47 @@ def remove_dummy_records(
             # continue
         else:
             list_without_dummies.append(record)
-    # print(f">>>> {len(records)=} vs {len(list_without_dummies)=}")
-    # number_of_records_removed = len(records) - len(list_without_dummies)
-    number_of_records_removed = len(indices_of_dummies)
-    # if number_of_records_removed > 0:
-    if number_of_records_removed > 0:
-        print(f"{indices_of_dummies=}")
+    number_of_rows_removed = len(indices_of_dummies)
+    if number_of_rows_removed > 0:
+        # print(f"{indices_of_dummies=}")
         logging.warning(
-            f"The following {number_of_records_removed} dummy record{singular_or_plural(number_of_records_removed)} {singular_or_plural(number_of_records_removed, "were", "was")} removed from the export to Marc 21 format: {", ".join((str(el + 1) for el in indices_of_dummies))}"
+            f"The following {number_of_rows_removed} dummy record{singular_or_plural(number_of_rows_removed)} {singular_or_plural(number_of_rows_removed, "were", "was")} removed from the export to Marc 21 format: {", ".join((str(el + 1) for el in indices_of_dummies))}"
         )
     return list_without_dummies
+
+
+def remove_empty_rows(
+    rows: list[list[str]], settings: Default_settings, COL
+) -> list[list[str]]:
+    """
+    logic:
+    iterate each column in each row:
+    - if no value, then check the next col
+    - if the col is in an autofill column, ignore it and check next col
+    - if no values or only in autofill, skip this row
+    - as soon as a non-autofill value is found, save the whole row and go on to next row
+    """
+    full_rows = []
+    count_of_empty_rows = 0
+    for row_num, row in enumerate(rows):
+        this_row_is_empty = True
+        for col_num, value in enumerate(row):
+            # if row_num == 0:
+            # print(f"{col_num=} => {settings.column_names[col_num]} -> {settings.validation.fields_to_autofill}")
+            if not value:
+                continue
+            if settings.column_names[col_num] in settings.validation.fields_to_autofill:
+                continue
+            this_row_is_empty = False
+            break
+        if this_row_is_empty:
+            count_of_empty_rows += 1
+            continue
+        full_rows.append(row)
+    # full_rows = rows
+    if count_of_empty_rows:
+        logger.info(f"{count_of_empty_rows} empty rows were removed.")
+    return full_rows
 
 
 def singular_or_plural(count: int, plural="s", singular="") -> str:
@@ -540,11 +587,11 @@ def update_settings(settings, COL, pattern_name: str) -> None:
             ]
             settings.clear_all_fields = False
             ## * This supplements .fields_to_clear: if .fields_to_clear is empty and .clear_all_fields is True, then all fields will be cleared when a new record is created.
-            settings.validation.fields_to_fill_info = {
-                # COL.sublib.name : "ARTBL",
+            settings.validation.fields_to_autofill_info = {
+                # COL.sublib.name: "ARTBL",
             }
-            settings.validation.fields_to_fill = list(
-                settings.validation.fields_to_fill_info.keys()
+            settings.validation.fields_to_autofill = list(
+                settings.validation.fields_to_autofill_info.keys()
             )
             settings.validation.required_fields = [
                 COL.langs.name,
@@ -560,34 +607,36 @@ def update_settings(settings, COL, pattern_name: str) -> None:
                 COL.illustrations,
             ]
             settings.validation.mandatory_marc_fields = {
-                0:  True,    # Leader
-                40:  True,   # cataloguing source: Oxford (boilerplate)
-                336: True,   # content type (boilerplate)
-                337: True,   # media type (boilerplate)
-                338: True,   # carrier type (boilerplate)
-                904: True,   # authority Ox Local Record (boilerplate)
-                5:   True,   # timestamp (boilerplate)
-                8:   True,   # pub details
-                33:  True,   # sale date
-                245: True,   # title
-                264: True,   # publisher & copyright
-                300: True,   # physical description
+                0: True,  # Leader
+                40: True,  # cataloguing source: Oxford (boilerplate)
+                336: True,  # content type (boilerplate)
+                337: True,  # media type (boilerplate)
+                338: True,  # carrier type (boilerplate)
+                904: True,  # authority Ox Local Record (boilerplate)
+                5: True,  # timestamp (boilerplate)
+                8: True,  # pub details
+                33: True,  # sale date
+                245: True,  # title
+                264: True,  # publisher & copyright
+                300: True,  # physical description
                 490: False,  # series statement
-                876: True,   # notes / barcode
-                20:  False,  # isbn
-                24:  False,  # sales code
-                41:  False,  # language if not monolingual
+                876: True,  # notes / barcode
+                20: False,  # isbn
+                24: False,  # sales code
+                41: False,  # language if not monolingual
                 246: False,  # parallel title
                 500: False,  # general notes
                 100: False,  # artist
                 700: False,  # author(s)
                 852: False,  # call number
-
             }
             settings.combos.independents = [
                 COL.illustrations.name,
             ]
-            settings.validation.must_validate = [COL.barcode.name, COL.isbn.name]
+            settings.validation.must_validate = [
+                COL.barcode.name,
+                COL.isbn.name,
+            ]
             settings.validation.validation_skip_fieldname = COL.barcode.name
             settings.files.help_file = "html/help_art_cats.html"
             # settings.files.output_dir = Path("your_marc_files")
@@ -639,11 +688,11 @@ def update_settings(settings, COL, pattern_name: str) -> None:
                 COL.barcode,
             ]
             settings.clear_all_fields = False
-            settings.validation.fields_to_fill_info = {
+            settings.validation.fields_to_autofill_info = {
                 # COL.sublib.name : "ARTBL",
             }
-            settings.validation.fields_to_fill = list(
-                settings.validation.fields_to_fill_info.keys()
+            settings.validation.fields_to_autofill = list(
+                settings.validation.fields_to_autofill_info.keys()
             )
             settings.validation.required_fields = [
                 COL.langs.name,
@@ -657,28 +706,27 @@ def update_settings(settings, COL, pattern_name: str) -> None:
                 COL.barcode.name,
             ]
             settings.validation.mandatory_marc_fields = {
-                40:  True,   # cataloguing source: Oxford (boilerplate)
-                336: True,   # content type (boilerplate)
-                337: True,   # media type (boilerplate)
-                338: True,   # carrier type (boilerplate)
-                904: True,   # authority Ox Local Record (boilerplate)
-                5:   True,   # timestamp (boilerplate)
-                8:   True,   # pub details
-                33:  False,   # sale date
-                245: True,   # title
-                264: True,   # publisher & copyright
-                300: True,   # physical description
+                40: True,  # cataloguing source: Oxford (boilerplate)
+                336: True,  # content type (boilerplate)
+                337: True,  # media type (boilerplate)
+                338: True,  # carrier type (boilerplate)
+                904: True,  # authority Ox Local Record (boilerplate)
+                5: True,  # timestamp (boilerplate)
+                8: True,  # pub details
+                33: False,  # sale date
+                245: True,  # title
+                264: True,  # publisher & copyright
+                300: True,  # physical description
                 490: False,  # series statement
-                876: True,   # notes / barcode
-                20:  False,  # isbn
-                24:  False,  # sales code
-                41:  False,  # language if not monolingual
+                876: True,  # notes / barcode
+                20: False,  # isbn
+                24: False,  # sales code
+                41: False,  # language if not monolingual
                 246: False,  # parallel title
                 500: False,  # general notes
                 100: False,  # artist
                 700: False,  # author(s)
                 852: False,  # call number
-
             }
             settings.combos.independents = [
                 # COL.is_illustrated.name,

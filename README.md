@@ -15,3 +15,29 @@ Note that column names are always lower-case (important for field names and yaml
 There are many settings that can be tweaked.
 
 I am currently migrating logic / io, etc. from the overstuffed form_gui.py into clearer homes (logic.py, io.py, etc.), but this is still on-going.
+
+Validation is a little complicated:
+
+There are two levels:
+
+1. input record (strings)
+2. MARC record (processed records)
+
+## Validation can only be applied to known patterns
+
+### To set up validation, fill in the following settings:
+ .required_fields (i.e. columns)
+ .mandatory_marc_fields
+ .must_validate
+
+### "dummy records"
+These 'skip validation; and are a way of preserving anomalous records, e.g. because unfinished or for debugging. The 'validation_skip_text' is the text that should immediately start the 'validation_skip_fieldname'
+
+### MARC file validation happens:
+
+1. parse_row()
+2. individual builds [OR should i be more strict and validate before & assume perfect data?]
+
+### Check for mandatory happens:
+
+1. apply_marc_logic() i.e. when building marc records

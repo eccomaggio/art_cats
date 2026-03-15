@@ -18,9 +18,7 @@ class Files:
     module_dir = Path(__file__).parent.parent.parent.parent
     output_dir = Path("output_files")
     full_output_dir = Path(__file__).parent  # module_dir / output_dir
-    full_output_dir = (
-        module_dir / output_dir
-    )
+    full_output_dir = module_dir / output_dir
     help_file = "html/help_default.html"
     backup_file = "backup.bak"
     # in_file_full = ""
@@ -33,10 +31,10 @@ class Files:
 class Validation:
     fields_to_clear = []
     clear_all_fields = True
-    fields_to_fill_info = {
+    fields_to_autofill_info = {
         # [COL.sublib.name : "ARTBL",
     }
-    fields_to_fill = []
+    fields_to_autofill = []
     required_fields = []
     must_validate = []
     # validate_always = []
@@ -45,7 +43,6 @@ class Validation:
     validation_skip_fieldname = ""
     validation_skip_text = "*dummy*"
     mandatory_marc_fields = {}
-
 
 
 @dataclass

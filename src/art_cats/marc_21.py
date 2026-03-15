@@ -56,6 +56,7 @@ class Title:
 
 @dataclass
 class Record:
+    id: int
     sublib: str
     langs: list[str]
     isbn: str
@@ -609,7 +610,6 @@ code_by_city = {
     "Adelaide": "xra",
 }
 
-# code_can_be_expanded = set(["xxu", "xxk", "xxc", "at"])
 code_can_be_expanded = {"xxu", "xxk", "xxc", "at"}
 
 def flexible_split(raw:str, ignore_commas=False) -> list[str]:
@@ -669,7 +669,7 @@ def norm_langs(raw: str) -> list[str]:
             list_of_languages.append(lang_code)
         else:
             logger.warning(
-                f"Warning: {language} is not a recognised language; it has been passed on unchanged."
+                f"{language} is not a recognised language; it has been passed on unchanged."
             )
         # try:
         #     list_of_languages.append(code_by_language[language])
@@ -766,37 +766,37 @@ def get_country_code(country:str, place:str, row_num:int) -> tuple[str, str, str
     return (city, state, country_code)
 
 
-def validate_record(record: Record, record_num: int) -> bool:
-    mandatory = [
-        "sublib",
-        "langs",
-        "title",
-        "country",
-        # "place",
-        "publisher",
-        "pub_year",
-        "pagination",
-        "size",
-        "sale_dates",
-        "barcode",
-    ]
-    is_valid = False
-    place_state_check = 0
-    for field in fields(record):
-        name = field.name
-        is_valid = True
-        if name in ("place", "state"):
-            place_state_check += 1
-        if name in mandatory and not getattr(record, name):
-            logger.warning(
-                f"Record no. {record_num} is missing the mandatory field '{name}'."
-            )
-            is_valid = False
-    if not place_state_check:
-        logger.warning(
-            "A record must have EITHER a place OR a state specified; this lacks both."
-        )
-    return is_valid
+# def validate_record(record: Record, record_num: int, settings:Default_settings) -> bool:
+#     # mandatory = [
+#     #     "sublib",
+#     #     "langs",
+#     #     "title",
+#     #     "country",
+#     #     # "place",
+#     #     "publisher",
+#     #     "pub_year",
+#     #     "pagination",
+#     #     "size",
+#     #     "sale_dates",
+#     #     "barcode",
+#     # ]
+#     mandatory = settings.validation.mandatory_marc_fields
+#     is_valid = False
+#     # place_state_check = 0
+#     for field in fields(record):
+#         name = field.name
+#         is_valid = True
+#         # if name in ("place", "state"):
+#             # place_state_check += 1
+#         if name in mandatory and not getattr(record, name):
+#             logger.warning(
+#                 f"Record no. {record_num} is missing the mandatory field '{name}'."
+#             )
+#             is_valid = False
+
+#     # if not place_state_check:
+#     #     logger.warning( "A record must have EITHER a place OR a state specified; this lacks both.")
+#     return is_valid
 
 
 def norm_dates(raw: str) -> list[str]:
@@ -809,14 +809,6 @@ def norm_size(raw: str) -> int:
     clean_value = int(raw) if raw.isnumeric() else -1
     return clean_value
 
-
-# def norm_illustrations(raw: str) -> bool:
-#     if isinstance(raw, bool):
-#         is_illustrated = raw
-#     else:
-#         # is_illustrated = raw.strip() == "True"
-#         is_illustrated = raw.strip().lower() == "true"
-#     return is_illustrated
 
 def norm_illustrations(raw: str) -> str:
     """
@@ -849,12 +841,6 @@ def norm_year(year_raw: str) -> str:
     year = strip_unwanted(r"[\[\]]", year_raw)
     return year
 
-
-# def norm_authors(authors_raw:list[str]|str) -> list[str]:
-#     if isinstance(authors_raw, str):
-#         return [authors_raw]
-#     else:
-#         return authors_raw
 
 def norm_authors(authors_raw:str) -> list[str]:
     processed = flexible_split(authors_raw, True)
@@ -943,6 +929,8 @@ def parse_rows_into_records(
             current_time,
             live_settings,
             )
+        # validate_record(record, row_num + 1, live_settings)
+        ## ** first-pass validation already applied, further validation performed when records are built
         records.append(record)
     return records
 
@@ -953,9 +941,14 @@ def parse_row(
         current_time: datetime,
         live_settings: Default_settings,
         ) -> Record:
+    """
+    coerces data into expected types
+    performs first-pass validation
+    """
     # print(f"Marc21.py: parsing row {row_num} (={len(row)} cols)")
     _col = iter(row)
 
+    id = row_num
     sublibrary = next(_col)
     langs = norm_langs(next(_col))
     isbn = norm_isbn(next(_col), row_num)
@@ -1010,6 +1003,7 @@ def parse_row(
     authors = process_authors(authors)
 
     record = Record(
+        id,
         sublibrary,
         langs,
         isbn,
@@ -1050,7 +1044,7 @@ def parse_row(
         internal_link_number=1,
         links=[],
     )
-    validate_record(record, row_num + 1)
+    # validate_record(record, row_num + 1)
     return record
 
 
@@ -1326,17 +1320,12 @@ def build_264(record: Record) -> Result:
 def build_300(record: Record) -> Result:
     """physical description"""
     tag = 300
-    # i1, i2 = "\\", "\\"
     i1, i2 = ISBD["BLANK"], ISBD["BLANK"]  ## "undefined"
     pages_content = (
         f"approximately {record.pagination} pages"
         if record.pagination_is_approx
         else f"{record.pagination} pages"
     )
-    # pages_punctuation = ISBD[":"] if record.is_illustrated else ""
-    # pages = Subfield(value=tmp + ISBD[";"], code="a")
-    # pages = Subfield(value=tmp + pages_punctuation, code="a")
-    # size = Subfield(value=f"{ISBD[":"]}{record.size} cm", code="c")
     punctuation = ISBD["."] if record.series_title else ""
     size = Subfield(value=f"{record.size} cm{punctuation}", code="c")
     # if record.is_illustrated:
@@ -1357,7 +1346,6 @@ def build_336(record: Record) -> Result:
     """content type (boilerplate)"""
     tag = 336
     i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
-
     text_content = [
         Subfield(value="text", code="a"),
         Subfield(value="rdacontent", code="2"),
@@ -1365,9 +1353,6 @@ def build_336(record: Record) -> Result:
     text_field = Field(
         tag=link_num(tag), indicators=Indicators(i1, i2), subfields=text_content
     )
-
-    # if record.is_illustrated:
-    # print(f">>>>> {record.is_illustrated.lower()=}, {record.is_illustrated.lower() == "full"}")
     if record.illustrations.lower() == "full":
         illus_content = [
             Subfield(value="still image", code="a"),
@@ -1377,18 +1362,14 @@ def build_336(record: Record) -> Result:
             tag=link_num(tag), indicators=Indicators(i1, i2), subfields=illus_content
         )
         result = Result([text_field, illus_field], None)
-
     else:
         result = Result(text_field, None)
-    # content = [Subfield(value = content_type, code="a"), Subfield(value="rdacontent", code="2")]
-    # result = Result(Field(tag=seq_num(tag), indicators=Indicators(i1, i2), subfields=content), None)
     return result
 
 
 def build_337(record: Record) -> Result:
     """media type (boilerplate)"""
     tag = 337
-    # i1, i2 = "\\", "\\"
     i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
     content = [
         Subfield(value="unmediated", code="a"),
@@ -1403,7 +1384,6 @@ def build_337(record: Record) -> Result:
 def build_338(record: Record) -> Result:
     """carrier type (boilerplate)"""
     tag = 338
-    # i1, i2 = "\\", "\\"
     i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
     content = [
         Subfield(value="volume", code="a"),
@@ -1421,7 +1401,6 @@ def build_876(record: Record) -> Result:
     mandatory because of barcode
     """
     tag = 876
-    # i1, i2 = "\\", "\\"
     i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
     content = [Subfield(value=record.barcode, code="p")]
     if donation := record.donation:
@@ -1440,7 +1419,6 @@ def build_904(record: Record) -> Result:
     i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
     content = [Subfield(value="Oxford Local Record", code="a")]
     result = Result(
-        # Field(tag=seq_num(tag), indicators=Indicators("\\", "\\"), subfields=content),
         Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=content),
         None,
     )
@@ -1448,15 +1426,15 @@ def build_904(record: Record) -> Result:
 
 
 def build_020(record: Record) -> Result:  ##optional
-    """isbn (if exists)"""
+    """isbn (if exists) & volume (if there is an isbn)"""
     tag = 20
     # i1, i2 = "\\", "\\"
     i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
     contents = []
     if record.isbn:
         contents.append(Subfield(value=record.isbn, code="a"))
-    # if record.volume:
-    #     contents.append(Subfield(value=f"volume {record.volume}", code="q"))
+        if record.volume:
+            contents.append(Subfield(value=f"volume {record.volume}", code="q"))
     if contents:
         result = Result(
             Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=contents),
@@ -1490,16 +1468,11 @@ def build_100(record: Record) -> Result:  ##optional
     tag = 100
     i1 = "1"
     i2 = ISBD["BLANK"]
-    # contents = []
     ##* logic: if more than one author, the first goes in 100, the remainder in 700
     if record.authors:
-        # name, dates = record.authors[0]
-        # contents.append(Subfield(value=name, code="a"))
-        # if dates:
-        #     contents.append(Subfield(value=dates, code="d"))
-        contents = get_author_subfields(record.authors[0])
+        principle_author = get_author_subfields(record.authors[0])
         result = Result(
-            Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=contents), None,)
+            Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=principle_author), None,)
     else:
         result = Result(None, (tag, ""))
     return result
@@ -1510,15 +1483,11 @@ def build_700(record: Record) -> Result:  ##optional
     tag = 700
     i1 = "1"
     i2 = ISBD["BLANK"]
-    # contents = []
     ##* logic: if more than one author, the first goes in 100, the remainder in 700
     if len(record.authors) > 1:
-        info = record.authors[1:]
+        non_principle_authors = record.authors[1:]
         fields = []
-        for author in info:
-            # contents.append(Subfield(value=author, code="a"))
-            # author = author.replace(".","") + ISBD["."]
-            # contents = [Subfield(value=author, code="a")]
+        for author in non_principle_authors:
             contents = get_author_subfields(author)
             fields.append(
                 Field(
@@ -1584,9 +1553,7 @@ def build_024(record: Record) -> Result:  ##optional
 def build_041(record: Record) -> Result:  ##optional
     """language codes if not monolingual"""
     tag = 41
-    # i1 = -1  ## "No information...as to whether the item is or includes a translation."
     i1 = "0"  ## "Item not a translation/does not include a translation."
-    # i2 = "\\"  ## "(followed by) MARC language code"
     i2 = ISBD["BLANK"]  ## "(followed by) MARC language code"
     is_multi_lingual = len(record.langs) > 1
     if is_multi_lingual:
@@ -1656,7 +1623,7 @@ def create_parallel_title(record: Record) -> Result:
     elif has_parallel_title:  ## (i.e. Western script)
         parallel_subtitle = record.parallel_subtitle.original
         if len(record.langs) == 1:
-            logger.critical(f"A parallel title requires two languages ({parallel_subtitle})")
+            logger.critical(f"Record {record.id + 1}: A parallel title requires two languages ({parallel_subtitle})")
         lang = record.langs[1] if len(record.langs) > 1 else record.langs[0]
         _, parallel_title_without_initial_article = check_for_nonfiling(
             record.parallel_title.original, lang
@@ -1886,17 +1853,17 @@ def check_for_nonfiling(title: str, lang: str = "eng") -> tuple[str, str]:
     return result
 
 
-def build_marc_records(records: list[Record], mandatory_marc_records:dict) -> list[PyRecord]:
+def build_marc_records(records: list[Record], mandatory_marc_fields:dict) -> list[PyRecord]:
     ## NB. This differs from the non-pymarc version
     marc_records: list[PyRecord] = []
     for i, record in enumerate(records):
-        print(f"Building marc record no.{i+1}")
-        marc = apply_marc_logic(record, mandatory_marc_records)
+        logger.info(f"Building marc record no.{i+1}")
+        marc = apply_marc_logic(record, mandatory_marc_fields)
         marc_records.append(marc)
     return marc_records
 
 
-def apply_marc_logic(record: Record, mandatory_marc_records:dict) -> PyRecord:
+def apply_marc_logic(record: Record, mandatory_marc_fields:dict) -> PyRecord:
     fields_to_deploy: tuple[Callable, ...] = (
         build_000,
         build_040,  # cataloguing source: Oxford (boilerplate)
@@ -1925,16 +1892,12 @@ def apply_marc_logic(record: Record, mandatory_marc_records:dict) -> PyRecord:
     # for builder, is_mandatory in fields_to_deploy:
     for builder in fields_to_deploy:
         field_num = int(builder.__name__[6:])
-        is_mandatory = mandatory_marc_records[field_num]
-        # print(f"DEBUG: {builder.__name__}, {field_num=}, {mandatory_marc_records[field_num]}")
+        is_mandatory = mandatory_marc_fields[field_num]
+        # print(f"DEBUG: {builder.__name__}, {field_num=}, {mandatory_marc_fields[field_num]}")
         build_output: Result = builder(record)
-        # returned_fields = check_if_mandatory(builder(record), is_mandatory)
         returned_fields = check_if_mandatory(build_output, is_mandatory)
-        # print(f"apply logic: {build_output=},{returned_fields}")
         if returned_fields:
-            # if builder.__name__ == "build_leader":
             if builder.__name__ == "build_000":
-                # print(f">>>>>>>>>?>>>>>> {returned_fields[0].value()}")
                 pymarc_record.leader = returned_fields[0].value()
             else:
                 for pyfield in returned_fields:
@@ -1975,16 +1938,6 @@ def save_as_marc_files(
     return file_operations_successful
 
 
-# def add_policy_into_hol_notes(records: list[Record], excel_rows: list[list[str]], hol_index: int) -> list[list[str]]:
-#     updated = []
-#     ## TODO: if keeping, take trigger_string from settings
-#     for i, row in enumerate(excel_rows):
-#         if records[i].item_policy.lower().startswith("use"):
-#             row[hol_index] = "**lib only**" + row[hol_index]
-#         updated.append(row)
-#     return updated
-
-
 def write_chu_file(marc_records: list[Record], file_name_with_path: Path) -> None:
     # if settings.create_chu_file:
     chu_file = file_name_with_path.with_suffix(".CHU.xlsx")
@@ -1998,7 +1951,7 @@ def write_chu_file(marc_records: list[Record], file_name_with_path: Path) -> Non
 
 def write_marc21_files(records: list[PyRecord], file_name_and_path: Path) -> None:
     logger.info(
-        f"Writing {len(records)} marc21 record(s) to {file_name_and_path.with_suffix("")}.mrk / .mrc"
+        f"\nWriting {len(records)} marc21 record(s) to {file_name_and_path.with_suffix("")}.mrk / .mrc"
     )
     # print(f"Writing {len(records)} record(s) to {file_name_and_path}")
     write_mrk_files(records, file_name_and_path.with_suffix(".mrk"))
@@ -2018,22 +1971,6 @@ def write_mrc_binaries(data: list[PyRecord], file_name=Path("out.mrc")) -> None:
         # if record.
         writer.write(record)
     writer.close()
-
-
-# def make_directory(directory_path):
-#     directory = Path(directory_path)
-#     if not directory.is_dir():
-#         directory.mkdir()
-#         try:
-#             directory.mkdir()
-#             logger.info(f"Directory '{directory}' created successfully.")
-#         except FileExistsError:
-#             logger.info(f"Directory '{directory}' already exists.")
-#         except PermissionError:
-#             logger.warning(f"Permission denied: Unable to create '{directory}'.")
-#         except Exception as e:
-#             logger.warning(f"An error occurred: {e}")
-#     return directory
 
 
 ## TODO: rethink this CLI version; not up-to-date
@@ -2061,39 +1998,3 @@ def write_mrc_binaries(data: list[PyRecord], file_name=Path("out.mrc")) -> None:
 #         marc_records = build_marc_records(records)
 #         del records
 #         write_marc21_files(marc_records, file)
-
-
-# def main() -> None:
-#     run()
-
-
-# if __name__ == "__main__":
-#     # logger = logging.getLogger(__name__)
-#     run()
-#     # main()
-
-# def test_country_code():
-#     """
-#     Move these to a test module
-#     """
-#     print(all_country_codes)
-#     tests = [
-#         ["the UK", "England", "Oxford", "enk"],
-#         ["australia","victoria","melbourne", "vra"],
-#         ["the united states of america","illinois","chicago", "ilu"],
-#         ["the united states of america","new york state","new york", "nyu"],
-#         ["Canada","british columbia","Vancouver", "bcc"],
-#         ["France","","Paris", "fr"],
-#         ["canada", "quebec", "Quebec", "quc"],
-#         ["xxc", "", "Quebec", "xxc"],
-#         ["xxc", "", "Quebec", "quc"],
-#         ["quc", "", "Quebec", "quc"],
-#         ["England", "", "London", "enk"],
-#         ["UK", "", "London", "enk"],
-
-#         ]
-#     for i, test in enumerate(tests):
-#         country, state, place, expected = test
-#         *data, _ = test
-#         result = get_country_code(country, state, place)
-#         print(f"*** {' + '.join([el for el in data if el])} -> ({expected}): {result} ... {result == expected}\n")

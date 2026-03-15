@@ -101,12 +101,12 @@ def main():
         COL.barcode,
     ]
 
-    settings.validation.fields_to_fill_info = {
+    settings.validation.fields_to_autofill_info = {
         # COL.sublib.name : "ARTBL",
     }
 
-    settings.validation.fields_to_fill = list(
-        settings.validation.fields_to_fill_info.keys()
+    settings.validation.fields_to_autofill = list(
+        settings.validation.fields_to_autofill_info.keys()
     )
     settings.validation.required_fields = [
         COL.langs.name,

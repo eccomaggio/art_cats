@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def get_base_filename(filepath: Path) -> str:
     base = f"{filepath.stem}.new{filepath.suffix}"
-    print(f"{filepath.stem=}, {filepath.suffix=}")
+    # print(f"{filepath.stem=}, {filepath.suffix=}")
     return base
 
 def save_as_yaml(file: str, data) -> None:
@@ -63,7 +63,7 @@ def write_to_csv(file_name: Path, data: list[list[str]], headers: list[str]) -> 
 
 def get_csv_file_name_and_path(live_settings: Default_settings) -> Path:
     csv_file = (
-        live_settings.files.full_output_dir / live_settings.files.out_file
+        live_settings.files.full_output_dir / f"{live_settings.files.out_file}.csv"
     )
     return csv_file
 
@@ -81,6 +81,8 @@ def extract_from_excel(excel_sheet, first_row_is_header:bool) -> tuple[list[str]
         if not excel_row[0] and not excel_row[1]:
             break  ## needed as openpyxl adds empty rows at the end
         row = normalize_row(excel_row)
+        if is_empty_row(row):
+            continue
         if i == 0 and first_row_is_header:
             headers = row
         else:
@@ -130,12 +132,18 @@ def extract_from_csv(file_address: Path, first_row_is_header) -> tuple[list[str]
         csv_reader = csv.reader(csv_file, delimiter=delimiter)
         for i, row in enumerate(csv_reader):
             row = normalize_row(row)
-            # if i == 0 and settings.first_row_is_header:
+            if is_empty_row(row):
+                continue
             if i == 0 and first_row_is_header:
                 headers = row
             else:
                 sheet.append(row)
     return (headers, sheet)
+
+
+def is_empty_row(row:list[str]) -> bool:
+    is_empty = "".join(row).strip() == ""
+    return is_empty
 
 
 def write_CHU_file(
@@ -235,7 +243,7 @@ def write_CHU_file(
             cell.alignment = openpyxl.styles.Alignment(horizontal="left")
             cell.font = openpyxl.styles.Font(name="Arial", bold=False, size=10)
         ws.row_dimensions[row_count].height = default_row_height  # Height in points
-    print(file_name)
+    logger.info(f"CHU file ({file_name}) successfully written.")
     wb.save(file_name)
 
 
@@ -257,7 +265,7 @@ def write_data_to_excel(
     """
 
     if not data or not data[0]:
-        print("Error: Input data is empty or malformed. Cannot create file.")
+        logger.critical("Error: Input data is empty or malformed. Cannot create file.")
         return
 
     # 1. Create a new Workbook and get the active worksheet
@@ -281,7 +289,7 @@ def write_data_to_excel(
 
         # 4. Save the Workbook
         workbook.save(filename)
-        print(f"Successfully wrote data to '{filename}' on sheet '{sheet_name}'.")
+        logger.info(f"Successfully wrote data to '{filename}' on sheet '{sheet_name}'.")
 
     except Exception as e:
-        print(f"An error occurred while writing the Excel file: {e}")
+        logger.critical(f"An error occurred while writing the Excel file: {e}")
