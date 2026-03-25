@@ -1407,7 +1407,7 @@ class Editor(QWidget):
                 self.settings.files.in_file = file_path.name
                 self.settings.files.out_file = io.get_base_filename(file_path)
             else:
-                msg = f"This template expects {len(self.COL)} fields, \nbut {file_path.name} has {len(tmp_headers)}. \nPlease try with another file."
+                msg = f"This template expects {len(self.COL)} fields, \nbut {file_path.name} has {len(tmp_headers)}. \nPlease try with another file. (Or if you want to open a new file type, just close this instance and restart the app.)"
                 self.show_alert_box(msg)
                 logger.error(msg)
                 return

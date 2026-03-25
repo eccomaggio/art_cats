@@ -14,9 +14,9 @@ To do:
 - DONE - **check 'holding_notes'** - they seem to have different uses / marc fields between art_cats and strachan
 
 - DONE - if file type recognized by universal.py, apply relevant settings
-- remove redundant COL declarations from entry point files (when file-specific settings are plumbed in)
+- DONE - remove redundant COL declarations from entry point files (when file-specific settings are plumbed in)
 - DONE - rewrite art.py / strachan.py / orders.py to send headers/col_names to create COL on the fly
-- add in a way to force a filetype on a file EVEN IF the headers don't match AS LONG AS the number of columns matches.
+- DONE - add in a way to force a filetype on a file EVEN IF the headers don't match AS LONG AS the number of columns matches.
 
 - DONE - make sure 'algorithmic display' still works for new csvs: create a "general" entry point which uses the algorithm to build gui
 - DONE - allow record that is totally empty to be deleted (i.e. sum of all cols = "")
@@ -24,56 +24,12 @@ To do:
 - DONE - illustrations should carry over when new record is created
 - DONE - illustrations should default to 'none'?
 - DONE - move logic out of form_gui.py into logic.py (so can easily switch GUIs)
-
-EITHER
-select a file pattern
-OR
-open csv / xlsx file and establish number of cols; text of selected columns
-use this to identify file pattern
-
-apply pattern accordingly either to open the file or to create a new one
-
-
-+ DONE - allow blank records to be saved & then delete them (allows user to delete a record by clearing it)
-+ DONE - stop submit record alert appearing twice
-+ DONE - robust indication of 1) changed field, 2) error in field
-
-+ DONE - make it so that barcode submits when the lineEdit loses focus, not when text changes (otherwise can't type it in manually!)
-+ DONE - moved common.py validation code into validation.py
-+ - - - ++++ DONE - moved file functions from common.py into io.py
-
-NEW DIRECTIVES:
-analyse common.py & refactor to focus on gui
-create validation and io files:
-
-LAST NIGHT"S MUSINGS:
-things common.py does
-creates gui & adds widgets - different variants depending on settings.title etc.
-[actually, most of this is gui code]
-
-— validation: (as suggested, the gui should simply harvest the data and send it to the validator… as a record?) see chat gpt's suggestions
-data_is_valid()
-validate_input()
-
-editor.update_csv_fields()
-
-— io:
-editor.get_filename_only()
-editor.drop_csv_suffix()
-write_to_csv()
-load_text_from_file()
-read_cli_into_settings(settings:Settings)
-save_as_yaml()
-open_yaml_file()
-save_as_marc() - io or gui or marc21??
-
-create_max_lengths() OK = gui!
-
-
-
-
-
-
+- DONE - allow blank records to be saved & then delete them (allows user to delete a record by clearing it)
+- DONE - stop submit record alert appearing twice
+- DONE - robust indication of 1) changed field, 2) error in field
+- DONE - make it so that barcode submits when the lineEdit loses focus, not when text changes (otherwise can't type it in manually!)
+- DONE - moved common.py validation code into validation.py
+- DONE (ongoing) - moved file functions from common.py into io.py
 - DONE: not validating on lock
 - DONE: i haven't migrated the specific validations to the new edit.py file for art catalogues
 - DONE: migrate edit.py to new build scheme (in orderForm.py)
@@ -116,14 +72,10 @@ B) follower:
 To do in order form:
 1. DONE - implement fields to clear
 2. implement QTableView to show records already entered (overview): click to amend
-
-## To do:
-
-1. add in delete function (how about: type *del* or *delete* into ISBN field; on save, this will not be saved and will be deleted from the records)
-2. add in search function: results appear as dropdown list = 3 inputs: text input -> 'go' button / 'end search' button -> dropdown list of rows returned
-3. bring convert_pymarc.py up to date
-4. harmonize edit.py & orderForm.py
-
+1. DONE - add in delete function (how about: type *del* or *delete* into ISBN field; on save, this will not be saved and will be deleted from the records)
+2. DONE - add in search function: results appear as dropdown list = 3 inputs: text input -> 'go' button / 'end search' button -> dropdown list of rows returned
+3. DONE - bring convert_pymarc.py up to date
+4. DONE - harmonize edit.py & orderForm.py
 1. DONE: add in layout hints: look for [filename].hint or failing that, any file ending .hint in the source file folder & use this (if heading count fits), else default to algorithmic layout
 2. DONE - enable changes to data
 3. DONE - enable saving changes to csv (or excel)
@@ -136,8 +88,6 @@ To do in order form:
 10. DONE - add in file explorer to open a new file
 11. DONE - add the custom validation etc. to a 'custom_extensions' function
 12. DONE - add a toggle-able help pane
-
-
 1. DONE - (i think) - Ensure that the background of all input fields is white (not the case for QTextBox on windows
 2. DONE - Ensure the window’s height is retained when the help pane is toggled
 3. TOO DIFFICULT / ABANDONED - Make sure the column lines are respected (some look a bit wobbly…) – maybe an issue with horizontal alignment of the widget inside?
@@ -146,11 +96,8 @@ To do in order form:
 6. DONE - ** consider logic of unlock button:
 7. DONE - deal correctly with empty gui [title should read 'new']
 think about this!
-
 8. DONE Remove debug print out from barcode check
-
 9. DONE Grey out ‘NEW’ button when entering a new record?? Or change to  ‘Abort record’ / ‘Abandon record’? and return to the previous record (save this as self.previous_record ?) OR add an ‘unlock’ button when a record comes up (i.e. existing records are default locked until you unlock them… NICE!)
-
 10. DONE Make sure saved .csv doesn’t keep adding ‘.csv.csv’!!
 MAYBE instead of changing background colour (coz difficult to do and makes display ugly), change colour of text in input boxes (grey) to show record is locked.
 
@@ -159,39 +106,6 @@ so:
 make inputs locked (i.e. readonly + text = grey) by default
 cannot be locked if text has been changed (-> abort button? or change button to 'lock': "this will wipe any changes you have made to this record. Do you want to proceed?" )
 new records are unlocked
-
-UNLOCKING:
-1. simply unlock (no complications)
-
-LOCKING:
-1. save record and lock - if not yet finished, finish or abort [how to abort?]
-
-currently, unlocking behaviour OK but doesn't grey out when first load record.
-Also, make protocols, i.e. what can happen, e.g.:
-- open empty & load file
-- open from command line (really???)
-- lock / unlock with record
-- create new record: lock / unlock... etc.
-test for these!
-
-
-
-if filename given at commandline:
-  open file [as currently]
-
-if no file given OR file not found:
-
-
-- load a default, empty record set
-- create a save file option
-
-Create a .hint file:
-
-- name of headers + no. of columns
-- default layout
-
-********* CURRENT CRISIS:
-fucked up the loading of records :S
 
 buttons:
 __navigation__ -> load record (+ reset styles), lock

@@ -155,8 +155,9 @@ th, td {
 
   <h2 id="title">Title</h2>
   <p>Transcribe the title using <b>sentence case</b>. Include any initial article, e.g. <code>The</code>, <code>A</code>, <code>La</code>, <code>Der</code> (this will be automatically tagged as non-filing).</p>
-  <p>If you want to add an <b>alternative version</b>--typically to expand an acronym or to represent a number that has been spelt out in letters as digits (e.g. <code>CNG</code> -> <code>Classical Numismatics Group</code> or <code>forty-two</code> -> <code>42</code>), type the full alternative title after the official one, separating the two with the sign *//*</p>
+  <p>If you want to add an <b>alternative version</b>--typically to expand an acronym or to represent a number that has been spelt out in letters as digits (e.g. <code>CNG</code> -> <code>Classical Numismatics Group</code> or <code>forty-two</code> -> <code>42</code>), type the full alternative title after the official one, separating the two with the sign <code>*//*</code></p>
   <p>If a title divides naturally (because of punctuation) into several parts, put the first part into the main Title field and ALL the others into the Subtitle field. The subtitle doesn't need to be further subdivided. For example: "Osian's dare to care: an initiative for the adolescent girl -- a charity fundraising gala event" should be split: Title="Osian's dare to care", Subtitle="an initiative for the adolescent girl -- a charity fundraising gala event". Note also that the punctuation (here a colon) separating the title from the subtitle should be omitted.</p>
+  <p>If there is a mistake in the title, type the title as it appears and then add <code>*//*%%CORRECTION%%</code>and then the corrected version of the title. In the MARC record, this will be properly rendered as a correction. </p>
 
   <h2 id="subtitle">Subtitle</h2><span id="parallel_subtitle"></span>
   <p>Transcribe the subtitle, omitting any initial article. Begin with a <b>lower-case</b> letter (unless the first word of the subtitle requires a capital letter e.g. a proper noun in English or a German noun). See "Title" for alternate subtitles.</p>
@@ -215,8 +216,9 @@ th, td {
   <h2 id="series_enum">Series enumeration</h2>
   <p>Transcribe from the resource.</p>
 
-  <h2 id="note">Note</h2>
+  <h2 id="notes">Note</h2>
   <p>Add notes for anything unusual or relevant about the book, e.g. Title from cover or listings on the title page in the case of art catalogues, if it helps to differentiate resources with very similar titles.</p>
+  <p>You can add multiple notes by writing <code>*//*</code> between each note.</p>
 
   <h2 id="sales_code">Sale code</h2>
   <p>(Additional field for Auction Catalogues)
