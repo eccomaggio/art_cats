@@ -146,7 +146,6 @@ def check_if_saved(editor, source) -> bool:
     """
     # return not editor.data.all_text_is_saved
     record_is_saved = editor.data.all_text_is_saved
-    print(f"check if saved: {source}")
     if not record_is_saved and source not in ("submit", "lock"):
         record_is_saved = not editor.choose_to_abort_on_unsaved_text()
     return record_is_saved

@@ -65,8 +65,6 @@ def get_csv_file_name_and_path(live_settings: Default_settings) -> Path:
     csv_file = (
         live_settings.files.full_output_dir / f"{live_settings.files.out_file}.csv"
     )
-    # print(f"DEBUG: {live_settings.files.out_file}->{csv_file}")
-    # return csv_file.with_suffix(".csv")
     return csv_file
 
 
@@ -155,8 +153,6 @@ def write_CHU_file(
     """
     Write out CHU file, including formatting (for the craic)
     """
-    chu_file = file_name.with_name(f"holdingsupdate-{file_name.name}")
-    chu_file = chu_file.with_suffix(".xlsx")
     wb = openpyxl.Workbook()
     ws: Worksheet = wb.active  # type: ignore
     ws.title = "Recorded data"
@@ -247,8 +243,8 @@ def write_CHU_file(
             cell.alignment = openpyxl.styles.Alignment(horizontal="left")
             cell.font = openpyxl.styles.Font(name="Arial", bold=False, size=10)
         ws.row_dimensions[row_count].height = default_row_height  # Height in points
-    logger.info(f"CHU file ({chu_file}) successfully written.")
-    wb.save(chu_file)
+    logger.info(f"CHU file ({file_name}) successfully written.")
+    wb.save(file_name)
 
 
 def write_data_to_excel(

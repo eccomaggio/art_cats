@@ -1226,7 +1226,6 @@ def build_245(record: Record) -> Result:
         check_for_alt_title = title.split(split_marker)
         if len(check_for_alt_title) > 1:
             title, alt_title = [el.strip() for el in check_for_alt_title]
-            title, alt_title = [normalise_title(el) for el in check_for_alt_title]
             # alt_title_field = create_alternative_title(alt_title, record.langs[0]).is_ok
             alt_title_field = create_alternative_title(alt_title, record.langs[0])
         nonfiling, title = check_for_nonfiling(title)
@@ -1240,7 +1239,6 @@ def build_245(record: Record) -> Result:
             # title += " :"
             # content.append(Subfield(value=title + " :", code="a"))
             content.append(Subfield(value=title + ISBD[":"], code="a"))
-            subtitle = normalise_title(subtitle)
             subtitle = add_period_if_necessary(subtitle)
             content.append(Subfield(value=subtitle, code="b"))
         else:
@@ -1620,16 +1618,12 @@ def create_parallel_title(record: Record) -> Result:
             i2,
             tag,
         )
-        parallel_subtitle = normalise_title(record.parallel_subtitle.transliteration)
-        parallel_title = normalise_title(record.parallel_title.transliteration)
+        parallel_subtitle = record.parallel_subtitle.transliteration
+        parallel_title = record.parallel_title.transliteration
     elif has_parallel_title:  ## (i.e. Western script)
-        parallel_subtitle = normalise_title(record.parallel_subtitle.original)
+        parallel_subtitle = record.parallel_subtitle.original
         if len(record.langs) == 1:
-            ## This arose in a catalogue with a second cover on the back with a different title 
-            ## TODO: However, it is a cludge and could produce incorrect results... 
-            logger.warning(f"Record {record.id + 1}: There is parallel title ({parallel_subtitle}) but only one language; I will assume that this is an 'other' title (see the LLC notes on field 246) with an explanatory note")
-            i1 = "1"    ## Note, added entry
-            i2 = "3"    ## Another title that appears ... that is not more appropriately indicated by one of the other values.
+            logger.critical(f"Record {record.id + 1}: A parallel title requires two languages ({parallel_subtitle})")
         lang = record.langs[1] if len(record.langs) > 1 else record.langs[0]
         _, parallel_title_without_initial_article = check_for_nonfiling(
             record.parallel_title.original, lang
@@ -1661,35 +1655,14 @@ def create_parallel_title(record: Record) -> Result:
     return result
 
 
-def normalise_title(raw_title:str) -> str:
-    title = raw_title.strip()
-    if not title:
-        return title
-    # mappings = str.maketrans({
-    #     "/": "—",
-    # })
-    title = title.replace("--","—")
-    # title = title.replace("/","—")
-    # title = title.translate(mappings)
-    return title
-
-
 def create_alternative_title(alternative_form: str, lang="eng") -> Field:
     ## Deals with alternative forms of a title, e.g. 1984*//*Nineteen Eighty-four
     ## NB. this doesn't deal with non-Western scripts (yet)
     tag = 246
     i1 = "3"  ## "No note, added entry"
     i2 = ISBD["BLANK"]  ## No type specified
-    content = []
-    if alternative_form.startswith("%%CORRECTION%%"):
-        alternative_form = alternative_form[14:]
-        i1 = "1"
-        content.append(Subfield(value="Title should read: ", code="i"))
-        logger.info("Title correction recorded.")
-
     _, alternative_title = check_for_nonfiling(alternative_form, lang)
-    # content = [Subfield(value=alternative_title, code="a")]
-    content.append(Subfield(value=alternative_title, code="a"))
+    content = [Subfield(value=alternative_title, code="a")]
     alternative_title_field = Field(
         tag=link_num(tag), indicators=Indicators(i1, i2), subfields=content
     )
@@ -1852,15 +1825,15 @@ def check_for_nonfiling(title: str, lang: str = "eng") -> tuple[str, str]:
     if no manual indication, check for nonfiling words according to language of title"""
     nonfiling_words = {
         "eng": ("the", "a", "an"),
-        "fre": ("le", "la", "les", "l'", "un", "une"),
-        "ita": ("lo", "il", "i", "l'", "gli", "le", "un", "una", "un'"),
-        "spa": ("el", "la", "las", "los", "un", "una", "unos", "unas"),
-        "ger": ("der", "die", "das", "ein", "eine"),
-        "dut": ("de", "het"),
-        "swe": ("en", "ett", "den", "det", "de"),
-        "dan": ("en", "et"),
-        "nob": ("en", "ei", "et"),
-        "por": ("o", "a", "os", "as", "um", "uma", "uns", "umas"),
+        "fr": ("le", "la", "les", "l'", "un", "une"),
+        "it": ("lo", "il", "i", "l'", "gli", "le", "un", "una", "un'"),
+        "sp": ("el", "la", "las", "los", "un", "una", "unos", "unas"),
+        "gw": ("der", "die", "das", "ein", "eine"),
+        "ne": ("de", "het"),
+        "sw": ("en", "ett", "den", "det", "de"),
+        "dk": ("en", "et"),
+        "no": ("en", "ei", "et"),
+        "po": ("o", "a", "os", "as", "um", "uma", "uns", "umas"),
         "chi": (),
     }
     break_char = "@@"
@@ -1869,10 +1842,6 @@ def check_for_nonfiling(title: str, lang: str = "eng") -> tuple[str, str]:
     if nonfiling > 0:
         result = (str(nonfiling), title.replace(break_char, "", 1))
     else:
-        # for article in nonfiling_words[lang]:
-        if lang not in nonfiling_words.keys():
-            logger.critical(f"The language {lang} is not recognised for non-filing.")
-            return result
         for article in nonfiling_words[lang]:
             # test = re.match(f"({article}\\s+[^\\w\\s]?)\\w", title, re.I)
             test = re.match(f"({article}\\s+)[^\\w\\s]?\\w", title, re.I)
@@ -1957,8 +1926,12 @@ def save_as_marc_files(
     if live_settings.create_chu_file:
         write_chu_file(records, file_name_with_path)
 
-    # if live_settings.create_excel_file:
-    #     io.write_data_to_excel([data.headers, *data.excel_rows], file_name_with_path.with_suffix(".xlsx"))
+    if live_settings.create_excel_file:
+        # excel_rows = add_policy_into_hol_notes(records, excel_rows, hol_index)
+        # print(f"marc_21.py: saving marc files ->\n{len(headers)}: {headers=}\n{len(rows_from_gui)}: {rows_from_gui=}")
+        # io.write_data_to_excel([headers, *rows_from_gui], file_name_with_path.with_suffix(".xlsx"))
+        # print(f"marc_21.py: saving marc files ->\n{len(data.headers)}: {data.headers=}\n{len(rows_from_gui)}: {rows_from_gui=}")
+        io.write_data_to_excel([data.headers, *data.excel_rows], file_name_with_path.with_suffix(".xlsx"))
 
     ## TODO: code for this value!
     file_operations_successful = True
@@ -1967,15 +1940,13 @@ def save_as_marc_files(
 
 def write_chu_file(marc_records: list[Record], file_name_with_path: Path) -> None:
     # if settings.create_chu_file:
-    # chu_file = file_name_with_path.with_suffix(".CHU.xlsx")
-    # chu_file = file_name_with_path.with_suffix(".xlsx")
+    chu_file = file_name_with_path.with_suffix(".CHU.xlsx")
     # io.write_CHU_file_1(excel_rows, chu_file, barcode_index)
     chu_rows = [
         [record.barcode, "", "", record.item_policy, "Relocating to CSF", ""]
         for record in marc_records
     ]
-    # io.write_CHU_file(chu_rows, chu_file)
-    io.write_CHU_file(chu_rows, file_name_with_path)
+    io.write_CHU_file(chu_rows, chu_file)
 
 
 def write_marc21_files(records: list[PyRecord], file_name_and_path: Path) -> None:

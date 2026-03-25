@@ -862,31 +862,20 @@ class Editor(QWidget):
         self.settings.file_newly_created = False
         authorised_to_continue = logic.gatekeeper("submit", self)
         if authorised_to_continue:
-            self.save_form_data()
-            # csv_file = io.get_csv_file_name_and_path(self.settings)
-            # headers = [el[3] for el in self.grid.widget_info.values()]
-            # io.write_to_csv(csv_file, self.data.excel_rows, headers)
-            # io.write_data_to_excel(
-            #     [headers, *self.data.excel_rows], csv_file.with_suffix(".xlsx")
-            # )
-            # self.data.all_text_is_saved = True
+            csv_file = io.get_csv_file_name_and_path(self.settings)
+            headers = [el[3] for el in self.grid.widget_info.values()]
+            print(f"handle_submit:\n{headers}\n{self.data.headers}")
+            io.write_to_csv(csv_file, self.data.excel_rows, headers)
+            io.write_data_to_excel(
+                [headers, *self.data.excel_rows], csv_file.with_suffix(".xlsx")
+            )
+            self.data.all_text_is_saved = True
             self.update_nav_buttons()
             self.load_record_into_gui(self.data.current_row)
             if self.settings.show_marc_button:
                 self.marc_btn.setEnabled(True)
             self.submit_btn.setEnabled(False)
         return authorised_to_continue
-
-    def save_form_data(self) -> None:
-        csv_file = io.get_csv_file_name_and_path(self.settings)
-        # headers = [el[3] for el in self.grid.widget_info.values()]
-        # print(f"save form data:\n{list(zip(headers,self.data.headers))}")
-        io.write_to_csv(csv_file, self.data.excel_rows, self.data.headers)
-        io.write_data_to_excel(
-            [self.data.headers, *self.data.excel_rows], csv_file.with_suffix(".xlsx")
-        )
-        self.data.all_text_is_saved = True
-
 
     def highlight_fields(self, field_names: list[str]) -> None:
         for input in self.inputs:
@@ -1354,8 +1343,7 @@ class Editor(QWidget):
                     "Are you sure you want to save this record?",
                 )
                 if dialogue.exec() == 1:
-                    # self.handle_submit()
-                    self.save_form_data()
+                    self.handle_submit()
 
     def choose_to_abort_on_unsaved_text(self) -> int:
         """
