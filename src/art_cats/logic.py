@@ -94,7 +94,7 @@ def gatekeeper(source: str, editor) -> bool:
     #     return authorised_to_continue
 
     is_saved = check_if_saved(editor, source)
-    print(f"** gatekeeping for {source=} [{is_saved=}], [{data.form_has_been_cleared=}]")
+    # print(f"** gatekeeping for {source=} [{is_saved=}], [{data.form_has_been_cleared=}]")
     if source in ["submit"]:
         # print(f"DEBUG: {is_saved=}")
         if is_saved:
@@ -148,7 +148,7 @@ def check_if_saved(editor, source) -> bool:
     """
     # return not editor.data.all_text_is_saved
     record_is_saved = editor.data.all_text_is_saved
-    print(f"check if saved: {source}")
+    # print(f"check if saved: {source}")
     if not record_is_saved and source not in ("submit", "lock", "barcode"):
         record_is_saved = not editor.choose_to_abort_on_unsaved_text()
     return record_is_saved

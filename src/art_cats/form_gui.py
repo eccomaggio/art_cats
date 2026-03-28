@@ -1354,8 +1354,8 @@ class Editor(QWidget):
                     "Are you sure you want to save this record?",
                 )
                 if dialogue.exec() == 1:
-                    # self.handle_submit()
-                    self.save_form_data()
+                    self.handle_submit()
+                    # self.save_form_data()
 
     def choose_to_abort_on_unsaved_text(self) -> int:
         """
