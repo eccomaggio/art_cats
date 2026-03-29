@@ -124,4 +124,4 @@ class Default_settings:
     )
 
     # known_types = known_types
-    known_types = {}
+    known_patterns = {}

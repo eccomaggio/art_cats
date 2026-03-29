@@ -3,13 +3,40 @@ from dataclasses import dataclass, fields
 # from tkinter import W
 from pathlib import Path
 
+from art_cats import form_gui
 from art_cats.settings import Default_settings
 from . import validation
 from . import io
 from . import marc_21
 import logging
+from enum import Enum
 
 logger = logging.getLogger(__name__)
+
+
+class COL(Enum):
+    """
+    This is necessary for 'recognised' file types:
+    records the positioning of each field in the GUI.
+    maps column names onto MARC_21.py record names.
+    If there is no COL, then fields are arranged algorithmically
+    (which can provide confusing layouts) and column names are
+    simply "Col1, Col2" etc.
+
+    ** entries must be in the same order as the columns in the .csv / Excel file
+    """
+    @staticmethod
+    def _generate_next_value_(count):
+        return count
+
+    def __new__(cls, display_title: str):
+        member = object.__new__(cls)
+        member._value_ = cls._generate_next_value_(len(cls.__members__))
+        member.display_title = display_title
+        return member
+
+    def __init__(self, title: str):
+        self.display_title = title
 
 
 @dataclass
@@ -52,6 +79,50 @@ class Data:
         self.excel_rows[self.current_row_index] = row
 
 
+def initialise_data(
+    excel_rows: list[list[str]], column_count: int, headers: list[str]
+) -> Data:
+    data = Data()
+    data.headers = headers
+    if excel_rows:
+        data.excel_rows = excel_rows
+        data.has_records = True
+    else:
+        data.excel_rows = [["" for _ in range(column_count)]]
+        data.has_records = False
+    return data
+
+
+def get_new_current_row_index(data:Data, direction:str, record_number:int) -> int:
+    new_index = data.current_row_index
+    match direction:
+        case "first":
+            new_index = 0
+        case "last":
+            new_index = data.index_of_last_record
+        case "back":
+            if new_index > 0:
+                new_index -= 1
+        case "exact" if record_number >= 0:
+            if record_number < data.column_count:
+                new_index = record_number
+        case _:
+            if new_index < data.index_of_last_record:
+                new_index += 1
+    return new_index
+
+
+def get_fields_to_clear(settings:Default_settings, COL) -> list:
+    if (
+        settings.validation.clear_all_fields
+        and not settings.validation.fields_to_clear
+    ):
+        fields_to_clear = COL
+    else:
+        fields_to_clear = settings.validation.fields_to_clear
+    return fields_to_clear
+
+
 def gatekeeper(source: str, editor) -> bool:
     """
     *LOGIC:
@@ -81,7 +152,7 @@ def gatekeeper(source: str, editor) -> bool:
             barcode -> choose_to_save_on_barcode()
     """
     authorised_to_continue = False
-    data:Data = editor.data
+    data: Data = editor.data
     # print(f"?? gatekeeper: *{data.form_has_been_cleared=}*")
     # if data.form_has_been_cleared:
     #     if source == "submit":
@@ -405,14 +476,165 @@ def singular_or_plural(count: int, plural="s", singular="") -> str:
     return plural if count != 1 else singular
 
 
+# def get_existing_file(settings: Default_settings, COL:COL):
+def get_existing_file(settings: Default_settings):
+    logging.info(f"processing file: {settings.files.in_file}")
+    headers, rows = io.parse_file_into_rows(
+        Path(settings.files.in_file), settings.first_row_is_header
+    )
+    settings.files.out_file = f"{Path(settings.files.in_file).stem}.new"
+    pattern_name = get_identity_of_file_pattern(settings, headers)
+    # logger.info(f"{10*"*"}\nMatches: {pattern_name or "...nowt..."}\n{10*"*"}")
+    logger.info(f"{10*"*"} Matches: {pattern_name or "...nowt... "} {10*"*"}\n")
+    if pattern_name:
+        ## *NAMED PATTERN i.e. it recognises the file
+        _, cols, headers = settings.known_patterns[pattern_name]
+        COL = update_settings_and_columns(settings, pattern_name, headers, cols)
+        grid_source = "pattern"
+        # grid = form_gui.get_grid_from_pattern(settings, pattern_name, COL)
+        # data_report = validation.check_records_on_load(settings, settings.column_names, rows)
+    else:
+        ## *UNKNOWN PATTERN i.e. it doesn't recognise the file
+        COL = update_settings_and_columns(settings, "default", headers)
+        # grid = form_gui.get_grid_from_algorithm(settings, rows, headers)
+        grid_source = "algorithm"
+    return (pattern_name, headers, rows, grid_source, COL)
+
+
+def create_file_from_column_count(
+    settings: Default_settings, column_count: int
+) -> tuple[list[str], list[list[str]], str, Enum]:
+    ## need to create new file + add in programmatic col names
+    print(f"**Loading UI for new file with {column_count} columns")
+    headers = [f"Col{i}" for i in range(0, column_count)]
+    COL = update_settings_and_columns(settings, "default", headers)
+    settings.files.out_file = f"tmp_{column_count}_cols.csv"
+    rows = [["" for _ in range(0, column_count)]]
+    # grid = form_gui.get_grid_from_algorithm(settings, rows, headers)
+    grid_source = "algorithm"
+    # sys.exit(0)
+    return (headers, rows, grid_source, COL)
+
+
+def create_file_from_pattern(
+    settings: Default_settings, pattern_name: str
+) -> tuple[list[str], list[list[str]], str, Enum]:
+    ## need to create new file + add in settings & col names from settings.known_patterns
+    print(f"**Loading UI for new file using the {pattern_name} pattern")
+    _, cols, headers = settings.known_patterns[pattern_name]
+    COL = update_settings_and_columns(settings, pattern_name, headers, cols)
+    settings.files.out_file = f"tmp_{pattern_name}_cols.csv"
+    rows = [["" for _ in range(0, len(settings.column_names))]]
+    # grid = form_gui.get_grid_from_pattern(settings, pattern_name, COL)
+    grid_source = "pattern"
+    # rows = []
+    # sys.exit(0)
+    return (headers, rows, grid_source, COL)
+
+
+def get_identity_of_file_pattern(settings: Default_settings, headers: list[str]) -> str:
+    # print(f"******{headers}")
+    col_count_of_new_file = len(headers)
+    for title, (
+        (index1, index2),
+        cols,
+        display_titles,
+    ) in settings.known_patterns.items():
+        if (
+            len(headers) == len(cols)
+            and index1 <= col_count_of_new_file
+            and index2 <= col_count_of_new_file
+            and headers[index1][:4].lower() == cols[index1][0][:4]
+            and headers[index2][:4].lower() == cols[index2][0][:4]
+        ):
+            return title
+    return ""
+
+
+def update_settings_and_columns(
+    settings: Default_settings,
+    pattern_name,
+    headers: list[str],
+    cols: None | list[str] = None,
+) -> COL:
+    if not cols:
+        col_names = [f"col{i}" for i, _ in enumerate(headers)]
+    else:
+        col_names = [col[0].lower() for col in cols]
+    COL = create_dynamic_enum("COL", col_names, headers)
+    # show_col(COL)
+    update_settings(settings, COL, pattern_name)
+    settings.column_names = col_names
+    return COL
+
+
+def create_dynamic_enum(
+    class_name: str, internal_names: list[str], display_labels: list[str]
+) -> COL:
+    # 1. Define the logic in a plain object mixin (NOT an Enum yet)
+    class MemberMixin:
+        _value_: str
+        display_title: str
+
+        def __new__(cls, value, display_title):
+            member = object.__new__(cls)
+            member._value_ = value
+            member.display_title = display_title
+            return member
+
+    # 2. Build the members dictionary: { 'name': (value, label) }
+    members = {
+        n: (i, l.strip())
+        for i, (n, l) in enumerate(zip(internal_names, display_labels))
+    }
+
+    # 3. Use the functional API with explicit inheritance
+    # By passing (MemberMixin, Enum) as the bases, we force the
+    # unpacking logic to be active during member creation.
+    return Enum(
+        value=class_name,
+        names=members,
+        module=__name__,
+        type=MemberMixin,  # In some 3.13 builds, this is the key
+    )
+
+
+def show_col(enum) -> None:
+    print("COL =")
+    for member in enum:
+        print(f"\t{member.value}: {member.name}->{member.display_title}")
+
+
+def create_max_lengths(rows: list[list[str]]) -> list[int]:
+    """
+    Given a spreadsheet (i.e. list of rows, i.e. list[list[str]])
+    return the maximum number of characters of any row in each column.
+    Used to decide the size of input boxes in algorithmically generated layouts.
+    """
+    max_lengths: list[list[int]] = [[] for _ in rows[0]]
+    for row in rows:
+        for i, col in enumerate(row):
+            length_of_content = 10 if not col else len(col)
+            # max_lengths[i].append(len(col))
+            max_lengths[i].append(length_of_content)
+    return [max(col) for col in max_lengths]
+
+
+
+
 """
+PATTERN OVERVIEW:
+
 {file-pattern-name: [
-[col_index to identify 1st 3 letters x2],
-[col_name,
-(brick height, brick length),
-start-row (0-indexed),
-start-col, widget-type]
-, [display_titles]
+    [col_index to identify 1st 3 letters x2],
+    [
+        This next part holds the entries for the COL enum:
+        [col_name,
+        (brick height, brick length),
+        start-row (0-indexed),
+        start-col, widget-type]
+    ],
+    [display_titles]
 ]}
 
 The col_indices for identification should be chosen to be
