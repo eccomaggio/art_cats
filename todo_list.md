@@ -11,6 +11,10 @@
 
 To do:
 
+- DONE - move Grid() from form_gui.py into logic.py
+- sort out type errors with COL
+- is there a simpler way to implement COL? i.e. a dataclass whose members can be iterated and map to another text field, e.g. COL.isbn -> .value = 1, .name = 'isbn', .title = "ISBN number"
+
 - DONE - **check 'holding_notes'** - they seem to have different uses / marc fields between art_cats and strachan
 
 - DONE - if file type recognized by universal.py, apply relevant settings
@@ -51,8 +55,7 @@ To do:
 - DONE: fixed combo box drop down selection
 - DONE: made record lock toggle-able
 
-
-to make a combo box:
+### to make a combo box
 
 load_record()
  ->> load_combo_box()
@@ -68,51 +71,50 @@ B) follower:
  has record -> list matches to leader's currentText + set index to VALUE
  empty -> list matches to leader's currentText
 
+### To do in order form
 
-To do in order form:
 1. DONE - implement fields to clear
-2. implement QTableView to show records already entered (overview): click to amend
+1. implement QTableView to show records already entered (overview): click to amend
 1. DONE - add in delete function (how about: type *del* or *delete* into ISBN field; on save, this will not be saved and will be deleted from the records)
-2. DONE - add in search function: results appear as dropdown list = 3 inputs: text input -> 'go' button / 'end search' button -> dropdown list of rows returned
-3. DONE - bring convert_pymarc.py up to date
-4. DONE - harmonize edit.py & orderForm.py
+1. DONE - add in search function: results appear as dropdown list = 3 inputs: text input -> 'go' button / 'end search' button -> dropdown list of rows returned
+1. DONE - bring convert_pymarc.py up to date
+1. DONE - harmonize edit.py & orderForm.py
 1. DONE: add in layout hints: look for [filename].hint or failing that, any file ending .hint in the source file folder & use this (if heading count fits), else default to algorithmic layout
-2. DONE - enable changes to data
-3. DONE - enable saving changes to csv (or excel)
-4. DONE - allow .csv / .tsv as source file
-5. DONE - OK - enable adding a new record
-6. DONE - make it command line based: edit,py -f data.csv/xls -h hintfile.hint -o output.csv
-7. DONE - ?? add in field validation
-8. DONE - add in smart extras, e.g. automatically add pub date from saledate; erase isbn etc. on 'New'
-9. DONE - integrate more closely with art_cats.py
-10. DONE - add in file explorer to open a new file
-11. DONE - add the custom validation etc. to a 'custom_extensions' function
-12. DONE - add a toggle-able help pane
+1. DONE - enable changes to data
+1. DONE - enable saving changes to csv (or excel)
+1. DONE - allow .csv / .tsv as source file
+1. DONE - OK - enable adding a new record
+1. DONE - make it command line based: edit,py -f data.csv/xls -h hintfile.hint -o output.csv
+1. DONE - ?? add in field validation
+1. DONE - add in smart extras, e.g. automatically add pub date from saledate; erase isbn etc. on 'New'
+1. DONE - integrate more closely with art_cats.py
+1. DONE - add in file explorer to open a new file
+11 DONE - add the custom validation etc. to a 'custom_extensions' function
+1. DONE - add a toggle-able help pane
 1. DONE - (i think) - Ensure that the background of all input fields is white (not the case for QTextBox on windows
-2. DONE - Ensure the window’s height is retained when the help pane is toggled
-3. TOO DIFFICULT / ABANDONED - Make sure the column lines are respected (some look a bit wobbly…) – maybe an issue with horizontal alignment of the widget inside?
-4. DONE - Add in validation e.g. warning if no barcode or pagination or title etc.
-5. DONE - Save backup file on each submit (save to backup.bak)
-6. DONE - ** consider logic of unlock button:
-7. DONE - deal correctly with empty gui [title should read 'new']
+1. DONE - Ensure the window’s height is retained when the help pane is toggled
+1. TOO DIFFICULT / ABANDONED - Make sure the column lines are respected (some look a bit wobbly…) – maybe an issue with horizontal alignment of the widget inside?
+1. DONE - Add in validation e.g. warning if no barcode or pagination or title etc.
+1. DONE - Save backup file on each submit (save to backup.bak)
+1. DONE - ** consider logic of unlock button:
+1. DONE - deal correctly with empty gui [title should read 'new']
 think about this!
-8. DONE Remove debug print out from barcode check
-9. DONE Grey out ‘NEW’ button when entering a new record?? Or change to  ‘Abort record’ / ‘Abandon record’? and return to the previous record (save this as self.previous_record ?) OR add an ‘unlock’ button when a record comes up (i.e. existing records are default locked until you unlock them… NICE!)
-10. DONE Make sure saved .csv doesn’t keep adding ‘.csv.csv’!!
+1. DONE Remove debug print out from barcode check
+1. DONE Grey out ‘NEW’ button when entering a new record?? Or change to  ‘Abort record’ / ‘Abandon record’? and return to the previous record (save this as self.previous_record ?) OR add an ‘unlock’ button when a record comes up (i.e. existing records are default locked until you unlock them… NICE!)
+1. DONE Make sure saved .csv doesn’t keep adding ‘.csv.csv’!!
 MAYBE instead of changing background colour (coz difficult to do and makes display ugly), change colour of text in input boxes (grey) to show record is locked.
 
-
-so:
+So:
 make inputs locked (i.e. readonly + text = grey) by default
 cannot be locked if text has been changed (-> abort button? or change button to 'lock': "this will wipe any changes you have made to this record. Do you want to proceed?" )
 new records are unlocked
 
 buttons:
-__navigation__ -> load record (+ reset styles), lock
-__new record__ -> reset styles, unlock
-__submit record__ -> validate, reset styles, lock
-__clear__ -> unlock
-__load file__ ->
-__export as .csv__
-__export as marc21__
-__lock__ -> validate
+**navigation** -> load record (+ reset styles), lock
+**new record** -> reset styles, unlock
+**submit record** -> validate, reset styles, lock
+**clear** -> unlock
+**load file** ->
+**export as .csv**
+**export as marc21**
+**lock** -> validate

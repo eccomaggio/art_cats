@@ -78,38 +78,38 @@ from PySide6.QtGui import (
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class Brick:
-    height: int
-    width: int
-    # role: str
+# @dataclass
+# class Brick:
+#     height: int
+#     width: int
+#     # role: str
 
 
-@dataclass
-class Cell:
-    brick_id: int
-    free_down: int
-    free_across: int
+# @dataclass
+# class Cell:
+#     brick_id: int
+#     free_down: int
+#     free_across: int
 
-    def __repr__(self) -> str:
-        is_occupied = self.brick_id > -1
-        return f"<{f'@{self.brick_id}' if is_occupied else "##"}> 1 else " "}>"
+#     def __repr__(self) -> str:
+#         is_occupied = self.brick_id > -1
+#         return f"<{f'@{self.brick_id}' if is_occupied else "##"}> 1 else " "}>"
 
 
 # def select_brick_by_content_length(length: int) -> (BRICK, widget-type):
-def select_brick_by_content_length(length: int) -> tuple[Brick, str]:
-    if length < 50:
-        # return BRICK.oneone
-        return (Brick(1, 1), "line")
-    elif length < 100:
-        # return BRICK.onetwo
-        return (Brick(1, 2), "line")
-    elif length < 400:
-        # return BRICK.twotwo
-        return (Brick(2, 2), "text")
-    else:
-        # return BRICK.fourtwo
-        return (Brick(4, 2), "text")
+# def select_brick_by_content_length(length: int) -> tuple[Brick, str]:
+#     if length < 50:
+#         # return BRICK.oneone
+#         return (Brick(1, 1), "line")
+#     elif length < 100:
+#         # return BRICK.onetwo
+#         return (Brick(1, 2), "line")
+#     elif length < 400:
+#         # return BRICK.twotwo
+#         return (Brick(2, 2), "text")
+#     else:
+#         # return BRICK.fourtwo
+#         return (Brick(4, 2), "text")
 
 
 class STATUS(Enum):
@@ -118,142 +118,142 @@ class STATUS(Enum):
     ok = auto()
 
 
-class Grid:
-    def __init__(self, width: int = 6) -> None:
-        self.grid_width = width
-        self.current_row = 0
-        ## each row is a list of brick ids OR -1 to indicate cell is unoccupied
-        self.rows: list[list[int]] = []
-        self.add_a_row()
-        ## dict[id: (start_row, start_col, Brick(height, width), title, name, widget-type)]
-        self.widget_info: dict[int, tuple[int, int, Brick, str, str, str]] = {}
+# class Grid:
+#     def __init__(self, width: int = 6) -> None:
+#         self.grid_width = width
+#         self.current_row = 0
+#         ## ** each row is a list of brick ids OR -1 to indicate cell is unoccupied
+#         self.rows: list[list[int]] = []
+#         self.add_a_row()
+#         ## ** dict[id: (start_row, start_col, Brick(height, width), title, name, widget-type)]
+#         self.widget_info: dict[int, tuple[int, int, Brick, str, str, str]] = {}
 
-    @property
-    def total_rows(self) -> int:
-        return len(self.rows)
+#     @property
+#     def total_rows(self) -> int:
+#         return len(self.rows)
 
-    def exceeds_grid_length(self, current_row: int) -> bool:
-        return current_row + 1 > self.total_rows
+#     def exceeds_grid_length(self, current_row: int) -> bool:
+#         return current_row + 1 > self.total_rows
 
-    def is_free(self, id: int) -> bool:
-        return id == -1
+#     def is_free(self, id: int) -> bool:
+#         return id == -1
 
-    def is_occupied(self, id: int) -> bool:
-        return not self.is_free(id)
+#     def is_occupied(self, id: int) -> bool:
+#         return not self.is_free(id)
 
-    def add_a_row(self) -> None:
-        # self.rows.append([-1 for _ in range(self.grid_width)])
-        self.rows.append(self.make_row())
+#     def add_a_row(self) -> None:
+#         # self.rows.append([-1 for _ in range(self.grid_width)])
+#         self.rows.append(self.make_row())
 
-    def make_row(self) -> list:
-        return [-1 for _ in range(self.grid_width)]
+#     def make_row(self) -> list:
+#         return [-1 for _ in range(self.grid_width)]
 
-    def add_brick_algorithmically(
-        self, brick_id: int, brick: Brick, title="", name="", widget_type=""
-    ) -> None:
-        """
-        algorithm:
-        1. check the brick will fit in the current grid (error if not)
-        2. check the grid has sufficient empty spaces across and down for new brick
-        3. expand the grid to accommodate the height of the new brick
-        4. to avoid scrambling order of bricks:
-            a. check for available space starting from the row where the last brick was inserted ("current_row")
-            b. only insert a brick if there are no bricks after the first free space in the row
-        """
-        if brick.width > self.grid_width:
-            logger.info("Input field has been truncated to fit the grid.")
-            brick.width = self.grid_width
-        if not title:
-            title = f"input #{brick_id}"
-        # row_i = 0
-        row_i = self.current_row
-        no_place_found_for_brick = True
-        while no_place_found_for_brick:
-            rows_needed = row_i + brick.height
-            if self.total_rows - rows_needed < 0:
-                extra_rows = rows_needed - self.total_rows + 1
-                for _ in range(extra_rows):
-                    self.add_a_row()
-            for col_i in range(self.grid_width):
-                if self.is_occupied(self.rows[row_i][col_i]):
-                    continue
-                enough_space_across = (
-                    self.count_free_spaces_across(row_i, col_i) - brick.width >= 0
-                )
-                enough_space_down = (
-                    self.count_free_spaces_down(row_i, col_i) - brick.height >= 0
-                )
-                no_following_bricks = all(el == -1 for el in self.rows[row_i][col_i:])
-                if enough_space_across and enough_space_down and no_following_bricks:
-                    no_place_found_for_brick = False
-                    self.place_brick_in_grid(brick, brick_id, row_i, col_i)
-                    self.widget_info[brick_id] = (
-                        row_i,
-                        col_i,
-                        brick,
-                        title,
-                        name,
-                        widget_type,
-                    )
-                    self.current_row = row_i
-                    break
-            row_i += 1
+#     def add_brick_algorithmically(
+#         self, brick_id: int, brick: Brick, title="", name="", widget_type=""
+#     ) -> None:
+#         """
+#         algorithm:
+#         1. check the brick will fit in the current grid (error if not)
+#         2. check the grid has sufficient empty spaces across and down for new brick
+#         3. expand the grid to accommodate the height of the new brick
+#         4. to avoid scrambling order of bricks:
+#             a. check for available space starting from the row where the last brick was inserted ("current_row")
+#             b. only insert a brick if there are no bricks after the first free space in the row
+#         """
+#         if brick.width > self.grid_width:
+#             logger.info("Input field has been truncated to fit the grid.")
+#             brick.width = self.grid_width
+#         if not title:
+#             title = f"input #{brick_id}"
+#         # row_i = 0
+#         row_i = self.current_row
+#         no_place_found_for_brick = True
+#         while no_place_found_for_brick:
+#             rows_needed = row_i + brick.height
+#             if self.total_rows - rows_needed < 0:
+#                 extra_rows = rows_needed - self.total_rows + 1
+#                 for _ in range(extra_rows):
+#                     self.add_a_row()
+#             for col_i in range(self.grid_width):
+#                 if self.is_occupied(self.rows[row_i][col_i]):
+#                     continue
+#                 enough_space_across = (
+#                     self.count_free_spaces_across(row_i, col_i) - brick.width >= 0
+#                 )
+#                 enough_space_down = (
+#                     self.count_free_spaces_down(row_i, col_i) - brick.height >= 0
+#                 )
+#                 no_following_bricks = all(el == -1 for el in self.rows[row_i][col_i:])
+#                 if enough_space_across and enough_space_down and no_following_bricks:
+#                     no_place_found_for_brick = False
+#                     self.place_brick_in_grid(brick, brick_id, row_i, col_i)
+#                     self.widget_info[brick_id] = (
+#                         row_i,
+#                         col_i,
+#                         brick,
+#                         title,
+#                         name,
+#                         widget_type,
+#                     )
+#                     self.current_row = row_i
+#                     break
+#             row_i += 1
 
-    def add_bricks_by_template(self, template: list) -> None:
-        # print(f"add bricks by template: {template=}")
-        last_brick = template[-1]
-        _, (lb_height, lb_length), lb_start_row, _, _ = last_brick
-        # lb_height = brick_lookup[lb_brick_type].value.height
-        max_row = lb_start_row + lb_height
-        # print(f"@@@ {lb_height=}, {lb_start_row} -> {max_row=}")
-        self.rows = [self.make_row() for _ in range(max_row)]
-        for brick_id, (
-            brick_enum,
-            # brick_type,
-            (brick_height, brick_length),
-            start_row,
-            start_col,
-            widget_type,
-        ) in enumerate(template):
-            title = brick_enum.display_title
-            name = brick_enum.name
-            # brick = brick_lookup[brick_type].value
-            brick = Brick(brick_height, brick_length)
-            self.place_brick_in_grid(brick, brick_id, start_row, start_col)
-            self.widget_info[brick_id] = (
-                start_row,
-                start_col,
-                brick,
-                title,
-                name,
-                widget_type,
-            )
+#     def add_bricks_by_template(self, template: list) -> None:
+#         # print(f"add bricks by template: {template=}")
+#         last_brick = template[-1]
+#         _, (lb_height, lb_length), lb_start_row, _, _ = last_brick
+#         # lb_height = brick_lookup[lb_brick_type].value.height
+#         max_row = lb_start_row + lb_height
+#         # print(f"@@@ {lb_height=}, {lb_start_row} -> {max_row=}")
+#         self.rows = [self.make_row() for _ in range(max_row)]
+#         for brick_id, (
+#             brick_enum,
+#             # brick_type,
+#             (brick_height, brick_length),
+#             start_row,
+#             start_col,
+#             widget_type,
+#         ) in enumerate(template):
+#             title = brick_enum.display_title
+#             name = brick_enum.name
+#             # brick = brick_lookup[brick_type].value
+#             brick = Brick(brick_height, brick_length)
+#             self.place_brick_in_grid(brick, brick_id, start_row, start_col)
+#             self.widget_info[brick_id] = (
+#                 start_row,
+#                 start_col,
+#                 brick,
+#                 title,
+#                 name,
+#                 widget_type,
+#             )
 
-    def count_free_spaces_across(self, row, start_col):
-        free_spaces = 0
-        for col_i in range(start_col, self.grid_width):
-            if self.is_occupied(self.rows[row][col_i]):
-                return free_spaces
-            free_spaces += 1
-        return free_spaces
+#     def count_free_spaces_across(self, row, start_col):
+#         free_spaces = 0
+#         for col_i in range(start_col, self.grid_width):
+#             if self.is_occupied(self.rows[row][col_i]):
+#                 return free_spaces
+#             free_spaces += 1
+#         return free_spaces
 
-    def count_free_spaces_down(self, start_row, col):
-        free_spaces = 0
-        row_i = start_row
-        while True:
-            if self.exceeds_grid_length(row_i) or self.is_occupied(
-                self.rows[row_i][col]
-            ):
-                return free_spaces
-            free_spaces += 1
-            row_i += 1
+#     def count_free_spaces_down(self, start_row, col):
+#         free_spaces = 0
+#         row_i = start_row
+#         while True:
+#             if self.exceeds_grid_length(row_i) or self.is_occupied(
+#                 self.rows[row_i][col]
+#             ):
+#                 return free_spaces
+#             free_spaces += 1
+#             row_i += 1
 
-    def place_brick_in_grid(
-        self, brick: Brick, brick_id: int, start_row: int, start_col: int
-    ) -> None:
-        for row_i in range(start_row, start_row + brick.height):
-            for col_i in range(start_col, start_col + brick.width):
-                self.rows[row_i][col_i] = brick_id
+#     def place_brick_in_grid(
+#         self, brick: Brick, brick_id: int, start_row: int, start_col: int
+#     ) -> None:
+#         for row_i in range(start_row, start_row + brick.height):
+#             for col_i in range(start_col, start_col + brick.width):
+#                 self.rows[row_i][col_i] = brick_id
 
 
 class WindowWithRightTogglePanel(QWidget):
@@ -262,7 +262,7 @@ class WindowWithRightTogglePanel(QWidget):
 
     def __init__(
         self,
-        grid: Grid,
+        grid: logic.Grid,
         rows: list[list[str]],
         settings: Default_settings,
         headers: list[str],
@@ -474,10 +474,9 @@ class Editor(QWidget):
         "checkbox": QCheckBox,
     }
 
-    # def __init__(self, grid: Grid, excel_rows: list[list[str]], file_name: str, caller:WindowWithRightTogglePanel, settings:Settings, COL, app):
     def __init__(
         self,
-        grid: Grid,
+        grid: logic.Grid,
         excel_rows: list[list[str]],
         caller: WindowWithRightTogglePanel,
         settings: Default_settings,
@@ -1491,9 +1490,9 @@ class LauncherDialog(QDialog):
 
 def get_grid_from_pattern(
     settings: Default_settings, pattern_name: str, COL
-) -> Grid:
+) -> logic.Grid:
     template = []
-    grid = Grid()
+    grid = logic.Grid()
     _, cols, headers = settings.known_patterns[pattern_name]
     for i, col in enumerate(COL):
         line = (col, *cols[i][1:])
@@ -1505,10 +1504,10 @@ def get_grid_from_pattern(
 
 def get_grid_from_algorithm(
     settings: Default_settings, rows: list[list[str]], headers: list[str]
-) -> Grid:
-    grid = Grid()
+) -> logic.Grid:
+    grid = logic.Grid()
     max_lengths = logic.create_max_lengths(rows)
-    layout = [select_brick_by_content_length(length) for length in max_lengths]
+    layout = [logic.select_brick_by_content_length(length) for length in max_lengths]
     for id, (brick, widget_type) in enumerate(layout):
         grid.add_brick_algorithmically(
             id, brick, headers[id], settings.column_names[id], widget_type
@@ -1526,7 +1525,6 @@ def setup_environment(settings: Default_settings) -> tuple:
         column_count,
         pattern_name
         ) = get_file_pattern_and_name_from_user(settings)
-    print(f">>> setup environ: {pattern_name=}")
     grid_source: str
     if from_file:
         (
@@ -1577,7 +1575,6 @@ def get_file_pattern_and_name_from_user(
     file_patterns = list(settings.known_patterns.keys())
     launcher = LauncherDialog(f"./{settings.files.data_dir}", file_patterns)
     ##* exec() blocks until accept() or reject() is called
-    print(f"get file patterns: {file_patterns=}")
     if launcher.exec() == QDialog.DialogCode.Accepted:
         if launcher.selected_path:
             print(f"Loading UI for file: {launcher.selected_path}")
