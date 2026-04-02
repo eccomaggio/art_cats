@@ -2,7 +2,7 @@ from dataclasses import dataclass, fields
 
 # from tkinter import W
 from pathlib import Path
-from re import I
+from re import I, subn
 
 # from art_cats import form_gui
 from art_cats.settings import Default_settings
@@ -399,6 +399,10 @@ def format_list_for_marc(
         for i, marc_col_name in enumerate(marc_column_names):
             if marc_col_name in live_settings.column_names:
                 contents = next(_col)
+                if isinstance(contents, str):
+                    # contents = contents.replace("\n", "")
+                    # contents = contents.replace("\t", "    ")
+                    contents = remove_problematic_characters(record_num, marc_col_name, contents)
             else:
                 contents = ""
             # print(f"\t{i} {marc_col_name}: {contents=}")
@@ -409,6 +413,15 @@ def format_list_for_marc(
     # print(f"{len(augmented_records[1])}->{augmented_records[1]}")
     # print(f"{len(marc_column_names)}->{marc_column_names}\n")
     return augmented_records
+
+
+def remove_problematic_characters(record_num:int, marc_col_name:str, contents:str) -> str:
+    # contents = contents.replace("\n", "")
+    contents, count = subn(r'\n','',contents)
+    if count:
+        logging.warning(f"Record {record_num + 1}: {count} newline{singular_or_plural(count)} found and replaced in field '{marc_col_name}'.")
+    contents = contents.replace("\t", "    ")
+    return contents
 
 
 def remove_dummy_rows(
