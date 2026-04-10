@@ -11,6 +11,7 @@ from . import io
 from . import marc_21
 import logging
 from enum import Enum
+import unicodedata
 
 logger = logging.getLogger(__name__)
 
@@ -397,16 +398,22 @@ def format_list_for_marc(
         _col = iter(record)
         # print(f"Record number {record_num + 1}:")
         for i, marc_col_name in enumerate(marc_column_names):
+            removed_count = 0
+            removed_chars = []
             if marc_col_name in live_settings.column_names:
                 contents = next(_col)
                 if isinstance(contents, str):
                     # contents = contents.replace("\n", "")
                     # contents = contents.replace("\t", "    ")
-                    contents = remove_problematic_characters(record_num, marc_col_name, contents)
+                    # contents = remove_problematic_characters(record_num, marc_col_name, contents)
+                    contents, removed_count, removed_chars = sanitize_string(contents)
             else:
                 contents = ""
+            if removed_count:
+                logging.warning(f"Record {record_num + 1}: {removed_count} invalid character{singular_or_plural(removed_count)} ({", ".join(removed_chars)}) found and replaced in field '{marc_col_name}'.")
             # print(f"\t{i} {marc_col_name}: {contents=}")
             curr_row.append(contents)
+
         augmented_records.append(curr_row)
 
     # print("** format list for marc:")
@@ -415,13 +422,41 @@ def format_list_for_marc(
     return augmented_records
 
 
-def remove_problematic_characters(record_num:int, marc_col_name:str, contents:str) -> str:
-    # contents = contents.replace("\n", "")
-    contents, count = subn(r'\n','',contents)
-    if count:
-        logging.warning(f"Record {record_num + 1}: {count} newline{singular_or_plural(count)} found and replaced in field '{marc_col_name}'.")
-    contents = contents.replace("\t", "    ")
-    return contents
+def sanitize_string(text: str) -> tuple[str, int, list[str]]:
+    if not text:
+        return ("", 0, [])
+    cleaned_parts = []
+    removed_count = 0
+    removed_chars = []
+
+    # Define what we strictly want to delete
+    to_delete = {"\n", "\r"}
+    for char in text:
+        if char == "\t":
+            cleaned_parts.append("    ")
+            removed_count += 1
+            removed_chars.append("tab")
+        elif char in to_delete:
+            removed_count += 1
+            if char == "\n":
+                removed_chars.append("newline")
+            else:
+                removed_chars.append("carriage return")
+        elif unicodedata.category(char) == "Cc":
+            removed_count += 1
+            removed_chars.append("control")
+        else:
+            cleaned_parts.append(char)
+    return ("".join(cleaned_parts), removed_count, removed_chars)
+
+
+# def remove_problematic_characters(record_num:int, marc_col_name:str, contents:str) -> str:
+#     # contents = contents.replace("\n", "")
+#     contents, count = subn(r'\n','',contents)
+#     if count:
+#         logging.warning(f"Record {record_num + 1}: {count} newline{singular_or_plural(count)} found and replaced in field '{marc_col_name}'.")
+#     contents = contents.replace("\t", "    ")
+#     return contents
 
 
 def remove_dummy_rows(
@@ -634,14 +669,6 @@ def create_max_lengths(rows: list[list[str]]) -> list[int]:
     return [max(col) for col in max_lengths]
 
 
-
-
-
-
-
-
-
-
 ############# GRID LOGIC
 
 @dataclass
@@ -802,14 +829,6 @@ class Grid:
         for row_i in range(start_row, start_row + brick.height):
             for col_i in range(start_col, start_col + brick.width):
                 self.rows[row_i][col_i] = brick_id
-
-
-
-
-
-
-
-
 
 
 ############# SPECIFIC PATTERN SETTINGS
