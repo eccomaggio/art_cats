@@ -11,6 +11,8 @@
 
 To do:
 
+This needs a rewrite to properly separate out data and GUI. Need to create a separate Data class to receive, manipulate, and deliver data from the .csv / .xslx 
+
 - DONE - move Grid() from form_gui.py into logic.py
 - sort out type errors with COL
 - is there a simpler way to implement COL? i.e. a dataclass whose members can be iterated and map to another text field, e.g. COL.isbn -> .value = 1, .name = 'isbn', .title = "ISBN number"
