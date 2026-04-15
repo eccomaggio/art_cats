@@ -21,10 +21,14 @@ from art_cats.settings import Default_settings
 
 logger = logging.getLogger(__name__)
 
+EXCEL_ESCAPE_RE = re.compile(r"_x([0-9a-fA-F]{4})_")
+
+
 def get_base_filename(filepath: Path) -> str:
     base = f"{filepath.stem}.new{filepath.suffix}"
     # print(f"{filepath.stem=}, {filepath.suffix=}")
     return base
+
 
 def save_as_yaml(file: str, data) -> None:
     with open(file, mode="wt", encoding="utf-8") as f:
@@ -92,16 +96,50 @@ def extract_from_excel(excel_sheet, first_row_is_header:bool) -> tuple[list[str]
     return (headers, sheet)
 
 
+# def normalize_row(row: list) -> list:
+#     clean_row = []
+#     for col in row:
+#         if col:
+#             data = str(col).strip()
+#             data = trim_mistaken_decimals(data)
+#         else:
+#             data = ""
+#         clean_row.append(data)
+#     return clean_row
+
+
 def normalize_row(row: list) -> list:
     clean_row = []
-    for col in row:
-        if col:
-            data = str(col).strip()
+    for cell in row:
+        if cell:
+            data = str(cell).strip()
+            cell, _ = decode_excel_escapes(cell)
             data = trim_mistaken_decimals(data)
         else:
             data = ""
         clean_row.append(data)
     return clean_row
+
+
+def decode_excel_escapes(text: str) -> tuple[str, int]:
+    """
+    decodes Excel-style _xNNNN_ escape sequences (for example _x000D_) into the actual Unicode character they represent
+    Finds all _xNNNN_ patterns in text
+    the line: EXCEL_ESCAPE_RE.sub(repl, text):-
+    1. Finds all _xNNNN_ patterns in text
+    2. Calls repl(match) on each one
+    3. Replaces the matched text with the return value of repl
+
+    """
+    replaced = 0
+
+    def repl(match):
+        nonlocal replaced
+        replaced += 1
+        codepoint = int(match.group(1), 16)
+        return chr(codepoint)
+
+    return EXCEL_ESCAPE_RE.sub(repl, text), replaced
 
 
 def trim_mistaken_decimals(value: str) -> str:

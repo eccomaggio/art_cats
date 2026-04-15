@@ -398,19 +398,21 @@ def format_list_for_marc(
         _col = iter(record)
         # print(f"Record number {record_num + 1}:")
         for i, marc_col_name in enumerate(marc_column_names):
-            removed_count = 0
-            removed_chars = []
+            # removed_count = 0
+            # removed_chars = []
+            details = ""
             if marc_col_name in live_settings.column_names:
                 contents = next(_col)
                 if isinstance(contents, str):
-                    # contents = contents.replace("\n", "")
-                    # contents = contents.replace("\t", "    ")
                     # contents = remove_problematic_characters(record_num, marc_col_name, contents)
-                    contents, removed_count, removed_chars = sanitize_string(contents)
+                    # contents, removed_count, removed_chars = sanitize_string(contents)
+                    contents, details = sanitize_string(contents)
             else:
                 contents = ""
-            if removed_count:
-                logging.warning(f"Record {record_num + 1}: {removed_count} invalid character{singular_or_plural(removed_count)} ({", ".join(removed_chars)}) found and replaced in field '{marc_col_name}'.")
+            # if removed_count:
+            #     logging.warning(f"Record {record_num + 1}: {removed_count} invalid character{singular_or_plural(removed_count)} ({", ".join(removed_chars)}) found and replaced in field '{marc_col_name}'.")
+            if details:
+                logging.warning(f"In record {record_num + 1}, {details}")
             # print(f"\t{i} {marc_col_name}: {contents=}")
             curr_row.append(contents)
 
@@ -422,32 +424,88 @@ def format_list_for_marc(
     return augmented_records
 
 
-def sanitize_string(text: str) -> tuple[str, int, list[str]]:
+# def sanitize_string(text: str) -> tuple[str, int, list[str]]:
+def sanitize_string(text: str) -> tuple[str, str]:
+    # print("*** sanitizing string for export to Marc")
     if not text:
-        return ("", 0, [])
+        # return ("", 0, [])
+        return ("","")
     cleaned_parts = []
-    removed_count = 0
-    removed_chars = []
-
-    # Define what we strictly want to delete
-    to_delete = {"\n", "\r"}
+    # removed_count = 0
+    # removed_chars = []
+    chars_removed = {"tabs":0, "newlines":0, "returns":0, "bom":0, "controls":0}
+    count = 0
+    details = ""
+    # Excel newline escape
+    # text = text.replace("_x000D_", "")
+    # text = text.replace("_x000A_", "")
     for char in text:
         if char == "\t":
             cleaned_parts.append("    ")
-            removed_count += 1
-            removed_chars.append("tab")
-        elif char in to_delete:
-            removed_count += 1
+            # removed_count += 1
+            # removed_chars.append("tab")
+            chars_removed["tabs"] += 1
+            count += 1
+
+        # Normalize Windows and Unix line endings
+        elif char in ("\n", "\r"):
+            # removed_count += 1
+            # removed_chars.append("newline" if char == "\n" else "carriage return")
             if char == "\n":
-                removed_chars.append("newline")
+                chars_removed["newlines"] += 1
             else:
-                removed_chars.append("carriage return")
-        elif unicodedata.category(char) == "Cc":
-            removed_count += 1
-            removed_chars.append("control")
+                chars_removed["returns"] += 1
+            count += 1
+
+        # Remove BOM explicitly (Windows UTF‑8-with-BOM)
+        elif char == "\ufeff":
+            # removed_count += 1
+            # removed_chars.append("bom")
+            chars_removed["bom"] += 1
+            count += 1
+
+        # Remove ALL other control and format chars
+        elif unicodedata.category(char) in ("Cc", "Cf"):
+            # removed_count += 1
+            # removed_chars.append("control")
+            chars_removed["controls"] += 1
+            count += 1
         else:
             cleaned_parts.append(char)
-    return ("".join(cleaned_parts), removed_count, removed_chars)
+        if count:
+            details = ", ".join([f"{k}: {v}" for k, v in chars_removed.items() if v])
+            details = f"{count} invalid characters changed or removed: {details}"
+
+    # return "".join(cleaned_parts), removed_count, removed_chars
+    return "".join(cleaned_parts), details
+
+
+# def sanitize_string(text: str) -> tuple[str, int, list[str]]:
+#     if not text:
+#         return ("", 0, [])
+#     cleaned_parts = []
+#     removed_count = 0
+#     removed_chars = []
+
+#     # Define what we strictly want to delete
+#     to_delete = {"\n", "\r"}
+#     for char in text:
+#         if char == "\t":
+#             cleaned_parts.append("    ")
+#             removed_count += 1
+#             removed_chars.append("tab")
+#         elif char in to_delete:
+#             removed_count += 1
+#             if char == "\n":
+#                 removed_chars.append("newline")
+#             else:
+#                 removed_chars.append("carriage return")
+#         elif unicodedata.category(char) == "Cc":
+#             removed_count += 1
+#             removed_chars.append("control")
+#         else:
+#             cleaned_parts.append(char)
+#     return ("".join(cleaned_parts), removed_count, removed_chars)
 
 
 # def remove_problematic_characters(record_num:int, marc_col_name:str, contents:str) -> str:
