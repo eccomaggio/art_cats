@@ -406,6 +406,7 @@ def format_list_for_marc(
                 if isinstance(contents, str):
                     # contents = remove_problematic_characters(record_num, marc_col_name, contents)
                     # contents, removed_count, removed_chars = sanitize_string(contents)
+                    contents, _ = io.decode_excel_escapes(contents)
                     contents, details = sanitize_string(contents)
             else:
                 contents = ""

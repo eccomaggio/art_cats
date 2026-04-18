@@ -131,15 +131,15 @@ def decode_excel_escapes(text: str) -> tuple[str, int]:
     3. Replaces the matched text with the return value of repl
 
     """
-    replaced = 0
+    replaced_count = 0
 
     def repl(match):
-        nonlocal replaced
-        replaced += 1
+        nonlocal replaced_count
+        replaced_count += 1
         codepoint = int(match.group(1), 16)
         return chr(codepoint)
 
-    return EXCEL_ESCAPE_RE.sub(repl, text), replaced
+    return EXCEL_ESCAPE_RE.sub(repl, text), replaced_count
 
 
 def trim_mistaken_decimals(value: str) -> str:

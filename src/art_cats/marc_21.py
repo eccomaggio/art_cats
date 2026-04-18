@@ -859,7 +859,7 @@ def norm_isbn(raw_isbn: str, row_num: int) -> str:
 def get_item_policy_from_hol_notes(raw_note: str) -> tuple[str, str]:
     ## TODO: if keeping, put trigger_string into settings
     # trigger_string = "**lib only**"
-    trigger_string = "**f week**"
+    trigger_string = "@@FIXED@@"
     if raw_note.lower().startswith(trigger_string.lower()):
         return (raw_note[len(trigger_string):], "LUO-DIG-Y")
         # return (raw_note, "")
@@ -923,6 +923,9 @@ def parse_rows_into_records(
         if "".join(row) == "":
             logger.warning(f"Row {row_num} is empty.")
             continue
+        # for cell in row:
+        #     if isinstance(cell, str):
+        #         cell = io.decode_excel_escapes(cell)
         record = parse_row(
             row,
             row_num,
@@ -1405,7 +1408,13 @@ def build_876(record: Record) -> Result:
     tag = 876
     i1, i2 = ISBD["BLANK"], ISBD["BLANK"]
     content = [Subfield(value=record.barcode, code="p")]
-    if donation := record.donation:
+    # if donation := record.donation:
+    if record.donation:
+        donation = create_art_tay_donation_note(record)
+        if not donation:
+            donation = record.donation
+        else:
+            logger.info(f"876 donor note formatted in Art / Tay style: {donation}")
         content.append(Subfield(value=donation, code="z"))
     if notes := record.hol_notes:
         content.append(Subfield(value=notes, code="z"))
@@ -1413,6 +1422,37 @@ def build_876(record: Record) -> Result:
         Field(tag=link_num(tag), indicators=Indicators(i1, i2), subfields=content), None
     )
     return result
+
+
+def create_art_tay_donation_note(record:Record) -> str:
+    """
+    given the correct trigger at the beginning of a donation note,
+    creates a standard Art & Taylorian Libraries donation note:
+    ARTBL / TAYBL <donor> donation <Mmm YYYY> (= donation or accession date)
+    If no trigger found, simply returns the
+    """
+    note = record.donation.strip()
+    trigger = "@@"
+    note_split = []
+    if note.startswith(trigger):
+        note_split = note[len(trigger):].split(trigger)
+        note_split = [el for el in note_split if el]
+        name = note_split[0]
+        library = record.sublib if record.sublib else "ARTBL"
+    match len(note_split):
+        case 0:
+            # out = note
+            out = ""
+        case 1:
+            standard_time = record.timestamp.now(timezone.utc)
+            formatted_date = standard_time.strftime("%b %Y")
+            out = f"{library} {name} donation {formatted_date}"
+        case 2:
+            out = f"{library} {name} donation {note_split[1]}"
+        case _:
+            logger.warning(f"Record {record.id} contains a malformed ART / TAY donation note: {note}")
+            out = note
+    return out
 
 
 def build_904(record: Record) -> Result:
@@ -1625,8 +1665,8 @@ def create_parallel_title(record: Record) -> Result:
     elif has_parallel_title:  ## (i.e. Western script)
         parallel_subtitle = normalise_title(record.parallel_subtitle.original)
         if len(record.langs) == 1:
-            ## This arose in a catalogue with a second cover on the back with a different title 
-            ## TODO: However, it is a cludge and could produce incorrect results... 
+            ## This arose in a catalogue with a second cover on the back with a different title
+            ## TODO: However, it is a cludge and could produce incorrect results...
             logger.warning(f"Record {record.id + 1}: There is parallel title ({parallel_subtitle}) but only one language; I will assume that this is an 'other' title (see the LLC notes on field 246) with an explanatory note")
             i1 = "1"    ## Note, added entry
             i2 = "3"    ## Another title that appears ... that is not more appropriately indicated by one of the other values.

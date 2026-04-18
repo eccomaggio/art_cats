@@ -234,10 +234,19 @@ th, td {
   <h2 id="hol_notes">HOL notes</h2>
   <p>Add notes pertaining to the copy in your hand, e.g.<code>a donor note</code>; <code>Missing pages 4-5</code>.</p>
   <!-- <p>If the book's <b>item policy</b> should be <code>"Use_in_Library_Only"</code>, then type <code>***lib only**</code> (exactly as is) as the FIRST thing in this field. Otherwise, the default is <code>"Fixed_Week_Loan"</code>.</p> -->
-  <p>If the book's <b>item policy</b> should be <code>"Fixed_Week_Loan"</code>, then type <code>***f week**</code> (exactly as is, one space) as the FIRST thing in this field. Otherwise, the default is <code>"Use_in_Library_Only"</code>.</p>
+  <p>If the book's <b>item policy</b> should be <code>"Fixed_Week_Loan"</code>, then type <code>@@FIXED@@</code> (exactly as is, one space) as the FIRST thing in this field. Otherwise, the default is <code>"Use_in_Library_Only"</code>.</p>
 
   <h2 id="donation">Donor note</h2>
-  <p>For example: <code>Donated by the Ashmolean Museum</code> or <code>Anonymous donor</code>.</p>
+  <p>For example: <code>Donated by Colonel Mustard</code> or <code>Anonymous donor</code>.</p>
+  <p>If you want to follow the Art and Taylorian libraries standard format:</p>
+  <blockquote>ARTBL / TAYBL [donor] donation [donation/accession date]</blockquote>
+  <p>...there is a shortcut:
+    <ul>
+      <li><code>@@donor name</code> -- this will produce "ARTBL [donor name] donation [current date ex. Apr 2026]</li>
+      <li><code>@@donor name@@Mar 1966</code> -- this will produce "ARTBL [donor name] donation Mar 1966</li>
+    </ul>
+  </p>
+
 
   <h2 id="barcode">Barcode</h2>
   <p>Attach the barcode onto the item in the top left-hand corner of the front cover and scan the barcode into the field. </p>
