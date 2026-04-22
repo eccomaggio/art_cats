@@ -52,22 +52,6 @@ class Data:
     all_text_is_saved = True
     form_has_been_cleared = False
 
-    def __init__(
-        self,
-        excel_rows: list[list[str]],
-        column_count: int,
-        headers: list[str]
-    ):
-        # data = Data()
-        self.headers = headers
-        if excel_rows:
-            self.excel_rows = excel_rows
-            self.has_records = True
-        else:
-            self.excel_rows = [["" for _ in range(column_count)]]
-            self.has_records = False
-
-
     @property
     def row_count(self) -> int:
         return len(self.excel_rows)
@@ -97,49 +81,37 @@ class Data:
         self.excel_rows[self.current_row_index] = row
 
 
-    def get_new_current_row_index(self, direction:str, record_number:int) -> int:
-        new_index = self.current_row_index
-        match direction:
-            case "first":
-                new_index = 0
-            case "last":
-                new_index = self.index_of_last_record
-            case "back":
-                if new_index > 0:
-                    new_index -= 1
-            case "exact" if record_number >= 0:
-                if record_number < self.column_count:
-                    new_index = record_number
-            case _:
-                if new_index < self.index_of_last_record:
-                    new_index += 1
-        return new_index
+def initialise_data(
+    excel_rows: list[list[str]], column_count: int, headers: list[str]
+) -> Data:
+    data = Data()
+    data.headers = headers
+    if excel_rows:
+        data.excel_rows = excel_rows
+        data.has_records = True
+    else:
+        data.excel_rows = [["" for _ in range(column_count)]]
+        data.has_records = False
+    return data
 
 
-    def get_human_readable_record_number(self, number=-100):
-        if number == -100:
-            number = self.current_row_index
-        if number == -1:
-            out = "[new]"
-        else:
-            out = str(number + 1)
-        return out
-
-
-    def add_record(self, record_as_dict) -> None:
-        record_as_data_row = list(record_as_dict.values())
-        # print(f"OK... data passes as valid for submission...{record_as_data_row}")
-        if self.current_record_is_new:
-            # print(f"***{self.has_records=}, record count: {self.record_count} {data=}")
-            if self.has_records:
-                self.excel_rows.append(record_as_data_row)
-            else:
-                self.excel_rows = [record_as_data_row]
-                self.has_records = True
-            self.current_row_index = self.index_of_last_record
-        else:
-            ## Update existing record
-            self.current_row = record_as_data_row
+def get_new_current_row_index(data:Data, direction:str, record_number:int) -> int:
+    new_index = data.current_row_index
+    match direction:
+        case "first":
+            new_index = 0
+        case "last":
+            new_index = data.index_of_last_record
+        case "back":
+            if new_index > 0:
+                new_index -= 1
+        case "exact" if record_number >= 0:
+            if record_number < data.column_count:
+                new_index = record_number
+        case _:
+            if new_index < data.index_of_last_record:
+                new_index += 1
+    return new_index
 
 
 def get_fields_to_clear(settings:Default_settings, COL) -> list:
@@ -183,9 +155,21 @@ def gatekeeper(source: str, editor) -> bool:
     """
     authorised_to_continue = False
     data: Data = editor.data
+    # print(f"?? gatekeeper: *{data.form_has_been_cleared=}*")
+    # if data.form_has_been_cleared:
+    #     if source == "submit":
+    #         authorised_to_continue = True
+    #     else:
+    #         authorised_to_continue = False
+    #         editor.show_alert_box(
+    #             "The record is empty. You must either fill it or save it (which will delete it)."
+    #         )
+    #     return authorised_to_continue
+
     is_saved = check_if_saved(editor, source)
     # print(f"** gatekeeping for {source=} [{is_saved=}], [{data.form_has_been_cleared=}]")
     if source in ["submit"]:
+        # print(f"DEBUG: {is_saved=}")
         if is_saved:
             authorised_to_continue = False
         else:
@@ -223,7 +207,7 @@ def validate_record_before_saving(editor, source="submit") -> bool:
             editor.show_alert_box(error_details)
             authorised_to_continue = False
         else:
-            editor.data.add_record(row_as_dict)
+            add_record(editor, row_as_dict)
             authorised_to_continue = True
     return authorised_to_continue
 
@@ -235,6 +219,7 @@ def check_if_saved(editor, source) -> bool:
     if is for some other operation, **the user is given
     the option to abort**.
     """
+    # return not editor.data.all_text_is_saved
     record_is_saved = editor.data.all_text_is_saved
     # print(f"check if saved: {source}")
     if not record_is_saved and source not in ("submit", "lock", "barcode"):
@@ -249,11 +234,38 @@ def handle_empty_records(editor, source: str) -> bool:
         editor.show_alert_box(
             "There is no information to save. You can either enter a record or simply close the app."
         )
+        # return False
         save_is_authorised = False
     else:
         delete_record(editor)
+        # return True
         save_is_authorised = True
     return save_is_authorised
+
+
+def add_record(editor, record_as_dict) -> None:
+    record_as_data_row = list(record_as_dict.values())
+    # print(f"OK... data passes as valid for submission...{record_as_data_row}")
+    if editor.data.current_record_is_new:
+        # print(f"***{self.has_records=}, record count: {self.record_count} {data=}")
+        if editor.data.has_records:
+            editor.data.excel_rows.append(record_as_data_row)
+        else:
+            editor.data.excel_rows = [record_as_data_row]
+            editor.data.has_records = True
+        editor.data.current_row_index = editor.data.index_of_last_record
+        editor.update_title_with_record_number()
+    else:
+        ## Update existing record
+        editor.data.current_row = record_as_data_row
+
+
+# def save_record_externally(editor) -> None:
+#     csv_file = io.get_csv_file_name_and_path(editor.settings)
+#     logger.info(f"{csv_file=}")
+#     editor.save_as_csv(csv_file)
+#     editor.update_nav_buttons()
+#     editor.load_record_into_gui(editor.data.current_row)
 
 
 def delete_record(editor, index=-1) -> None:
@@ -264,6 +276,7 @@ def delete_record(editor, index=-1) -> None:
     if index > index_of_last_record:
         index = index_of_last_record
         editor.data.current_row_index = index_of_last_record
+    # print(f"????? {index=}")
     if editor.data.record_count:
         editor.load_record_into_gui(editor.data.excel_rows[index])
 
@@ -273,6 +286,16 @@ def is_expected_filetype(headers, col_enum):
     file_resembles_expectations = len(headers) == expected_col_count
     # print(f">>> >> > {expected_col_count=}: {len(headers)=} -> {file_resembles_expectations=}")
     return file_resembles_expectations
+
+
+def get_human_readable_record_number(current_row_index, number=-100):
+    if number == -100:
+        number = current_row_index
+    if number == -1:
+        out = "[new]"
+    else:
+        out = str(number + 1)
+    return out
 
 
 def map_list(orig: list, mappings: list) -> list:
@@ -328,6 +351,20 @@ def map_fits_list(mappings: list, orig: list) -> bool:
     return result
 
 
+# def map_fits_list(mappings: list, orig: list) -> bool:
+#     """
+#     * orig & mappings must be equal length
+#     * elements in mappings must be contiguous when sorted
+#     """
+#     if len(orig) != len(mappings):
+#         return False
+#     test1 = sorted(mappings)
+#     test2 = list(range(test1[0], test1[-1] + 1))
+#     if test1 != test2:
+#         return False
+#     return True
+
+
 def format_list_for_marc(
     records: list[list[str]], live_settings: Default_settings
 ) -> list[list[str]]:
@@ -367,26 +404,36 @@ def format_list_for_marc(
             if marc_col_name in live_settings.column_names:
                 contents = next(_col)
                 if isinstance(contents, str):
+                    # contents = remove_problematic_characters(record_num, marc_col_name, contents)
+                    # contents, removed_count, removed_chars = sanitize_string(contents)
                     contents, _ = io.decode_excel_escapes(contents)
                     contents, details = sanitize_string(contents)
             else:
                 contents = ""
+            # if removed_count:
+            #     logging.warning(f"Record {record_num + 1}: {removed_count} invalid character{singular_or_plural(removed_count)} ({", ".join(removed_chars)}) found and replaced in field '{marc_col_name}'.")
             if details:
                 logging.warning(f"In record {record_num + 1}, {details}")
             # print(f"\t{i} {marc_col_name}: {contents=}")
             curr_row.append(contents)
+
         augmented_records.append(curr_row)
+
     # print("** format list for marc:")
     # print(f"{len(augmented_records[1])}->{augmented_records[1]}")
     # print(f"{len(marc_column_names)}->{marc_column_names}\n")
     return augmented_records
 
 
+# def sanitize_string(text: str) -> tuple[str, int, list[str]]:
 def sanitize_string(text: str) -> tuple[str, str]:
     # print("*** sanitizing string for export to Marc")
     if not text:
+        # return ("", 0, [])
         return ("","")
     cleaned_parts = []
+    # removed_count = 0
+    # removed_chars = []
     chars_removed = {"tabs":0, "newlines":0, "returns":0, "bom":0, "controls":0}
     count = 0
     details = ""
@@ -396,11 +443,15 @@ def sanitize_string(text: str) -> tuple[str, str]:
     for char in text:
         if char == "\t":
             cleaned_parts.append("    ")
+            # removed_count += 1
+            # removed_chars.append("tab")
             chars_removed["tabs"] += 1
             count += 1
 
         # Normalize Windows and Unix line endings
         elif char in ("\n", "\r"):
+            # removed_count += 1
+            # removed_chars.append("newline" if char == "\n" else "carriage return")
             if char == "\n":
                 chars_removed["newlines"] += 1
             else:
@@ -409,11 +460,15 @@ def sanitize_string(text: str) -> tuple[str, str]:
 
         # Remove BOM explicitly (Windows UTF‑8-with-BOM)
         elif char == "\ufeff":
+            # removed_count += 1
+            # removed_chars.append("bom")
             chars_removed["bom"] += 1
             count += 1
 
         # Remove ALL other control and format chars
         elif unicodedata.category(char) in ("Cc", "Cf"):
+            # removed_count += 1
+            # removed_chars.append("control")
             chars_removed["controls"] += 1
             count += 1
         else:
@@ -421,7 +476,46 @@ def sanitize_string(text: str) -> tuple[str, str]:
         if count:
             details = ", ".join([f"{k}: {v}" for k, v in chars_removed.items() if v])
             details = f"{count} invalid characters changed or removed: {details}"
+
+    # return "".join(cleaned_parts), removed_count, removed_chars
     return "".join(cleaned_parts), details
+
+
+# def sanitize_string(text: str) -> tuple[str, int, list[str]]:
+#     if not text:
+#         return ("", 0, [])
+#     cleaned_parts = []
+#     removed_count = 0
+#     removed_chars = []
+
+#     # Define what we strictly want to delete
+#     to_delete = {"\n", "\r"}
+#     for char in text:
+#         if char == "\t":
+#             cleaned_parts.append("    ")
+#             removed_count += 1
+#             removed_chars.append("tab")
+#         elif char in to_delete:
+#             removed_count += 1
+#             if char == "\n":
+#                 removed_chars.append("newline")
+#             else:
+#                 removed_chars.append("carriage return")
+#         elif unicodedata.category(char) == "Cc":
+#             removed_count += 1
+#             removed_chars.append("control")
+#         else:
+#             cleaned_parts.append(char)
+#     return ("".join(cleaned_parts), removed_count, removed_chars)
+
+
+# def remove_problematic_characters(record_num:int, marc_col_name:str, contents:str) -> str:
+#     # contents = contents.replace("\n", "")
+#     contents, count = subn(r'\n','',contents)
+#     if count:
+#         logging.warning(f"Record {record_num + 1}: {count} newline{singular_or_plural(count)} found and replaced in field '{marc_col_name}'.")
+#     contents = contents.replace("\t", "    ")
+#     return contents
 
 
 def remove_dummy_rows(
@@ -468,6 +562,7 @@ def remove_empty_rows(
     for row_num, row in enumerate(rows):
         this_row_is_empty = True
         for col_num, value in enumerate(row):
+            # if row_num == 0:
             # print(f"{col_num=} => {settings.column_names[col_num]} -> {settings.validation.fields_to_autofill}")
             if not value:
                 continue
@@ -479,6 +574,7 @@ def remove_empty_rows(
             count_of_empty_rows += 1
             continue
         full_rows.append(row)
+    # full_rows = rows
     if count_of_empty_rows:
         logger.info(f"{count_of_empty_rows} empty rows were removed.")
     return full_rows
@@ -488,6 +584,7 @@ def singular_or_plural(count: int, plural="s", singular="") -> str:
     return plural if count != 1 else singular
 
 
+# def get_existing_file(settings: Default_settings, COL:COL):
 def get_existing_file(settings: Default_settings):
     logging.info(f"processing file: {settings.files.in_file}")
     headers, rows = io.parse_file_into_rows(
@@ -502,9 +599,12 @@ def get_existing_file(settings: Default_settings):
         _, cols, headers = settings.known_patterns[pattern_name]
         COL = update_settings_and_columns(settings, pattern_name, headers, cols)
         grid_source = "pattern"
+        # grid = form_gui.get_grid_from_pattern(settings, pattern_name, COL)
+        # data_report = validation.check_records_on_load(settings, settings.column_names, rows)
     else:
         ## *UNKNOWN PATTERN i.e. it doesn't recognise the file
         COL = update_settings_and_columns(settings, "default", headers)
+        # grid = form_gui.get_grid_from_algorithm(settings, rows, headers)
         grid_source = "algorithm"
     return (pattern_name, headers, rows, grid_source, COL)
 
@@ -518,6 +618,7 @@ def create_file_from_column_count(
     COL = update_settings_and_columns(settings, "default", headers)
     settings.files.out_file = f"tmp_{column_count}_cols.csv"
     rows = [["" for _ in range(0, column_count)]]
+    # grid = form_gui.get_grid_from_algorithm(settings, rows, headers)
     grid_source = "algorithm"
     # sys.exit(0)
     return (headers, rows, grid_source, COL)
@@ -532,7 +633,9 @@ def create_file_from_pattern(
     COL = update_settings_and_columns(settings, pattern_name, headers, cols)
     settings.files.out_file = f"tmp_{pattern_name}_cols.csv"
     rows = [["" for _ in range(0, len(settings.column_names))]]
+    # grid = form_gui.get_grid_from_pattern(settings, pattern_name, COL)
     grid_source = "pattern"
+    # rows = []
     # sys.exit(0)
     return (headers, rows, grid_source, COL)
 
@@ -620,6 +723,7 @@ def create_max_lengths(rows: list[list[str]]) -> list[int]:
     for row in rows:
         for i, col in enumerate(row):
             length_of_content = 10 if not col else len(col)
+            # max_lengths[i].append(len(col))
             max_lengths[i].append(length_of_content)
     return [max(col) for col in max_lengths]
 
@@ -695,6 +799,7 @@ class Grid:
             brick.width = self.grid_width
         if not title:
             title = f"input #{brick_id}"
+        # row_i = 0
         row_i = self.current_row
         no_place_found_for_brick = True
         while no_place_found_for_brick:
@@ -732,6 +837,7 @@ class Grid:
         # print(f"add bricks by template: {template=}")
         last_brick = template[-1]
         _, (lb_height, lb_length), lb_start_row, _, _ = last_brick
+        # lb_height = brick_lookup[lb_brick_type].value.height
         max_row = lb_start_row + lb_height
         # print(f"@@@ {lb_height=}, {lb_start_row} -> {max_row=}")
         self.rows = [self.make_row() for _ in range(max_row)]
@@ -745,6 +851,7 @@ class Grid:
         ) in enumerate(template):
             title = brick_enum.display_title
             name = brick_enum.name
+            # brick = brick_lookup[brick_type].value
             brick = Brick(brick_height, brick_length)
             self.place_brick_in_grid(brick, brick_id, start_row, start_col)
             self.widget_info[brick_id] = (
@@ -1032,12 +1139,6 @@ def update_settings(settings, COL, pattern_name: str) -> None:
             #     settings.files.module_dir / settings.files.output_dir
             # )
 
-
-
-
-
-
-
         case "strachan":
             settings.title = "strachan"
             settings.show_marc_button = True
@@ -1132,11 +1233,6 @@ def update_settings(settings, COL, pattern_name: str) -> None:
             # settings.files.full_output_dir = (
             #     settings.files.module_dir / settings.files.output_dir
             # )
-
-
-
-
-
 
         case "orders":
             settings.title = pattern_name

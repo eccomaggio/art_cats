@@ -313,10 +313,8 @@ class Editor(QWidget):
         self.setGeometry(100, 100, 1200, 800)
 
         self.grid = grid
-        self.data = logic.Data(
-            excel_rows,
-            len(settings.layout_template),
-            headers
+        self.data = logic.initialise_data(
+            excel_rows, len(settings.layout_template), headers
         )
         self.caller = caller
         self.settings = settings
@@ -346,7 +344,7 @@ class Editor(QWidget):
             self.load_record_into_gui(self.data.current_row)
         else:
             self.load_record_into_gui()
-        # self.update_title_with_record_number()
+        self.update_title_with_record_number()
         self.update_nav_buttons()
         self.add_signal_to_fire_on_text_change()
 
@@ -660,7 +658,6 @@ class Editor(QWidget):
             if self.settings.show_marc_button:
                 self.marc_btn.setEnabled(True)
             self.submit_btn.setEnabled(False)
-            self.update_title_with_record_number()
         return authorised_to_continue
 
     def save_form_data(self) -> None:
@@ -746,8 +743,8 @@ class Editor(QWidget):
         if not authorised_to_continue:
             return
         # index_of_last_record = len(self.excel_rows) - 1
-        self.data.current_row_index = self.data.get_new_current_row_index(direction, record_number)
-        msg = self.data.get_human_readable_record_number(self.data.current_row_index)
+        self.data.current_row_index = logic.get_new_current_row_index(self.data, direction, record_number)
+        msg = logic.get_human_readable_record_number(self.data.current_row_index)
         msg += self.update_nav_buttons()
         self.update_title_with_record_number(msg)
         self.load_record_into_gui(self.data.current_row)
@@ -767,7 +764,7 @@ class Editor(QWidget):
 
     def update_title_with_record_number(self, prefix="Record no. ") -> None:
         # text = f"{self.get_human_readable_record_number()} of {self.data.record_count}"
-        text = f"{self.data.get_human_readable_record_number(self.data.current_row_index)} of {self.data.record_count}"
+        text = f"{logic.get_human_readable_record_number(self.data.current_row_index)} of {self.data.record_count}"
         if self.settings.locking_is_enabled:
             if self.data.record_is_locked:
                 status = "locked"
@@ -1034,7 +1031,7 @@ class Editor(QWidget):
         self.clear_btn.setEnabled(not status.locked_status)
         button_text_override = "" if status.locked_status else "color: red;"
         self.clear_btn.setStyleSheet(button_text_override)
-        # self.update_title_with_record_number()
+        self.update_title_with_record_number()
 
     def update_nav_buttons(self) -> str:
         # print(f"nav status: {self.record_count=}")

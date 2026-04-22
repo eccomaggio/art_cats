@@ -142,7 +142,7 @@ def university_id_number(name: str, content: str, record_as_dict={}) -> str:
     if name and (
         len(name) != 7 or int(name[0]) in [1, 3, 6, 7]
     ):
-        error_msg = "This is not a valid University number."
+        error_msg = f"'{name}' is not a valid University number."
     return error_msg
 
 

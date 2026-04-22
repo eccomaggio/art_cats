@@ -1910,7 +1910,8 @@ def check_for_nonfiling(title: str, lang: str = "eng") -> tuple[str, str]:
         result = (str(nonfiling), title.replace(break_char, "", 1))
     else:
         # for article in nonfiling_words[lang]:
-        if lang not in nonfiling_words.keys():
+        # if lang not in nonfiling_words.keys():
+        if lang not in nonfiling_words:
             logger.critical(f"The language {lang} is not recognised for non-filing.")
             return result
         for article in nonfiling_words[lang]:
