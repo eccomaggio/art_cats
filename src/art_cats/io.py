@@ -25,7 +25,8 @@ EXCEL_ESCAPE_RE = re.compile(r"_x([0-9a-fA-F]{4})_")
 
 
 def get_base_filename(filepath: Path) -> str:
-    base = f"{filepath.stem}.new{filepath.suffix}"
+    base = f"{filepath.stem}.new"
+    # base = f"{filepath.stem}.new{filepath.suffix}"
     # print(f"{filepath.stem=}, {filepath.suffix=}")
     return base
 
