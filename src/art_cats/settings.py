@@ -43,6 +43,7 @@ class Validation:
     validation_skip_fieldname = ""
     validation_skip_text = "*dummy*"
     mandatory_marc_fields = {}
+    check_for_duplicates = []
 
 
 @dataclass

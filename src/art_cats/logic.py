@@ -51,6 +51,7 @@ class Data:
     record_is_locked = False
     all_text_is_saved = True
     form_has_been_cleared = False
+    duplicates = {} #* {COL.[barcode].name : [list of duplicate barcodes]}
 
     def __init__(
         self,
@@ -1018,14 +1019,15 @@ def update_settings(settings, COL, pattern_name: str) -> None:
                 700: False,  # author(s)
                 852: False,  # call number
             }
-            settings.combos.independents = [
-                COL.illustrations.name,
-            ]
             settings.validation.must_validate = [
                 COL.barcode.name,
                 COL.isbn.name,
             ]
             settings.validation.validation_skip_fieldname = COL.barcode.name
+            settings.validation.check_for_duplicates = [COL.barcode.name]
+            settings.combos.independents = [
+                COL.illustrations.name,
+            ]
             settings.files.help_file = "html/help_art_cats.html"
             # settings.files.output_dir = Path("your_marc_files")
             # settings.files.full_output_dir = (

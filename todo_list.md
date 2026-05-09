@@ -11,7 +11,9 @@
 
 To do:
 
-This needs a rewrite to properly separate out data and GUI. Need to create a separate Data class to receive, manipulate, and deliver data from the .csv / .xslx 
+This needs a rewrite to properly separate out data and GUI. Need to create a separate Data class to receive, manipulate, and deliver data from the .csv / .xslx
+
+- implement barcode duplicate alert: added to validation; need to add barcodes to a set on loading file & every time record is saved if it is new. (Do we know if a file is new?) Ensure no dupes BEFORE saving as MARC21. [added stubs to class Data() & settings.validation - assumes could be both isbn & barcode, so loop through entries in settings, assign to dictionary (by col name) in Data]
 
 - DONE - move Grid() from form_gui.py into logic.py
 - sort out type errors with COL
