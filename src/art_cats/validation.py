@@ -47,6 +47,12 @@ def validate(
             if error_msg:
                 invalid.append(f"{name}: {error_msg}")
                 problem_items.append(name)
+        if rules.check_for_duplicates:
+            # TODO: implement check for duplicates
+            for col_name, col_num in rules.ensure_these_cols_have_unique_values:
+                if is_a_duplicate(row_as_dict[col_name], data.duplicates[col_name]):
+                    invalid.append(f"{col_name} must be a unique value, but {row_as_dict[col_name]} exists in another record.")
+                    problem_items.append(row_as_dict[col_name])
     if not is_dummy:
         errors = []
         # if live_settings.title == "art_catalogue":
@@ -170,6 +176,22 @@ def barcode(name:str, content:str, record_as_dict={}) -> str:
     return error_msg
 
 
+def is_a_duplicate(item: str, pool: set) -> bool:
+    return item in pool
+
+def check_for_duplicate_entries(columns: list[str], data) -> set[str | None]:
+    duplicate_values = set()
+    for col_name, col_num in columns:
+        col_int = data.headers.index(col_name)
+        for excel_row in data.excel_rows:
+            value = excel_row[col_int]
+            if is_a_duplicate(value, data.duplicates[col_name]):
+                duplicate_values.add(value)
+    if duplicate_values:
+        logger.error(f"Duplicate values in cols {", ".join([col[0] for col in columns])}: {duplicate_values}")
+    return duplicate_values
+
+
 # def languages(name:str, content:list[str], record_as_dict:dict) -> str:
 #     ## ** Can't debug langs here because just a string, not a processed list
 #     error_msg = ""
@@ -187,3 +209,5 @@ tests_by_fieldname: dict[str, Callable] = {
     "barcode": barcode,
     # "langs" : languages,
 }
+
+

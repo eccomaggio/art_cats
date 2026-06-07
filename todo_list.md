@@ -11,9 +11,27 @@
 
 To do:
 
+FFS: need col_name and col_num of fields to check for duplicates so can index correct field:
+
+1. settings.validation.check_for_dupes: bool = main switch for this function
+1. settings.validation.unique_values_only: list[list[str, name]] = populated if check_for_dupes is true
+1. data.duplicates: dict[str,set] - contains pool of values: populate when load file; update when add record
+
+Need to rewrite this: distribute between logic & validation
+
+
+
+
 This needs a rewrite to properly separate out data and GUI. Need to create a separate Data class to receive, manipulate, and deliver data from the .csv / .xslx
 
 - implement barcode duplicate alert: added to validation; need to add barcodes to a set on loading file & every time record is saved if it is new. (Do we know if a file is new?) Ensure no dupes BEFORE saving as MARC21. [added stubs to class Data() & settings.validation - assumes could be both isbn & barcode, so loop through entries in settings, assign to dictionary (by col name) in Data]
+
+
+OR...
+
+- for MARC 21: add each barcode to pool; if barcode already included, skip that record & report in log (should never be used as data should be clean when reaches this module, but...)
+- for input of record: same as above
+- for loading of file: give a pop-up listing records with duplicate record IDs for user to sort out by themselves (not ideal, but shouldn't be needed if the data is spotted on input)
 
 - DONE - move Grid() from form_gui.py into logic.py
 - sort out type errors with COL

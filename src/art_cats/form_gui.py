@@ -315,11 +315,25 @@ class Editor(QWidget):
         self.grid = grid
         self.data = logic.Data(
             excel_rows,
+            headers,
             len(settings.layout_template),
-            headers
+            settings.validation.ensure_these_cols_have_unique_values,
         )
-        self.caller = caller
         self.settings = settings
+        print(f"check for duplicates in...: {self.settings.validation.ensure_these_cols_have_unique_values}")
+
+        ## * ENSURE THERE ARE NO ILLEGAL DUPLICATE VALUES (up to user to spot and correct them (in this version...))
+        if col_enums := self.settings.validation.ensure_these_cols_have_unique_values:
+            errors = []
+            for col_enum in col_enums:
+                for row_num, row in enumerate(self.data.excel_rows, start=1):
+                    if duplicate_value := self.data.check_if_unique_value(col_enum, row[col_enum.value]):
+                        errors.append((row_num, duplicate_value))
+            logger.critical(f"duplicates on load: {errors}")
+
+
+        self.caller = caller
+        # self.settings = settings
         self.COL = COL
         self.app = app
 
@@ -505,6 +519,23 @@ class Editor(QWidget):
         if self.settings.combos.leaders:
             self.setup_combo_boxes()
             self.load_table(self.tableView, self.data.excel_rows)
+
+        ## * Checks loaded records for duplicates if this check is required in settings.
+        # if cols_to_check := self.settings.validation.check_for_duplicates:
+        #     for col_name in cols_to_check:
+        #         col_num = self.data.headers.index(col_name)
+        #         duplicate_values = set()
+        #         for excel_row in self.data.excel_rows:
+        #             value = excel_row[col_num]
+        #             if validation.is_a_duplicate(value, self.data.duplicates[col_name]):
+        #             # if value in self.data.duplicates[col_name]:
+        #                 duplicate_values.add(value)
+        #             else:
+        #                 self.data.duplicates[col_name].add(value)
+        #         # self.data.duplicates[col_name] = {row[col_num] for row in self.data.excel_rows}
+        #     if duplicate_values:
+        #         logger.error(f"Duplicate values in cols {self.settings.validation.check_for_duplicates}: {duplicate_values}")
+
 
     def setup_combo_boxes(self) -> None:
         ## set up lists of leaders & followers & populate drop down lists for leaders

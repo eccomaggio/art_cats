@@ -1,4 +1,4 @@
-from dataclasses import dataclass, fields
+from dataclasses import InitVar, dataclass, fields, field
 
 # from tkinter import W
 from pathlib import Path
@@ -41,33 +41,55 @@ class COL(Enum):
         self.display_title = title
 
 
-@dataclass
+# @dataclass
 class Data:
-    excel_rows = [[]]
-    headers = []
-    has_records = False
-    file_name = ""
-    current_row_index = 0
-    record_is_locked = False
-    all_text_is_saved = True
-    form_has_been_cleared = False
-    duplicates = {} #* {COL.[barcode].name : [list of duplicate barcodes]}
+    # excel_rows:list[list[str]]
+    # headers:list[str]
+    # excel_rows: InitVar[list[list[str]]]
+    # reserve_column_count: InitVar[int]
+    # headers: InitVar[list[str]]
+
+    duplicates: dict[str, set]
+    has_records:bool = False
+    file_name:str = ""
+    current_row_index:int = 0
+    record_is_locked:bool = False
+    all_text_is_saved:bool = True
+    form_has_been_cleared:bool = False
+    # unique_values: dict = field(default_factory=dict)
+    #* {COL.[barcode] : [set of duplicate barcodes]}
+
 
     def __init__(
         self,
         excel_rows: list[list[str]],
-        column_count: int,
-        headers: list[str]
+        headers: list[str],
+        reserve_column_count: int,
+        unique_values: list
     ):
-        # data = Data()
         self.headers = headers
         if excel_rows:
             self.excel_rows = excel_rows
             self.has_records = True
         else:
-            self.excel_rows = [["" for _ in range(column_count)]]
+            self.excel_rows = [["" for _ in range(reserve_column_count)]]
             self.has_records = False
+        self.unique_values = {key : set() for key in unique_values}
 
+    # def __post_init__(
+    #     self,
+    #     excel_rows: list[list[str]],
+    #     column_count: int,
+    #     headers: list[str]
+    # ):
+    #     # data = Data()
+    #     self.headers = headers
+    #     if excel_rows:
+    #         self.excel_rows = excel_rows
+    #         self.has_records = True
+    #     else:
+    #         self.excel_rows = [["" for _ in range(column_count)]]
+    #         self.has_records = False
 
     @property
     def row_count(self) -> int:
@@ -97,7 +119,6 @@ class Data:
     def current_row(self, row: list) -> None:
         self.excel_rows[self.current_row_index] = row
 
-
     def get_new_current_row_index(self, direction:str, record_number:int) -> int:
         new_index = self.current_row_index
         match direction:
@@ -116,6 +137,21 @@ class Data:
                     new_index += 1
         return new_index
 
+    ## WHY DOESN'T THIS WORK??
+    # def populate_duplicate_pool(self, col_names: list[str]) -> None:
+    #     # def check_for_duplicate_entries(data, settings) -> set[str | None]:
+    #     for col_name, col_num in col_names:
+    #         col_int = int(col_num)
+    #         self.duplicates[col_name] = {row[col_int] for row in self.excel_rows}
+
+    def check_if_unique_value(self, col_enum: COL, value: str) -> str:
+        error = ""
+        if value in self.unique_values[col_enum]:
+            error = value
+        else:
+            self.unique_values[col_enum].add(value)
+        return error
+
 
     def get_human_readable_record_number(self, number=-100):
         if number == -100:
@@ -125,7 +161,6 @@ class Data:
         else:
             out = str(number + 1)
         return out
-
 
     def add_record(self, record_as_dict) -> None:
         record_as_data_row = list(record_as_dict.values())
@@ -141,6 +176,29 @@ class Data:
         else:
             ## Update existing record
             self.current_row = record_as_data_row
+
+
+
+# def populate_duplicate_pool(cols, excel_rows) -> dict:
+#     # def check_for_duplicate_entries(data, settings) -> set[str | None]:
+#     duplicates = {}
+#     for col_name, col_num in cols:
+#         col_int = int(col_num)
+#         duplicates[col_name] = {row[col_int] for row in excel_rows}
+#     print(f"populating... {duplicates}")
+#     return duplicates
+
+
+# def populate_duplicate_pool_with_check(cols, excel_rows) -> dict:
+#     # def check_for_duplicate_entries(data, settings) -> set[str | None]:
+#     duplicates = {}
+#     for col_name, col_num in cols:
+#         col_int = int(col_num)
+#         sub_duplicates = {}
+#         ## add in code for this to make sure catching the dupes when loading file
+#         duplicates[col_name] = {row[col_int] for row in excel_rows}
+#     print(f"populating... {duplicates}")
+#     return duplicates
 
 
 def get_fields_to_clear(settings:Default_settings, COL) -> list:
@@ -1024,7 +1082,8 @@ def update_settings(settings, COL, pattern_name: str) -> None:
                 COL.isbn.name,
             ]
             settings.validation.validation_skip_fieldname = COL.barcode.name
-            settings.validation.check_for_duplicates = [COL.barcode.name]
+            # settings.validation.check_for_duplicates = True
+            settings.validation.ensure_these_cols_have_unique_values = [COL.barcode]
             settings.combos.independents = [
                 COL.illustrations.name,
             ]
