@@ -43,12 +43,6 @@ class COL(Enum):
 
 # @dataclass
 class Data:
-    # excel_rows:list[list[str]]
-    # headers:list[str]
-    # excel_rows: InitVar[list[list[str]]]
-    # reserve_column_count: InitVar[int]
-    # headers: InitVar[list[str]]
-
     duplicates: dict[str, set]
     has_records:bool = False
     file_name:str = ""
@@ -56,7 +50,8 @@ class Data:
     record_is_locked:bool = False
     all_text_is_saved:bool = True
     form_has_been_cleared:bool = False
-    # unique_values: dict = field(default_factory=dict)
+    unique_values: dict
+    validation_skip_text: str
     #* {COL.[barcode] : [set of duplicate barcodes]}
 
 
@@ -65,7 +60,8 @@ class Data:
         excel_rows: list[list[str]],
         headers: list[str],
         reserve_column_count: int,
-        unique_values: list
+        # col_enums_requiring_unique_values: list,
+        settings: Default_settings,
     ):
         self.headers = headers
         if excel_rows:
@@ -74,7 +70,8 @@ class Data:
         else:
             self.excel_rows = [["" for _ in range(reserve_column_count)]]
             self.has_records = False
-        self.unique_values = {key : set() for key in unique_values}
+        self.unique_values = {col_enum : set() for col_enum in settings.validation.ensure_these_cols_have_unique_values}
+        self.validation_skip_text = settings.validation.validation_skip_text
 
     # def __post_init__(
     #     self,
@@ -137,15 +134,11 @@ class Data:
                     new_index += 1
         return new_index
 
-    ## WHY DOESN'T THIS WORK??
-    # def populate_duplicate_pool(self, col_names: list[str]) -> None:
-    #     # def check_for_duplicate_entries(data, settings) -> set[str | None]:
-    #     for col_name, col_num in col_names:
-    #         col_int = int(col_num)
-    #         self.duplicates[col_name] = {row[col_int] for row in self.excel_rows}
-
     def check_if_unique_value(self, col_enum: COL, value: str) -> str:
         error = ""
+        ## *Ignore *dummy* debug text as this can be duplicated
+        if value == self.validation_skip_text:
+            return error
         if value in self.unique_values[col_enum]:
             error = value
         else:
@@ -273,9 +266,10 @@ def validate_record_before_saving(editor, source="submit") -> bool:
     if is_empty:
         authorised_to_continue = handle_empty_records(editor, source)
     else:
-        problem_items, error_details, is_dummy = validation.validate(
+        problem_items, error_details, is_dummy = validation.validate_row(
             row_as_dict,
             editor.settings,
+            editor.data,
         )
         if problem_items:
             editor.highlight_fields(problem_items)

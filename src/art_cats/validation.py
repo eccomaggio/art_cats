@@ -6,9 +6,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def validate(
+def validate_row(
         row_as_dict: dict[str, str],
         live_settings: Default_settings,
+        data,
         optional_msg = ""
         ) -> tuple[list[str], str, bool]:
     ## TODO: tweak rules to fit art cats
@@ -32,27 +33,33 @@ def validate(
     missing = []
     invalid = []
     rules = live_settings.validation
+    cols_which_must_have_unique_values = [col_enum.name for col_enum in data.unique_values.keys()]
+    # print(f"\n{data.unique_values=}, {cols_which_must_have_unique_values=}")
     for col_num, (name, content) in enumerate(row_as_dict.items()):
         if is_a_dummy_record(name, content, rules):
             is_dummy = True
             break
             # continue
+
         if name in rules.required_fields and not content:
             missing.append(name)
             problem_items.append(name)
             continue
+
         if name in rules.must_validate:
             test = tests_by_fieldname[name]
             error_msg = test(name, content, row_as_dict)
             if error_msg:
                 invalid.append(f"{name}: {error_msg}")
                 problem_items.append(name)
-        if rules.check_for_duplicates:
-            # TODO: implement check for duplicates
-            for col_name, col_num in rules.ensure_these_cols_have_unique_values:
-                if is_a_duplicate(row_as_dict[col_name], data.duplicates[col_name]):
-                    invalid.append(f"{col_name} must be a unique value, but {row_as_dict[col_name]} exists in another record.")
-                    problem_items.append(row_as_dict[col_name])
+
+        if rules.ensure_these_cols_have_unique_values and name in cols_which_must_have_unique_values:
+            # check for duplicates
+            for col_enum in data.unique_values.keys():
+                # print(f"!!!{col_enum.name=}: {row_as_dict[col_enum.name]}")
+                if duplicate_value := data.check_if_unique_value(col_enum, row_as_dict[col_enum.name] ):
+                    invalid.append(f"{col_enum.name} must be a unique value, but {duplicate_value} in column '{col_enum.name}' exists in another record.")
+                    problem_items.append(duplicate_value)
     if not is_dummy:
         errors = []
         # if live_settings.title == "art_catalogue":
@@ -176,20 +183,20 @@ def barcode(name:str, content:str, record_as_dict={}) -> str:
     return error_msg
 
 
-def is_a_duplicate(item: str, pool: set) -> bool:
-    return item in pool
+# def is_a_duplicate(item: str, pool: set) -> bool:
+#     return item in pool
 
-def check_for_duplicate_entries(columns: list[str], data) -> set[str | None]:
-    duplicate_values = set()
-    for col_name, col_num in columns:
-        col_int = data.headers.index(col_name)
-        for excel_row in data.excel_rows:
-            value = excel_row[col_int]
-            if is_a_duplicate(value, data.duplicates[col_name]):
-                duplicate_values.add(value)
-    if duplicate_values:
-        logger.error(f"Duplicate values in cols {", ".join([col[0] for col in columns])}: {duplicate_values}")
-    return duplicate_values
+# def check_for_duplicate_entries(columns: list[str], data) -> set[str | None]:
+#     duplicate_values = set()
+#     for col_name, col_num in columns:
+#         col_int = data.headers.index(col_name)
+#         for excel_row in data.excel_rows:
+#             value = excel_row[col_int]
+#             if is_a_duplicate(value, data.duplicates[col_name]):
+#                 duplicate_values.add(value)
+#     if duplicate_values:
+#         logger.error(f"Duplicate values in cols {", ".join([col[0] for col in columns])}: {duplicate_values}")
+#     return duplicate_values
 
 
 # def languages(name:str, content:list[str], record_as_dict:dict) -> str:

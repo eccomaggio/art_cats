@@ -317,7 +317,8 @@ class Editor(QWidget):
             excel_rows,
             headers,
             len(settings.layout_template),
-            settings.validation.ensure_these_cols_have_unique_values,
+            # settings.validation.ensure_these_cols_have_unique_values,
+            settings,
         )
         self.settings = settings
         print(f"check for duplicates in...: {self.settings.validation.ensure_these_cols_have_unique_values}")
@@ -329,8 +330,11 @@ class Editor(QWidget):
                 for row_num, row in enumerate(self.data.excel_rows, start=1):
                     if duplicate_value := self.data.check_if_unique_value(col_enum, row[col_enum.value]):
                         errors.append((row_num, duplicate_value))
-            logger.critical(f"duplicates on load: {errors}")
-
+            if errors:
+                error_msg = "Duplicate values:\n"
+                details = "\n".join([f"\tRecord no.{error[0]}: {error[1]}" for error in errors])
+                logger.critical(f"{error_msg}{details}")
+            # logger.critical(f"duplicates on load: {errors}")
 
         self.caller = caller
         # self.settings = settings

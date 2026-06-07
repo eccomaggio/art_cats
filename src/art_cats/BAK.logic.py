@@ -198,7 +198,7 @@ def validate_record_before_saving(editor, source="submit") -> bool:
     if is_empty:
         authorised_to_continue = handle_empty_records(editor, source)
     else:
-        problem_items, error_details, is_dummy = validation.validate(
+        problem_items, error_details, is_dummy = validation.validate_row(
             row_as_dict,
             editor.settings,
         )
