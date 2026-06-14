@@ -53,14 +53,13 @@ def validate_row(
                 invalid.append(f"{name}: {error_msg}")
                 problem_items.append(name)
 
-        # if rules.ensure_these_cols_have_unique_values and name in cols_which_must_have_unique_values:
-        #     # check for duplicates
-        #     for col_enum in data.unique_values.keys():
-        #         # print(f"!!!{col_enum.name=}: {row_as_dict[col_enum.name]}")
-        #         if duplicate_value := data.check_if_unique_value(col_enum, row_as_dict[col_enum.name] ):
-        #             invalid.append(f"{col_enum.name} must be a unique value, but {duplicate_value} in column '{col_enum.name}' exists in another record.")
-        #             problem_items.append(duplicate_value)
-
+        if rules.ensure_these_cols_have_unique_values and name in cols_which_must_have_unique_values:
+            # check for duplicates
+            for col_enum in data.unique_values.keys():
+                # print(f"!!!{col_enum.name=}: {row_as_dict[col_enum.name]}")
+                if duplicate_value := data.check_if_unique_value(col_enum, row_as_dict[col_enum.name] ):
+                    invalid.append(f"{col_enum.name} must be a unique value, but {duplicate_value} in column '{col_enum.name}' exists in another record.")
+                    problem_items.append(duplicate_value)
     if not is_dummy:
         errors = []
         # if live_settings.title == "art_catalogue":

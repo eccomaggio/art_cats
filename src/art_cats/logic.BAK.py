@@ -134,54 +134,6 @@ class Data:
                     new_index += 1
         return new_index
 
-    def check_columns_for_duplicates(self, col_enums:list) -> None:
-        """
-        Given a list of COL enums, check all values in each of these to ensure there are no duplicates. 
-        Log any duplicates. 
-        **TODO** extend this to a real validation which can halt execution?
-        OR
-        display the error message more prominently
-        """
-        errors = []
-        for col_enum in col_enums:
-            for row_num, row in enumerate(self.excel_rows, start=1):
-                if duplicate_value := self.check_if_unique_value(col_enum, row[col_enum.value]):
-                    errors.append((row_num, duplicate_value))
-        if errors:
-            error_msg = "Duplicate values:\n"
-            details = "\n".join([f"\tRecord no.{error[0]}: {error[1]}" for error in errors])
-            logger.critical(f"{error_msg}{details}")
-
-
-    def check_columns_for_internal_duplicates(self, col_enums:list) -> None:
-        """
-        Given a list of COL enums, check all values in each of these to ensure there are no duplicates. 
-        Log any duplicates. 
-        **TODO** extend this to a real validation which can halt execution?
-        OR
-        display the error message more prominently
-        """
-        errors = []
-
-        for col_enum in col_enums:
-            col_errors = []
-            pool = set()
-            for record_num, row in enumerate(self.excel_rows, start=1):
-                entry = row[col_enum.value]
-                if entry == self.validation_skip_text:
-                    continue
-                if entry in pool:
-                    col_errors.append([record_num, f"{entry} ({col_enum.name})"])
-                else:
-                    pool.add(entry)
-            if col_errors:
-                errors.extend([*col_errors])
-        if errors:
-            error_msg = "Duplicate values:\n"
-            details = "\n".join([f"\tRecord no.{error[0]}: {error[1]}" for error in errors])
-            logger.critical(f"{error_msg}{details}")
-
-
     def check_if_unique_value(self, col_enum: COL, value: str) -> str:
         error = ""
         ## *Ignore *dummy* debug text as this can be duplicated
@@ -193,7 +145,7 @@ class Data:
             self.unique_values[col_enum].add(value)
         return error
 
-    
+
     def get_human_readable_record_number(self, number=-100):
         if number == -100:
             number = self.current_row_index
@@ -284,7 +236,7 @@ def gatekeeper(source: str, editor) -> bool:
     authorised_to_continue = False
     data: Data = editor.data
     is_saved = check_if_saved(editor, source)
-    # print(f"** gatekeeping for {source=} [{is_saved=}], [{data.form_has_been_cleared=}] (updating an existing record? = {data.current_row_index})")
+    # print(f"** gatekeeping for {source=} [{is_saved=}], [{data.form_has_been_cleared=}]")
     if source in ["submit"]:
         if is_saved:
             authorised_to_continue = False

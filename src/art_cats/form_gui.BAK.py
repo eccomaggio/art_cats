@@ -325,16 +325,15 @@ class Editor(QWidget):
 
         ## * ENSURE THERE ARE NO ILLEGAL DUPLICATE VALUES (up to user to spot and correct them (in this version...))
         if col_enums := self.settings.validation.ensure_these_cols_have_unique_values:
-            self.data.check_columns_for_duplicates(col_enums)
-            # errors = []
-            # for col_enum in col_enums:
-            #     for row_num, row in enumerate(self.data.excel_rows, start=1):
-            #         if duplicate_value := self.data.check_if_unique_value(col_enum, row[col_enum.value]):
-            #             errors.append((row_num, duplicate_value))
-            # if errors:
-            #     error_msg = "Duplicate values:\n"
-            #     details = "\n".join([f"\tRecord no.{error[0]}: {error[1]}" for error in errors])
-            #     logger.critical(f"{error_msg}{details}")
+            errors = []
+            for col_enum in col_enums:
+                for row_num, row in enumerate(self.data.excel_rows, start=1):
+                    if duplicate_value := self.data.check_if_unique_value(col_enum, row[col_enum.value]):
+                        errors.append((row_num, duplicate_value))
+            if errors:
+                error_msg = "Duplicate values:\n"
+                details = "\n".join([f"\tRecord no.{error[0]}: {error[1]}" for error in errors])
+                logger.critical(f"{error_msg}{details}")
             # logger.critical(f"duplicates on load: {errors}")
 
         self.caller = caller
@@ -697,8 +696,6 @@ class Editor(QWidget):
                 self.marc_btn.setEnabled(True)
             self.submit_btn.setEnabled(False)
             self.update_title_with_record_number()
-            if col_enums := self.settings.validation.ensure_these_cols_have_unique_values:
-                self.data.check_columns_for_internal_duplicates(col_enums)
         return authorised_to_continue
 
     def save_form_data(self) -> None:
