@@ -136,8 +136,8 @@ class Data:
 
     def check_columns_for_duplicates(self, col_enums:list) -> None:
         """
-        Given a list of COL enums, check all values in each of these to ensure there are no duplicates. 
-        Log any duplicates. 
+        Given a list of COL enums, check all values in each of these to ensure there are no duplicates.
+        Log any duplicates.
         **TODO** extend this to a real validation which can halt execution?
         OR
         display the error message more prominently
@@ -145,6 +145,8 @@ class Data:
         errors = []
         for col_enum in col_enums:
             for row_num, row in enumerate(self.excel_rows, start=1):
+                if not row:
+                    break
                 if duplicate_value := self.check_if_unique_value(col_enum, row[col_enum.value]):
                     errors.append((row_num, duplicate_value))
         if errors:
@@ -155,8 +157,8 @@ class Data:
 
     def check_columns_for_internal_duplicates(self, col_enums:list) -> None:
         """
-        Given a list of COL enums, check all values in each of these to ensure there are no duplicates. 
-        Log any duplicates. 
+        Given a list of COL enums, check all values in each of these to ensure there are no duplicates.
+        Log any duplicates.
         **TODO** extend this to a real validation which can halt execution?
         OR
         display the error message more prominently
@@ -193,7 +195,7 @@ class Data:
             self.unique_values[col_enum].add(value)
         return error
 
-    
+
     def get_human_readable_record_number(self, number=-100):
         if number == -100:
             number = self.current_row_index
