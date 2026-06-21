@@ -1,5 +1,4 @@
 from collections.abc import Callable
-import re
 
 from art_cats import marc_21
 from .settings import Default_settings
@@ -37,20 +36,17 @@ def validate_row(
     cols_which_must_have_unique_values = [col_enum.name for col_enum in data.unique_values.keys()]
     # print(f"\n{data.unique_values=}, {cols_which_must_have_unique_values=}")
     for col_num, (name, content) in enumerate(row_as_dict.items()):
-        print(f">>> validate_row: {name}, {content}")
         if is_a_dummy_record(name, content, rules):
             is_dummy = True
             break
             # continue
 
         if name in rules.required_fields and not content:
-            print(f"\t{name} is a required field")
             missing.append(name)
             problem_items.append(name)
             continue
 
         if name in rules.must_validate:
-            print(f"\t{name} must be validated...")
             test = tests_by_fieldname[name]
             error_msg = test(name, content, row_as_dict)
             if error_msg:
@@ -171,14 +167,6 @@ def isbn(name: str, content: str, record_as_dict={}) -> str:
     return error_msg
 
 
-def pub_year(name: str, content: str, record_as_dict={}) -> str:
-
-    error_msg = ""
-    if not re.search(r'\d{4}', content):
-        error_msg = f"The publication date ['{content}'] does not include a valid year number (YYYY)."
-    return error_msg
-
-
 def barcode(name:str, content:str, record_as_dict={}) -> str:
     error_msg = ""
     errors = []
@@ -227,7 +215,6 @@ tests_by_fieldname: dict[str, Callable] = {
     "notify": university_id_number,
     "isbn": isbn,
     "barcode": barcode,
-    "pub_year": pub_year,
     # "langs" : languages,
 }
 

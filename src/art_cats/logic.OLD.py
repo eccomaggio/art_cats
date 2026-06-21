@@ -1095,7 +1095,7 @@ def update_settings(settings, COL, pattern_name: str) -> None:
                 COL.pagination.name,
                 COL.size.name,
                 COL.barcode.name,
-                COL.illustrations.name,
+                COL.illustrations,
             ]
             settings.validation.mandatory_marc_fields = {
                 0: True,  # Leader
@@ -1124,7 +1124,6 @@ def update_settings(settings, COL, pattern_name: str) -> None:
             settings.validation.must_validate = [
                 COL.barcode.name,
                 COL.isbn.name,
-                COL.pub_year.name,
             ]
             settings.validation.validation_skip_fieldname = COL.barcode.name
             # settings.validation.check_for_duplicates = True
