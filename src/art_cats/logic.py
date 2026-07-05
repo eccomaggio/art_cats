@@ -221,7 +221,6 @@ class Data:
             self.current_row = record_as_data_row
 
 
-
 # def populate_duplicate_pool(cols, excel_rows) -> dict:
 #     # def check_for_duplicate_entries(data, settings) -> set[str | None]:
 #     duplicates = {}
@@ -924,17 +923,22 @@ known_patterns = {
             ("tr_parallel_subtitle", (2, 3), 7, 3, "text"),
             ("country_name", (1, 2), 13, 0, "line"),
             ("place", (1, 4), 13, 2, "line"),
-            ("publisher", (1, 4), 14, 0, "line"),
-            ("pub_year", (1, 1), 14, 4, "line"),
-            ("copyright", (1, 1), 14, 5, "line"),
+            # ("publisher", (1, 4), 14, 0, "line"),
+            ("publisher", (1, 3), 14, 0, "line"),
+            # ("pub_year", (1, 1), 14, 4, "line"),
+            # ("copyright", (1, 1), 14, 5, "line"),
+            ("pub_year", (1, 1), 14, 3, "line"),
+            ("copyright", (1, 1), 14, 4, "line"),
             ("pagination", (1, 1), 15, 1, "line"),
             ("size", (1, 1), 15, 0, "line"),
-            ("illustrations", (1, 1), 15, 3, "combo"),
+            # ("illustrations", (1, 1), 15, 3, "combo"),
+            ("illustrations", (1, 1), 14, 5, "combo"),
             ("series_title", (1, 3), 12, 0, "line"),
             ("series_enum", (1, 2), 12, 3, "line"),
             ("volume", (1, 1), 12, 5, "line"),
             ("notes", (3, 3), 9, 0, "text"),
-            ("sales_code", (1, 1), 15, 2, "line"),
+            # ("sales_code", (1, 1), 15, 2, "line"),
+            ("sales_code", (1, 2), 15, 2, "line"),
             ("sale_dates", (1, 2), 15, 4, "line"),
             ("hol_notes", (3, 3), 9, 3, "text"),
             ("donation", (1, 4), 16, 0, "line"),
@@ -957,8 +961,10 @@ known_patterns = {
             "Publisher's name",
             "Year of publication",
             "Year of copyright",
-            "Number of pages",
-            "Size (height)",
+            # "Number of pages",
+            # "Size (height)",
+            "Pages",
+            "Size",
             "Illustrations",
             "Series title",
             "Series enumeration",
