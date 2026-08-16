@@ -1,0 +1,28 @@
+sublib,Library,1,2,0,0,combo
+langs,language of resource,1,2,0,2,line
+isbn,ISBN,1,2,0,4,line
+title,Title,2,3,1,0,text
+tr_title,Title transliteration,2,3,1,3,text
+subtitle,Subtitle,2,3,3,0,text
+tr_subtitle,Subtitle transliteration,2,3,3,3,text
+parallel_title,Parallel title (dual language only),2,3,5,0,text
+tr_parallel_title,Parallel title transliteration,2,3,5,3,text
+parallel_subtitle,Parallel subtitle (dual language only),2,3,7,0,text
+tr_parallel_subtitle,Parallel subtitle transliteration,2,3,7,3,text
+country_name,Country of publication,1,2,13,0,line
+place,"(State,) City of publication",1,4,13,2,line
+publisher,Publisher's name,1,3,14,0,line
+pub_year,Year of publication,1,1,14,3,line
+copyright,Year of copyright,1,1,14,4,line
+pagination,Pages,1,1,15,1,line
+size,Size,1,1,15,0,line
+illustrations,Illustrations,1,1,14,5,combo
+series_title,Series title,1,3,12,0,line
+series_enum,Series enumeration,1,2,12,3,line
+volume,Volume,1,1,12,5,line
+notes,Note,3,3,9,0,text
+sales_code,Sale code,1,2,15,2,line
+sale_dates,Date of auction,1,2,15,4,line
+hol_notes,HOL notes,3,3,9,3,text
+donation,Donor note,1,4,16,0,line
+barcode,Barcode,1,2,16,4,line

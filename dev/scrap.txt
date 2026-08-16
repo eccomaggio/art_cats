@@ -1,0 +1,85 @@
+settings:
+  title :  pattern_name
+  show_marc_button :  True
+# settings.column_names :  [column.name for column in COL]
+# settings.headers :  [member.display_title for member in COL]
+  show_table_view :  False
+  locking_is_enabled :  True
+  combos.data_file :  "data/combo_data_artcats.yaml"
+  auto_submit_form_on_x_field :  True
+  auto_submit_form_field_name :  COL.barcode.name
+  clear_all_fields :  False
+## * This supplements .fields_to_clear: if .fields_to_clear is empty and .clear_all_fields is True, then all fields will be cleared when a new record is created.
+  validation.fields_to_autofill_info:
+    - null
+## settings.validation.fields_to_autofill :  list(
+##    settings.validation.fields_to_autofill_info.keys()
+## )
+
+  validation:
+    required_fields:
+      - COL.langs.name
+      - COL.title.name
+      # COL.extent.name
+      - COL.pub_year.name
+      - COL.publisher.name
+      - COL.country_name.name
+      - COL.place.name
+      - COL.pagination.name
+      - COL.size.name
+      - COL.barcode.name
+      - COL.illustrations.name
+
+    fields_to_clear:
+      - COL.barcode
+      # COL.hol_notes  # temporarily contains 'item policy'
+      - COL.pagination
+      - COL.pub_year
+      - COL.sale_dates
+      - COL.copyright
+      - COL.sale_dates
+      - COL.sales_code
+
+    mandatory_marc_fields:
+      - 0: True  # Leader
+      - 40: True  # cataloguing source: Oxford (boilerplate)
+      - 336: True  # content type (boilerplate)
+      - 337: True  # media type (boilerplate)
+      - 338: True  # carrier type (boilerplate)
+      - 904: True  # authority Ox Local Record (boilerplate)
+      - 5: True  # timestamp (boilerplate)
+      - 8: True  # pub details
+      - 33: True  # sale date
+      - 245: True  # title
+      - 264: True  # publisher & copyright
+      - 300: True  # physical description
+      - 490: False  # series statement
+      - 876: True  # notes / barcode
+      - 20: False  # isbn
+      - 24: False  # sales code
+      - 41: False  # language if not monolingual
+      - 246: False  # parallel title
+      - 500: False  # general notes
+      - 100: False  # artist
+      - 700: False  # author(s)
+      - 852: False  # call number
+
+    must_validate:
+      - COL.barcode.name
+      - COL.isbn.name
+      - COL.pub_year.name
+
+    validation_skip_fieldname:  COL.barcode.name
+#   check_for_duplicates:  True
+    ensure_these_cols_have_unique_values:
+      - COL.barcode
+
+combos:
+  independents:
+    - COL.illustrations.name
+
+settings.files.help_file:  "html/help_art_cats.html"
+# settings.files.output_dir:  Path("your_marc_files")
+# settings.files.full_output_dir:  (
+#     settings.files.module_dir / settings.files.output_dir
+# )

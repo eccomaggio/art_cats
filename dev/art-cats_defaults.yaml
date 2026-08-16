@@ -1,0 +1,121 @@
+pattern_name: art_cats
+diagnostic_columns:
+  - 13
+  - 27
+gui_column_count: 6
+# row_span, col_span, start_row, start_col, widget-type, name, title
+column_info:
+  - [1, 2, 0, 0, combo, sublib, Library]
+  - [1, 2, 0, 2, line, langs, language of resource]
+  - [1, 2, 0, 4, line, isbn, ISBN]
+  - [2, 3, 1, 0, text, title, Title]
+  - [2, 3, 1, 3, text, tr_title, Title transliteration]
+  - [2, 3, 3, 0, text, subtitle, Subtitle]
+  - [2, 3, 3, 3, text, tr_subtitle, Subtitle transliteration]
+  - [2, 3, 5, 0, text, parallel_title, Parallel title (dual language only)]
+  - [2, 3, 5, 3, text, tr_parallel_title, Parallel title transliteration]
+  - [2, 3, 7, 0, text, parallel_subtitle, Parallel subtitle (dual language only)]
+  - [2, 3, 7, 3, text, tr_parallel_subtitle, Parallel subtitle transliteration]
+  - [1, 2, 13, 0, line, country_name, Country of publication]
+  - [1, 4, 13, 2, line, place, "(State,) City of publication"]
+  - [1, 3, 14, 0, line, publisher, Publisher's name]
+  - [1, 1, 14, 3, line, pub_year, Year of publication]
+  - [1, 1, 14, 4, line, copyright, Year of copyright]
+  - [1, 1, 15, 1, line, pagination, Pages]
+  - [1, 1, 15, 0, line, size, Size]
+  - [1, 1, 14, 5, combo, illustrations, Illustrations]
+  - [1, 3, 12, 0, line, series_title, Series title]
+  - [1, 2, 12, 3, line, series_enum, Series enumeration]
+  - [1, 1, 12, 5, line, volume, Volume]
+  - [3, 3, 9, 0, text, notes, Note]
+  - [1, 2, 15, 2, line, sales_code, Sale code]
+  - [1, 2, 15, 4, line, sale_dates, Date of auction]
+  - [3, 3, 9, 3, text, hol_notes, HOL notes]
+  - [1, 4, 16, 0, line, donation, Donor note]
+  - [1, 2, 16, 4, line, barcode, Barcode]
+
+
+settings:
+  #title:  pattern_name
+  show_marc_button:  True
+  # column_names:  [column for column in COL]
+  # headers:  [member.display_title for member in COL]
+  show_table_view:  False
+  locking_is_enabled:  True
+  combos.data_file: data/combo_data_artcats.yaml
+  auto_submit_form_on_x_field:  True
+  auto_submit_form_field_name:  barcode
+  clear_all_fields:  False
+
+validation:
+  ## * This supplements .fields_to_clear: if .fields_to_clear is empty and .clear_all_fields is True, then all fields will be cleared when a new record is created.
+  fields_to_autofill_info:
+    - null
+  fields_to_autofill:
+    - null
+    ##  settings.validation.fields_to_autofill_info.keys()
+  required_fields:
+    - langs
+    - title
+    # extent
+    - pub_year
+    - publisher
+    - country_name
+    - place
+    - pagination
+    - size
+    - barcode
+    - illustrations
+
+  fields_to_clear:
+    - barcode
+    # hol_notes  # temporarily contains 'item policy'
+    - pagination
+    - pub_year
+    - sale_dates
+    - copyright
+    - sale_dates
+    - sales_code
+
+  mandatory_marc_fields:
+    - 0: True  # Leader
+    - 40: True  # cataloguing source: Oxford (boilerplate)
+    - 336: True  # content type (boilerplate)
+    - 337: True  # media type (boilerplate)
+    - 338: True  # carrier type (boilerplate)
+    - 904: True  # authority Ox Local Record (boilerplate)
+    - 5: True  # timestamp (boilerplate)
+    - 8: True  # pub details
+    - 33: True  # sale date
+    - 245: True  # title
+    - 264: True  # publisher & copyright
+    - 300: True  # physical description
+    - 490: False  # series statement
+    - 876: True  # notes / barcode
+    - 20: False  # isbn
+    - 24: False  # sales code
+    - 41: False  # language if not monolingual
+    - 246: False  # parallel title
+    - 500: False  # general notes
+    - 100: False  # artist
+    - 700: False  # author(s)
+    - 852: False  # call number
+
+  must_validate:
+    - barcode
+    - isbn
+    - pub_year
+
+  validation_skip_fieldname:  barcode
+  # check_for_duplicates:  True
+  ensure_these_cols_have_unique_values:
+    - barcode
+
+combos:
+  independents:
+    - illustrations
+
+files:
+help_file:  html/help_art_cats.html
+# output_dir:  Path("your_marc_files")
+# full_output_dir: settings.files.module_dir / settings.files.output_dir
