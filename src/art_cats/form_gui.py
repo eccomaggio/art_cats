@@ -392,6 +392,9 @@ class Editor(QWidget):
                     self.leader_inputs[name] = tmp_input
                 tmp_input.setStyleSheet(self.settings.styles.combo_dropdown)
             self.update_input_styling(tmp_input, "input_active")
+            if name == "sale_dates":
+                # print(f"!!! name={name}")
+                tmp_input.setToolTip("TBA")
             self.inputs.append(tmp_input)
 
             tmp_wrapper = QVBoxLayout()
@@ -791,17 +794,22 @@ class Editor(QWidget):
         self.load_record_into_gui(self.data.current_row)
 
     def saledates_action(self) -> None:
-        # print("sales_date filled in!!")
+        print("...sales_date updated!!")
         sender = self.sender()
-        # sender = self.inputs[COL.sale_dates.value]
-        pubdate = self.inputs[self.COL.pub_year.value]
-        if isinstance(sender, QLineEdit) and isinstance(pubdate, QLineEdit):
-            if not pubdate.text():
-                year_of_pub = sender.text().strip()[:4]
-                # print(f">>>>>>>>> {year_of_pub}")
-                pubdate.setText(f"{year_of_pub}?")
+        if isinstance(sender, QLineEdit):
+            # sender = self.inputs[COL.sale_dates.value]
+            pubdate = self.inputs[self.COL.pub_year.value]
+            ## if date is empty/invalid, tooltip is automatically removed
+            sender.setToolTip(logic.show_date_as_dd_month_yyyy(sender.text()))
+            if isinstance(sender, QLineEdit) and isinstance(pubdate, QLineEdit):
+                if not pubdate.text():
+                    year_of_pub = sender.text().strip()[:4]
+                    # print(f">>>>>>>>> {year_of_pub}")
+                    pubdate.setText(f"{year_of_pub}?")
+            else:
+                logger.warning("Can't access salecode or pubdate fields...")
         else:
-            logger.warning("Can't access salecode or pubdate fields...")
+            logger.warning(f"Cannot add tooltips to {type(sender)}")
 
     def update_title_with_record_number(self, prefix="Record no. ") -> None:
         # text = f"{self.get_human_readable_record_number()} of {self.data.record_count}"
@@ -1015,6 +1023,8 @@ class Editor(QWidget):
 
     def load_line_edit(self, input_widget: QLineEdit, value="") -> None:
         input_widget.setText(value)
+        if input_widget.objectName() == "sale_dates":
+            input_widget.setToolTip(logic.show_date_as_dd_month_yyyy(value))
 
     def load_text_edit(self, input_widget: QTextEdit, value="") -> None:
         input_widget.setPlainText(value)
@@ -1300,7 +1310,7 @@ class LauncherDialog(QDialog):
         select_pattern_layout.addWidget(self.btn_pattern_create)
         main_layout.addLayout(select_pattern_layout)
 
-    def handle_open_file(self, directory: str):
+    def handle_open_file(self, directory: str) -> None:
         # file_filter = "Data Files (*.csv *.tsv *.xlsx *.xls *.xlsm)"
         file_filter = (
             "Data Files (*.csv *.tsv *.xlsx *.xls *.xlsm);;"
@@ -1423,6 +1433,7 @@ def setup_environment(settings: Default_settings) -> tuple:
     elif grid_source == "algorithm":
         grid = get_grid_from_algorithm(settings, rows, headers)
     else:
+        grid = logic.Grid()
         logger.critical(f"The source of this grid ({grid_source}) is unknown")
 
     # logic.show_col(COL)
@@ -1442,7 +1453,7 @@ def get_file_pattern_and_name_from_user(
     ##* exec() blocks until accept() or reject() is called
     if launcher.exec() == QDialog.DialogCode.Accepted:
         if launcher.selected_path:
-            print(f"Loading UI for file: {launcher.selected_path}")
+            logger.info(f"Loading UI for file: {launcher.selected_path}")
             settings.files.in_file = launcher.selected_path
             settings.is_existing_file = True
             return (True, 0, "")

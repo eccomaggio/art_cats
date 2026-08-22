@@ -2,7 +2,8 @@ from dataclasses import InitVar, dataclass, fields, field
 
 # from tkinter import W
 from pathlib import Path
-from re import I, subn
+# from re import I, subn
+import re
 
 # from art_cats import form_gui
 from art_cats.settings import Default_settings
@@ -12,6 +13,8 @@ from . import marc_21
 import logging
 from enum import Enum
 import unicodedata
+from datetime import datetime
+# import re
 
 logger = logging.getLogger(__name__)
 
@@ -524,6 +527,15 @@ def sanitize_string(text: str) -> tuple[str, str]:
             details = ", ".join([f"{k}: {v}" for k, v in chars_removed.items() if v])
             details = f"{count} invalid characters changed or removed: {details}"
     return "".join(cleaned_parts), details
+
+
+def show_date_as_dd_month_yyyy(date_str:str) -> str:
+    # dates = []
+    dates = re.findall(r'\d{8}', date_str)
+    formatted_date = " ,".join(
+        [datetime.strptime(date, "%Y%m%d").strftime("%d %b %Y") for date in dates]
+    )
+    return formatted_date
 
 
 def remove_dummy_rows(

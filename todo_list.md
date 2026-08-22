@@ -11,7 +11,13 @@
 
 To do:
 
-FFS: need col_name and col_num of fields to check for duplicates so can index correct field:
+1. add in support for NiceGUI html gui: also entails separating logic out of form_gui.py properly!
+1. IGNORE FOR NOW: [only appears on Windows machine] suppress 'are you sure you want to save' dialogue when amending existing
+1. DONE: add in human-readable check for dates (i.e. 19660303 => 3 March 1966)
+1. generalise optional tooltips to all QWidgets
+1. change support for linked combo boxes: make it so that the current combo box leaders/followers settings are automatically derived from the COL 'widget-type', e.g. "combo" = regular combo but "combo:subject_consultant" means that this combo is dependent on the choice made in the subject_consultant combo.
+
+1. DONE: FFS: need col_name and col_num of fields to check for duplicates so can index correct field:
 
 1. settings.validation.check_for_dupes: bool = main switch for this function
 1. settings.validation.unique_values_only: list[list[str, name]] = populated if check_for_dupes is true
