@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    body {
+      margin: 10px;
+      min-height: 100dvh;
+      display: grid;
+      width: 800px;
+      grid-template-columns: repeat(6, 1fr);
+      grid-template-rows: repeat(17, 1fr);
+      gap: 10px 10px;
+    }
+
+    div {
+      background-color: antiquewhite;
+    }
+
+    #sublib {
+      grid-row: 1;
+      grid-column: 1 / span 2;
+    }
+
+    #langs {
+      grid-row: 1;
+      grid-column: 3 / span 2;
+    }
+
+    #isbn {
+      grid-row: 1;
+      grid-column: 5 / span 2;
+    }
+
+    #title {
+      grid-row: 2 / span 2;
+      grid-column: 1 / span 3;
+    }
+
+    #tr_title {
+      grid-row: 2 / span 2;
+      grid-column: 4 / span 3;
+    }
+
+    #subtitle {
+      grid-row: 4 / span 2;
+      grid-column: 1 / span 3;
+    }
+
+    #tr_subtitle {
+      grid-row: 4 / span 2;
+      grid-column: 4 / span 3;
+    }
+
+    #parallel_title {
+      grid-row: 6 / span 2;
+      grid-column: 1 / span 3;
+    }
+
+    #tr_parallel_title {
+      grid-row: 6 / span 2;
+      grid-column: 4 / span 3;
+    }
+
+    #parallel_subtitle {
+      grid-row: 8 / span 2;
+      grid-column: 1 / span 3;
+    }
+
+    #tr_parallel_subtitle {
+      grid-row: 8 / span 2;
+      grid-column: 4 / span 3;
+    }
+
+    #country_name {
+      grid-row: 14;
+      grid-column: 1 / span 2;
+    }
+
+    #place {
+      grid-row: 14;
+      grid-column: 3 / span 4;
+    }
+
+    #publisher {
+      grid-row: 15;
+      grid-column: 1 / span 3;
+    }
+
+    #pub_year {
+      grid-row: 15;
+      grid-column: 4;
+    }
+
+    #copyright {
+      grid-row: 15;
+      grid-column: 5;
+    }
+
+    #pagination {
+      grid-row: 16;
+      grid-column: 2;
+    }
+
+    #size {
+      grid-row: 16;
+      grid-column: 1;
+    }
+
+    #illustrations {
+      grid-row: 15;
+      grid-column: 6;
+    }
+
+    #series_title {
+      grid-row: 13;
+      grid-column: 1 / span 3;
+    }
+
+    #series_enum {
+      grid-row: 13;
+      grid-column: 4 / span 2;
+    }
+
+    #volume {
+      grid-row: 13;
+      grid-column: 6;
+    }
+
+    #notes {
+      grid-row: 10 / span 3;
+      grid-column: 1 / span 3;
+    }
+
+    #sales_code {
+      grid-row: 16;
+      grid-column: 3 / span 2;
+    }
+
+    #sale_dates {
+      grid-row: 16;
+      grid-column: 5 / span 2;
+    }
+
+    #hol_notes {
+      grid-row: 10 / span 3;
+      grid-column: 4 / span 3;
+    }
+
+    #donation {
+      grid-row: 17;
+      grid-column: 1 / span 4;
+    }
+
+    #barcode {
+      grid-row: 17;
+      grid-column: 5 / span 2;
+    }
+
+  </style>
+</head>
+<body>
+    <div id="sublib">sublib</div>
+    <div id="langs">langs</div>
+    <div id="isbn">isbn</div>
+    <div id="title">title</div>
+    <div id="tr_title">tr_title</div>
+    <div id="subtitle">subtitle</div>
+    <div id="tr_subtitle">tr_subtitle</div>
+    <div id="parallel_title">parallel_title</div>
+    <div id="tr_parallel_title">tr_parallel_title</div>
+    <div id="parallel_subtitle">parallel_subtitle</div>
+    <div id="tr_parallel_subtitle">tr_parallel_subtitle</div>
+    <div id="country_name">country_name</div>
+    <div id="place">place</div>
+    <div id="publisher">publisher</div>
+    <div id="pub_year">pub_year</div>
+    <div id="copyright">copyright</div>
+    <div id="pagination">pagination</div>
+    <div id="size">size</div>
+    <div id="illustrations">illustrations</div>
+    <div id="series_title">series_title</div>
+    <div id="series_enum">series_enum</div>
+    <div id="volume">volume</div>
+    <div id="notes">notes</div>
+    <div id="sales_code">sales_code</div>
+    <div id="sale_dates">sale_dates</div>
+    <div id="hol_notes">hol_notes</div>
+    <div id="donation">donation</div>
+    <div id="barcode">barcode</div>
+</body>
+</html>
