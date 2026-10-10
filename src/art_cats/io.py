@@ -113,6 +113,8 @@ def normalize_row(row: list) -> list:
     clean_row = []
     for cell in row:
         if cell:
+            if isinstance(cell, int):
+                cell = str(cell)
             data = str(cell).strip()
             cell, _ = decode_excel_escapes(cell)
             data = trim_mistaken_decimals(data)
@@ -132,6 +134,9 @@ def decode_excel_escapes(text: str) -> tuple[str, int]:
     3. Replaces the matched text with the return value of repl
 
     """
+    # print(f"{text}, {type(text)=}")
+    # if isinstance(text, int):
+    #     return (str(text), 0)
     replaced_count = 0
 
     def repl(match):
@@ -140,7 +145,9 @@ def decode_excel_escapes(text: str) -> tuple[str, int]:
         codepoint = int(match.group(1), 16)
         return chr(codepoint)
 
-    return EXCEL_ESCAPE_RE.sub(repl, text), replaced_count
+    # return EXCEL_ESCAPE_RE.sub(repl, text), replaced_count
+    decoded = EXCEL_ESCAPE_RE.sub(repl, text), replaced_count
+    return decoded
 
 
 def trim_mistaken_decimals(value: str) -> str:
