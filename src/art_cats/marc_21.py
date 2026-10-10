@@ -1964,6 +1964,7 @@ def apply_marc_logic(record: Record, mandatory_marc_fields:dict) -> PyRecord:
     # for builder, is_mandatory in fields_to_deploy:
     for builder in fields_to_deploy:
         field_num = int(builder.__name__[6:])
+        print(f"*******{field_num=}\n*******{mandatory_marc_fields}")
         is_mandatory = mandatory_marc_fields[field_num]
         # print(f"DEBUG: {builder.__name__}, {field_num=}, {mandatory_marc_fields[field_num]}")
         build_output: Result = builder(record)

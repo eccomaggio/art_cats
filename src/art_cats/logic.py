@@ -1224,6 +1224,7 @@ def update_settings(settings, COL, pattern_name: str) -> None:
                 COL.barcode.name,
             ]
             settings.validation.mandatory_marc_fields = {
+                0: True,
                 40: True,  # cataloguing source: Oxford (boilerplate)
                 336: True,  # content type (boilerplate)
                 337: True,  # media type (boilerplate)

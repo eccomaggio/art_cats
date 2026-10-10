@@ -22,10 +22,10 @@ class PipelineSpec(BaseModel):
   file_path_str: str
   file_path: Optional[Path] = None
   file_extension: Optional[str] = None
-  ideal_order: list[str]
+  new_cols: list[tuple[str, str]]
   split_cols: list[tuple[str, str]]
   drop_cols: list[str]
-  new_cols: list[tuple[str, str]]
+  ideal_order: list[str]
 
   @model_validator(mode="after")
   def compute_file_path(self) -> "PipelineSpec":
@@ -80,7 +80,7 @@ def get_data_frame(spec: PipelineSpec) -> tuple[pd.DataFrame, PipelineSpec]:
     return df, spec
 
 
-def save_data_frame(df: pd.DataFrame, spec: PipelineSpec) -> None:
+def save_df_to_file(df: pd.DataFrame, spec: PipelineSpec) -> None:
     if spec.file_path is None:
         raise ValueError("File path was never resolved or initialized.")
 
@@ -155,7 +155,7 @@ def wrangle_data(spec: PipelineSpec):
     df = split_columns(df, spec)
     df = drop_columns(df, spec)
     df = rearrange_columns(df, spec)
-    save_data_frame(df, spec)
+    save_df_to_file(df, spec)
 
 
 import argparse

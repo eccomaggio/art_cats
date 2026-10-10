@@ -1,5 +1,14 @@
 spec_name: "multilingual-test"
 file_path_str: "./input_files/multilingual.csv"
+new_cols:
+  - ["Country", "UK"]
+split_cols:
+  # Using single quotes keeps this a literal raw string
+  # named capture groups: (?P<name>...)
+  - ["Full_Name", '(?P<First>[^\s_]+)\s*_\s*(?P<Last>[^\s_]+)\s*\(ID:\s*(?P<Extracted_ID>\d+)\)']
+drop_cols:
+  - Full_Name
+  - Age
 ideal_order:
   - ID
   - Extracted_ID
@@ -7,11 +16,3 @@ ideal_order:
   - Last
   - Location
   - Country
-drop_cols:
-  - Full_Name
-  - Age
-new_cols:
-  - ["Country", "UK"]
-split_cols:
-  # Using single quotes keeps this a literal raw string for your regex
-  - ["Full_Name", '(?P<First>[^\s_]+)\s*_\s*(?P<Last>[^\s_]+)\s*\(ID:\s*(?P<Extracted_ID>\d+)\)']
