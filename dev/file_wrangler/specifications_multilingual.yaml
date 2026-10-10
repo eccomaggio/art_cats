@@ -1,3 +1,4 @@
+spec_name: "multilingual-test"
 file_path_str: "./input_files/multilingual.csv"
 ideal_order:
   - ID

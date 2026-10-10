@@ -1,0 +1,52 @@
+spec_name: "multilingual-test"
+file_path_str: ""
+file_extension: ".csv"
+# file_extension: ".xlsx"
+ideal_order:
+  - Language of resource
+  - ISBN
+  - Title
+  - Subtitle
+  - Artist
+  - (State,) City of publication
+  - Country of publication
+  - Publisher ===> Publisher's name
+  - Publication date ===> Year of publication
+  - Year of copyright
+  - Pagination
+  - Size (cm) ===> Size
+  - Note
+  - Author ===> Author(s)
+  - Primary Call No Desc ===> Call number
+  - Supplementary info ===> Holding note
+  - Barcode
+
+  # - * Language of resource
+  # - * ISBN
+  # - Title
+  # - Subtitle
+  # - Artist
+  # - * (State,) City of publication
+  # - * Country of publication
+  # - Publisher's name
+  # - Year of publication
+  # - * Year of copyright
+  # - Pagination
+  # - Size
+  # - Note
+  # - Author(s)
+  # - Call number
+  # - Holding note
+  # - * Barcode
+drop_cols:
+  - Complete?
+  - Author of Text
+new_cols:
+  - ["Language of resource", "fre"]
+  - ["ISBN", ""]
+  - ["Barcode", "300000000"]
+  - ["Year of copyright", ""]
+  - ["(State,) City of publication", "Paris"]
+  - ["Country of publication", "fr"]
+  - ["Note", ""]
+split_cols: []
