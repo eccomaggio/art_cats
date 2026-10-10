@@ -1,0 +1,16 @@
+file_path_str: "./input_files/multilingual.csv"
+ideal_order:
+  - ID
+  - Extracted_ID
+  - First
+  - Last
+  - Location
+  - Country
+drop_cols:
+  - Full_Name
+  - Age
+new_cols:
+  - ["Country", "UK"]
+split_cols:
+  # Using single quotes keeps this a literal raw string for your regex
+  - ["Full_Name", '(?P<First>[^\s_]+)\s*_\s*(?P<Last>[^\s_]+)\s*\(ID:\s*(?P<Extracted_ID>\d+)\)']
